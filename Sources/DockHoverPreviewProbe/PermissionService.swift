@@ -51,7 +51,11 @@ final class SystemPermissionService: PermissionService {
             logger.error("permissions.openSettings.invalidURL \(urlString)")
             return
         }
-        NSWorkspace.shared.open(url)
-        logger.info("permissions.openSettings \(urlString)")
+        let opened = NSWorkspace.shared.open(url)
+        if opened {
+            logger.info("permissions.openSettings \(urlString) opened=true")
+        } else {
+            logger.warning("permissions.openSettings \(urlString) opened=false")
+        }
     }
 }

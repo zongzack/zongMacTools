@@ -6,7 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController!
     private var orchestrator: ProbeOrchestrator!
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    @MainActor func applicationDidFinishLaunching(_ notification: Notification) {
         logger = ProbeLogger()
         permissionService = SystemPermissionService(logger: logger)
         orchestrator = ProbeOrchestrator(permissionService: permissionService, logger: logger)

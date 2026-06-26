@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 final class MenuBarController {
     private let permissionService: PermissionService
     private let orchestrator: ProbeOrchestrator
@@ -18,8 +19,8 @@ final class MenuBarController {
         logger.info("menu.installed")
     }
 
-    private func rebuildMenu() {
-        let state = permissionService.refresh()
+    private func rebuildMenu(state: PermissionState? = nil) {
+        let state = state ?? permissionService.refresh()
         let menu = NSMenu()
         menu.addItem(disabledItem("Accessibility: \(state.accessibilityGranted ? "granted" : "missing")"))
         menu.addItem(disabledItem("Screen Recording: \(state.screenRecordingGranted ? "granted" : "missing")"))
@@ -49,7 +50,7 @@ final class MenuBarController {
 
     @objc private func requestAccessibilityPrompt() {
         permissionService.requestAccessibilityPrompt()
-        rebuildMenu()
+        rebuildMenu(state: permissionService.currentState)
     }
 
     @objc private func openAccessibilitySettings() {
@@ -61,8 +62,8 @@ final class MenuBarController {
     }
 
     @objc private func refreshPermissions() {
-        _ = permissionService.refresh()
-        rebuildMenu()
+        let state = permissionService.refresh()
+        rebuildMenu(state: state)
     }
 
     @objc private func showFrontmostAppProbe() {
