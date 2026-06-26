@@ -1,7 +1,9 @@
 import Foundation
+import OSLog
 
 final class ProbeLogger: @unchecked Sendable {
     private let lock = NSLock()
+    private let systemLogger = Logger(subsystem: "com.zong.DockHoverPreviewProbe", category: "probe")
     private var entries: [String] = []
 
     func info(_ message: String) {
@@ -27,7 +29,17 @@ final class ProbeLogger: @unchecked Sendable {
         lock.lock()
         entries.append(line)
         lock.unlock()
-        NSLog("%@", line)
+
+        switch level {
+        case "INFO":
+            systemLogger.info("\(line, privacy: .public)")
+        case "WARN":
+            systemLogger.warning("\(line, privacy: .public)")
+        case "ERROR":
+            systemLogger.error("\(line, privacy: .public)")
+        default:
+            systemLogger.notice("\(line, privacy: .public)")
+        }
     }
 
     private static func timestamp() -> String {
