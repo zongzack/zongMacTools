@@ -4,6 +4,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     private let permissionService: PermissionService
     private let logger: ProbeLogger
     private lazy var dockHoverMonitor = DockHoverMonitor(logger: logger)
+    private lazy var windowQueryService: WindowQueryService = ScreenCaptureWindowQueryService(logger: logger)
     private var pendingHoverWorkItem: DispatchWorkItem?
 
     init(permissionService: PermissionService, logger: ProbeLogger) {
@@ -29,8 +30,19 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     }
 
     func showFrontmostAppProbe() {
-        let appName = NSWorkspace.shared.frontmostApplication?.localizedName ?? "none"
-        logger.info("debug.frontmost.placeholder app=\(appName)")
+        guard permissionService.refresh().screenRecordingGranted else {
+            logger.warning("debug.frontmost.skipped screenRecording=false")
+            return
+        }
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            logger.warning("debug.frontmost.noApp")
+            return
+        }
+        logger.info("debug.frontmost.start app=\(app.localizedName ?? "unknown") bundle=\(app.bundleIdentifier ?? "nil") pid=\(app.processIdentifier)")
+        Task { [windowQueryService, logger] in
+            let windows = await windowQueryService.windows(for: app)
+            logger.info("debug.frontmost.done app=\(app.localizedName ?? "unknown") count=\(windows.count)")
+        }
     }
 
     func dockHoverMonitor(_ monitor: DockHoverMonitor, didHover app: HoveredDockApp) {

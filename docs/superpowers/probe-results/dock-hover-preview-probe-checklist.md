@@ -15,7 +15,7 @@ Date: 2026-06-26
 
 - Accessibility: granted for final binary at 2026-06-26 14:26:32 Asia/Shanghai; logs showed `permissions.refresh accessibility=true screenRecording=false`, `orchestrator.start accessibility=true screenRecording=false`, and `dock.subscribed pid=6627`
 - Re-signing note: earlier ad-hoc re-signing temporarily reset Accessibility for the packaged app identity; final Task 4 packaged run is Accessibility granted
-- Screen Recording: missing/not granted; final permission log reported `screenRecording=false`, expected for this phase
+- Screen Recording: granted for Task 5 final binary after packaging and reauthorization; logs at 2026-06-26 14:56:36 Asia/Shanghai showed `permissions.refresh accessibility=true screenRecording=true`, `orchestrator.start accessibility=true screenRecording=true`, and `dock.subscribed pid=35521`
 
 ## Dock Hover
 
@@ -31,3 +31,24 @@ Date: 2026-06-26
 
 - `killall Dock` recovery time: approximately 0.02 seconds from `dock.pidChanged` to resubscribe, within 10 seconds
 - Recovery notes: passed after final hover verification; logs at 2026-06-26 14:28:07 Asia/Shanghai showed `dock.pidChanged old=Optional(6627) new=Optional(35521)`, `dock.stop` twice from the stop/start path, `dock.subscribed pid=35521`, and `dock.start`
+
+## Window Query And AX Mapping
+
+| App | Expected Visible Windows | Returned Windows | AX Matched Windows | Query Time ms | Notes |
+| --- | --- | --- | --- | --- | --- |
+| VS Code | 3 | 3 | 3 | 64 | all AX scores 1.000; 3 Code windows from System Events |
+| Chrome | 1 | 1 | 1 | 42 | AX score 1.000 |
+| Typora | 1 | 1 | 1 | 30 | opened `项目信息.md`; title `项目信息.md`; AX score 1.000 |
+| IINA | 1 | 1 | 1 | 42 | AX score 1.000 |
+| WPS | 1 | 1 | 1 | 46 | opened xlsx; title `AI开发岗试用期考核表_修改版_原格式_更新版.xlsx`; AX score 1.000 |
+
+- Query run time: 2026-06-26 14:58-14:59 Asia/Shanghai via DHP menu item `Debug: Show Preview For Frontmost App`
+- Frontmost starts observed: `Code` (`com.microsoft.VSCode`, `pid=761`), `Google Chrome` (`com.google.Chrome`, `pid=46872`), `Typora` (`abnerworks.Typora`, `pid=46874`), `IINA` (`com.colliderli.iina`, `pid=36247`), and `WPS Office` (`com.kingsoft.wpsoffice.mac`, `pid=78012`)
+- Completion logs matched returned counts for all apps: Code 3, Chrome 1, Typora 1, IINA 1, WPS Office 1
+
+## Space And Display Characterization
+
+- Other normal Space result: not run
+- Full-screen Space result: not run
+- Stage Manager result: not run
+- Multiple display result: not run; current environment remains the single-display setup recorded above
