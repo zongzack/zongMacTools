@@ -16,6 +16,7 @@ Date: 2026-06-26
 - Accessibility: granted for final binary at 2026-06-26 14:26:32 Asia/Shanghai; logs showed `permissions.refresh accessibility=true screenRecording=false`, `orchestrator.start accessibility=true screenRecording=false`, and `dock.subscribed pid=6627`
 - Re-signing note: earlier ad-hoc re-signing temporarily reset Accessibility for the packaged app identity; final Task 4 packaged run is Accessibility granted
 - Screen Recording: granted for Task 5 final binary after packaging and reauthorization; logs at 2026-06-26 14:56:36 Asia/Shanghai showed `permissions.refresh accessibility=true screenRecording=true`, `orchestrator.start accessibility=true screenRecording=true`, and `dock.subscribed pid=35521`; remained granted for Task 6 final binary at 2026-06-26 15:43:08 Asia/Shanghai with `permissions.refresh accessibility=true screenRecording=true`, `orchestrator.start accessibility=true screenRecording=true`, and `dock.subscribed pid=35521`
+- Task 7 final startup: permissions remained granted at 2026-06-26 16:07:03 Asia/Shanghai with `permissions.refresh accessibility=true screenRecording=true`, `orchestrator.start accessibility=true screenRecording=true`, and `dock.subscribed pid=35521`
 
 ## Dock Hover
 
@@ -62,3 +63,13 @@ Date: 2026-06-26
 | Typora | 1 | 1/1 | not used | not observed in logs; visual render not inspected | Typora query count 1; SCK thumbnail was 440x248 with elapsed 18 ms |
 | IINA | 1 | 1/1 | not used | not observed in logs; visual render not inspected | IINA query count 1; SCK thumbnail was 440x248 with elapsed 19 ms |
 | WPS | 1 | 1/1 | not used | not observed in logs; visual render not inspected | WPS Office query count 1; SCK thumbnail was 440x248 with elapsed 25 ms |
+
+## Activation
+
+| App | Windows Tested | AX Matched | Exact Raise Success | App Activation Fallback Observed | Notes |
+| --- | --- | --- | --- | --- | --- |
+| VS Code | 3 queried / first sorted activated | yes | yes | appActivate=true but exact raise succeeded | selected `01-model-init-online.ipynb — langchain`; System Events confirmed `frontWindow=01-model-init-online.ipynb — langchain` |
+| Chrome | 1 | yes | yes | appActivate=true but exact raise succeeded | selected `LINUX DO - 新的理想型社区 - Google Chrome`; System Events confirmed `frontWindow=LINUX DO - 新的理想型社区 - Google Chrome` |
+| Typora | 1 | yes | yes | appActivate=true but exact raise succeeded | selected `项目信息.md`; System Events confirmed `frontWindow=项目信息.md` |
+| IINA | 1 | yes | yes | appActivate=true but exact raise succeeded | selected `harness-3x-finally.mp4  —  /Users/zong/Desktop/Work/AI演示`; System Events confirmed same front window title |
+| WPS | 1 | yes | yes | appActivate=true but exact raise succeeded | selected `首页`; System Events confirmed `frontWindow=首页` |

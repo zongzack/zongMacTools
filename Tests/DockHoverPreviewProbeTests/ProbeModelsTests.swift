@@ -17,4 +17,20 @@ final class ProbeModelsTests: XCTestCase {
         let changedTitle = ThumbnailCacheKey(id: id, frame: CGRect(x: 0, y: 0, width: 640, height: 480), title: "Two")
         XCTAssertNotEqual(key, changedTitle)
     }
+
+    func testActivationProbeResultCapturesActivationEvidence() {
+        let result = ActivationProbeResult(
+            windowID: 42,
+            title: "Editor",
+            hadAXElement: true,
+            raiseSucceeded: true,
+            appActivateRequestSucceeded: false
+        )
+
+        XCTAssertEqual(result.windowID, 42)
+        XCTAssertEqual(result.title, "Editor")
+        XCTAssertTrue(result.hadAXElement)
+        XCTAssertTrue(result.raiseSucceeded)
+        XCTAssertFalse(result.appActivateRequestSucceeded)
+    }
 }

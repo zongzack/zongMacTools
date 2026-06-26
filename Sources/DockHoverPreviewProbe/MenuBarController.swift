@@ -31,6 +31,7 @@ final class MenuBarController {
         menu.addItem(actionItem("Refresh Permissions", #selector(refreshPermissions)))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(actionItem("Debug: Show Preview For Frontmost App", #selector(showFrontmostAppProbe)))
+        menu.addItem(actionItem("Debug: Activate First Frontmost Window", #selector(activateFirstFrontmostWindow)))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(actionItem("Quit", #selector(quit)))
         statusItem.menu = menu
@@ -68,6 +69,10 @@ final class MenuBarController {
 
     @objc private func showFrontmostAppProbe() {
         orchestrator.showFrontmostAppProbe()
+    }
+
+    @objc private func activateFirstFrontmostWindow() {
+        orchestrator.activateFirstFrontmostWindowProbe()
     }
 
     @objc private func quit() {

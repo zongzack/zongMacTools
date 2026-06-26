@@ -6,6 +6,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     private lazy var dockHoverMonitor = DockHoverMonitor(logger: logger)
     private lazy var windowQueryService: WindowQueryService = ScreenCaptureWindowQueryService(logger: logger)
     private lazy var thumbnailService: ThumbnailService = StaticThumbnailService(logger: logger)
+    private lazy var activationService: ActivationService = AXActivationService(logger: logger)
     private var pendingHoverWorkItem: DispatchWorkItem?
 
     init(permissionService: PermissionService, logger: ProbeLogger) {
@@ -47,6 +48,24 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
                 let image = await thumbnailService.thumbnail(for: window)
                 logger.info("debug.thumbnail.result id=\(window.cgWindowID) success=\(image != nil)")
             }
+        }
+    }
+
+    func activateFirstFrontmostWindowProbe() {
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            logger.warning("activation.debug.noApp")
+            return
+        }
+        Task { [windowQueryService, activationService, logger] in
+            let windows = await windowQueryService.windows(for: app)
+            guard let first = windows.first else {
+                logger.warning("activation.debug.noWindows app=\(app.localizedName ?? "unknown")")
+                return
+            }
+            let appName = app.localizedName ?? "unknown"
+            logger.info("activation.debug.selected selection=firstSortedCandidate app=\(appName) id=\(first.cgWindowID) title=\(first.title)")
+            let result = await activationService.activate(window: first)
+            logger.info("activation.debug.done selection=firstSortedCandidate app=\(appName) id=\(result.windowID) title=\(result.title) hadAX=\(result.hadAXElement) raise=\(result.raiseSucceeded) appActivate=\(result.appActivateRequestSucceeded)")
         }
     }
 
