@@ -13,6 +13,7 @@ let package = Package(
         .executableTarget(
             name: "DockHoverPreviewProbe",
             path: "Sources/DockHoverPreviewProbe",
+            exclude: ["Info.plist"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("ApplicationServices"),

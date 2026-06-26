@@ -10,7 +10,7 @@ MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 
 cd "$ROOT_DIR"
-swift build -c "$CONFIGURATION"
+swift build -c "$CONFIGURATION" >&2
 
 EXECUTABLE_PATH="$(swift build -c "$CONFIGURATION" --show-bin-path)/$APP_NAME"
 
@@ -20,7 +20,7 @@ cp "$EXECUTABLE_PATH" "$MACOS_DIR/$APP_NAME"
 cp "$ROOT_DIR/Sources/DockHoverPreviewProbe/Info.plist" "$CONTENTS_DIR/Info.plist"
 chmod +x "$MACOS_DIR/$APP_NAME"
 
-plutil -lint "$CONTENTS_DIR/Info.plist"
-codesign --force --sign - "$APP_DIR"
+plutil -lint "$CONTENTS_DIR/Info.plist" >&2
+codesign --force --sign - "$APP_DIR" >&2
 
 echo "$APP_DIR"
