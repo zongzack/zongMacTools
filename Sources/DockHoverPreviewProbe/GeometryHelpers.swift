@@ -5,6 +5,15 @@ enum GeometryHelpers {
         rect.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
     }
 
+    static func convertTopLeftFrameToBottomLeftFrame(_ frame: CGRect, in displayFrame: CGRect) -> CGRect {
+        CGRect(
+            x: frame.origin.x,
+            y: displayFrame.maxY - (frame.origin.y - displayFrame.minY) - frame.height,
+            width: frame.width,
+            height: frame.height
+        )
+    }
+
     static func frameMatchScore(scFrame: CGRect, axFrame: CGRect) -> Double {
         guard scFrame.width > 0, scFrame.height > 0, axFrame.width > 0, axFrame.height > 0 else {
             return 0

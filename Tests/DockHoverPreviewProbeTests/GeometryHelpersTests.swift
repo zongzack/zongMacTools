@@ -9,6 +9,17 @@ final class GeometryHelpersTests: XCTestCase {
         XCTAssertFalse(GeometryHelpers.contains(CGPoint(x: 98.5, y: 230), in: rect, tolerance: 1))
     }
 
+    func testConvertTopLeftFrameToBottomLeftFrameMatchesDockMouseCoordinates() {
+        let displayFrame = CGRect(x: 0, y: 0, width: 3008, height: 1692)
+        let rawAXFrame = CGRect(x: 1055.618408203125, y: 1633.5828857421875, width: 36.4171142578125, height: 48.4171142578125)
+
+        let converted = GeometryHelpers.convertTopLeftFrameToBottomLeftFrame(rawAXFrame, in: displayFrame)
+
+        XCTAssertEqual(converted.origin.x, rawAXFrame.origin.x, accuracy: 0.001)
+        XCTAssertEqual(converted.origin.y, 10, accuracy: 0.001)
+        XCTAssertTrue(GeometryHelpers.contains(CGPoint(x: 1071.42578125, y: 54.765625), in: converted, tolerance: 2))
+    }
+
     func testFrameMatchScorePrefersCloseFrames() {
         let scFrame = CGRect(x: 100, y: 100, width: 800, height: 600)
         let closeAXFrame = CGRect(x: 102, y: 99, width: 798, height: 602)
