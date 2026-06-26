@@ -5,6 +5,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     private let logger: ProbeLogger
     private lazy var dockHoverMonitor = DockHoverMonitor(logger: logger)
     private lazy var windowQueryService: WindowQueryService = ScreenCaptureWindowQueryService(logger: logger)
+    private lazy var thumbnailService: ThumbnailService = StaticThumbnailService(logger: logger)
     private var pendingHoverWorkItem: DispatchWorkItem?
 
     init(permissionService: PermissionService, logger: ProbeLogger) {
@@ -39,9 +40,13 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
             return
         }
         logger.info("debug.frontmost.start app=\(app.localizedName ?? "unknown") bundle=\(app.bundleIdentifier ?? "nil") pid=\(app.processIdentifier)")
-        Task { [windowQueryService, logger] in
+        Task { [windowQueryService, thumbnailService, logger] in
             let windows = await windowQueryService.windows(for: app)
             logger.info("debug.frontmost.done app=\(app.localizedName ?? "unknown") count=\(windows.count)")
+            for window in windows {
+                let image = await thumbnailService.thumbnail(for: window)
+                logger.info("debug.thumbnail.result id=\(window.cgWindowID) success=\(image != nil)")
+            }
         }
     }
 
