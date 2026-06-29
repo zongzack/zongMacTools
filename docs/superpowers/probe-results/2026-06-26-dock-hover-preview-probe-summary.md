@@ -57,3 +57,9 @@ Date: 2026-06-26
 - `swift test`: passed; 10 XCTest cases, 0 failures.
 - `swift build`: passed; debug build completed.
 - `Scripts/build_probe_app.sh`: passed; printed `/Users/zong/Desktop/Project/zongMacTools/build/DockHoverPreviewProbe.app`.
+
+## MVP UI Plan
+
+- Plan: `docs/superpowers/plans/2026-06-26-dock-hover-preview-mvp-ui-implementation-plan.md`
+- Manual UI checklist: `docs/superpowers/probe-results/dock-hover-preview-mvp-ui-manual-checklist.md`
+- DockDoor is a visual and interaction reference only. The MVP UI implementation must not copy DockDoor GPLv3 source, file structure, helper code, comments, or private API wrappers.
