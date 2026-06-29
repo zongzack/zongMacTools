@@ -63,3 +63,17 @@ Date: 2026-06-26
 - Plan: `docs/superpowers/plans/2026-06-26-dock-hover-preview-mvp-ui-implementation-plan.md`
 - Manual UI checklist: `docs/superpowers/probe-results/dock-hover-preview-mvp-ui-manual-checklist.md`
 - DockDoor is a visual and interaction reference only. The MVP UI implementation must not copy DockDoor GPLv3 source, file structure, helper code, comments, or private API wrappers.
+
+## MVP UI Result
+
+- MVP UI status: pass with concerns.
+- Recommended next step: run environment variants before broadening scope; then consider polish UI for thumbnail aspect-ratio presentation.
+- Main evidence:
+  - `swift test`: pass; 2026-06-29 final run passed 27 XCTest cases, 0 failures, after quitting the running probe app.
+  - `swift build`: pass; 2026-06-29 final run completed successfully.
+  - `Scripts/build_probe_app.sh`: pass; 2026-06-29 final run produced `/Users/zong/Desktop/Project/zongMacTools/build/DockHoverPreviewProbe.app`.
+  - Permissions: pass; fresh packaged launch at 2026-06-29 13:42:49 Asia/Shanghai logged `accessibility=true`, `screenRecording=true`, and `dock.subscribed pid=639`.
+  - Sample apps and interactions: pass by user report after manual run. User observed a Typora narrow-window thumbnail aspect-ratio presentation; accepted as a polish candidate rather than an MVP blocker.
+- Remaining risks:
+  - Screen Recording denied path was covered by automated test and earlier probe evidence, but not manually re-run in the final UI pass.
+  - Other Spaces, full-screen Spaces, Stage Manager, Dock auto-hide, left/right Dock, and multiple displays remain unverified in the MVP UI pass.
