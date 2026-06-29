@@ -3,7 +3,7 @@ import ApplicationServices
 import CoreGraphics
 import ScreenCaptureKit
 
-struct PermissionState: Equatable {
+struct PermissionState: Equatable, Sendable {
     let accessibilityGranted: Bool
     let screenRecordingGranted: Bool
 }
@@ -15,17 +15,17 @@ struct HoveredDockApp: Equatable {
     let dockItemFrame: CGRect?
 }
 
-struct PreviewWindowID: Hashable {
+struct PreviewWindowID: Hashable, Sendable {
     let pid: pid_t
     let windowID: CGWindowID
 }
 
-enum ThumbnailSource {
+enum ThumbnailSource: @unchecked Sendable {
     case screenCaptureKit(SCWindow)
     case coreGraphics(CGWindowID)
 }
 
-struct PreviewWindow: Identifiable {
+struct PreviewWindow: Identifiable, @unchecked Sendable {
     let id: PreviewWindowID
     let cgWindowID: CGWindowID
     let app: NSRunningApplication
@@ -37,7 +37,7 @@ struct PreviewWindow: Identifiable {
     let thumbnailSource: ThumbnailSource?
 }
 
-struct ThumbnailCacheKey: Hashable {
+struct ThumbnailCacheKey: Hashable, Sendable {
     let id: PreviewWindowID
     let width: Int
     let height: Int
@@ -51,7 +51,7 @@ struct ThumbnailCacheKey: Hashable {
     }
 }
 
-struct ActivationProbeResult {
+struct ActivationProbeResult: Sendable {
     let windowID: CGWindowID
     let title: String
     let hadAXElement: Bool
