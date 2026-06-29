@@ -1,17 +1,17 @@
 import AppKit
 
+@MainActor
 final class ProbeOrchestrator: DockHoverMonitorDelegate {
     private let permissionService: PermissionService
     private let logger: ProbeLogger
+    private let previewSessionController: PreviewSessionController
     private lazy var dockHoverMonitor = DockHoverMonitor(logger: logger)
-    private lazy var windowQueryService: WindowQueryService = ScreenCaptureWindowQueryService(logger: logger)
-    private lazy var thumbnailService: ThumbnailService = StaticThumbnailService(logger: logger)
-    private lazy var activationService: ActivationService = AXActivationService(logger: logger)
     private var pendingHoverWorkItem: DispatchWorkItem?
 
-    init(permissionService: PermissionService, logger: ProbeLogger) {
+    init(permissionService: PermissionService, logger: ProbeLogger, previewSessionController: PreviewSessionController) {
         self.permissionService = permissionService
         self.logger = logger
+        self.previewSessionController = previewSessionController
         self.dockHoverMonitor.delegate = self
     }
 
@@ -27,12 +27,18 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
 
     func stop() {
         pendingHoverWorkItem?.cancel()
+        Task { @MainActor [previewSessionController] in
+            previewSessionController.hide(reason: "orchestratorStop")
+        }
         dockHoverMonitor.stop()
         logger.info("orchestrator.stop")
     }
 
     func showFrontmostAppProbe() {
         guard permissionService.refresh().screenRecordingGranted else {
+            Task { @MainActor [previewSessionController] in
+                previewSessionController.hide(reason: "screenRecording=false")
+            }
             logger.warning("debug.frontmost.skipped screenRecording=false")
             return
         }
@@ -40,32 +46,10 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
             logger.warning("debug.frontmost.noApp")
             return
         }
+        let anchor = makeAnchor(dockItemFrame: nil)
         logger.info("debug.frontmost.start app=\(app.localizedName ?? "unknown") bundle=\(app.bundleIdentifier ?? "nil") pid=\(app.processIdentifier)")
-        Task { [windowQueryService, thumbnailService, logger] in
-            let windows = await windowQueryService.windows(for: app)
-            logger.info("debug.frontmost.done app=\(app.localizedName ?? "unknown") count=\(windows.count)")
-            for window in windows {
-                let image = await thumbnailService.thumbnail(for: window)
-                logger.info("debug.thumbnail.result id=\(window.cgWindowID) success=\(image != nil)")
-            }
-        }
-    }
-
-    func activateFirstFrontmostWindowProbe() {
-        guard let app = NSWorkspace.shared.frontmostApplication else {
-            logger.warning("activation.debug.noApp")
-            return
-        }
-        Task { [windowQueryService, activationService, logger] in
-            let windows = await windowQueryService.windows(for: app)
-            guard let first = windows.first else {
-                logger.warning("activation.debug.noWindows app=\(app.localizedName ?? "unknown")")
-                return
-            }
-            let appName = app.localizedName ?? "unknown"
-            logger.info("activation.debug.selected selection=firstSortedCandidate app=\(appName) id=\(first.cgWindowID) title=\(first.title)")
-            let result = await activationService.activate(window: first)
-            logger.info("activation.debug.done selection=firstSortedCandidate app=\(appName) id=\(result.windowID) title=\(result.title) hadAX=\(result.hadAXElement) raise=\(result.raiseSucceeded) appActivate=\(result.appActivateRequestSucceeded)")
+        Task { @MainActor [weak self] in
+            await self?.previewSessionController.showPreview(for: app, anchor: anchor)
         }
     }
 
@@ -78,6 +62,14 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
             let validationFrame = stillHovered?.dockItemFrame
             let mouseInside = validationFrame.map { GeometryHelpers.contains(NSEvent.mouseLocation, in: $0, tolerance: 2) } ?? false
             self.logger.info("dock.hoverDelayed bundle=\(app.bundleIdentifier) matches=\(matches) mouseInside=\(mouseInside) frame=\(String(describing: validationFrame))")
+            guard matches, mouseInside, let hoveredApp = stillHovered else {
+                self.previewSessionController.hide(reason: "hoverValidationFailed")
+                return
+            }
+            let anchor = self.makeAnchor(dockItemFrame: validationFrame)
+            Task { @MainActor [previewSessionController] in
+                await previewSessionController.showPreview(for: hoveredApp.app, anchor: anchor)
+            }
         }
         pendingHoverWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
@@ -85,6 +77,23 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
 
     func dockHoverMonitorDidLoseHover(_ monitor: DockHoverMonitor) {
         pendingHoverWorkItem?.cancel()
+        Task { @MainActor [previewSessionController] in
+            previewSessionController.hide(reason: "hoverLost")
+        }
         logger.info("dock.hoverLost.orchestrator")
+    }
+
+    private func makeAnchor(dockItemFrame: CGRect?) -> PreviewPanelAnchor {
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { GeometryHelpers.contains(mouse, in: $0.frame, tolerance: 0) }
+            ?? NSScreen.main
+        let screenFrame = screen?.frame ?? CGRect(x: 0, y: 0, width: 1512, height: 982)
+        let visibleFrame = screen?.visibleFrame ?? screenFrame
+        return PreviewPanelAnchor(
+            dockItemFrame: dockItemFrame,
+            mouseLocation: mouse,
+            screenFrame: screenFrame,
+            visibleFrame: visibleFrame
+        )
     }
 }

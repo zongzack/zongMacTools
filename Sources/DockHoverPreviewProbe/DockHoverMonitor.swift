@@ -2,6 +2,7 @@ import AppKit
 import ApplicationServices
 import CoreGraphics
 
+@MainActor
 protocol DockHoverMonitorDelegate: AnyObject {
     func dockHoverMonitor(_ monitor: DockHoverMonitor, didHover app: HoveredDockApp)
     func dockHoverMonitorDidLoseHover(_ monitor: DockHoverMonitor)
@@ -15,6 +16,7 @@ private func dockAXObserverCallback(observer: AXObserver, element: AXUIElement, 
     }
 }
 
+@MainActor
 final class DockHoverMonitor: @unchecked Sendable {
     weak var delegate: DockHoverMonitorDelegate?
 
@@ -34,10 +36,14 @@ final class DockHoverMonitor: @unchecked Sendable {
         stop()
         subscribe()
         healthTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
-            self?.healthCheck()
+            Task { @MainActor in
+                self?.healthCheck()
+            }
         }
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-            self?.pollMouseLeave()
+            Task { @MainActor in
+                self?.pollMouseLeave()
+            }
         }
         logger.info("dock.start")
     }
