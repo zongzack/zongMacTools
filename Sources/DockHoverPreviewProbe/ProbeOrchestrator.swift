@@ -77,10 +77,16 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
 
     func dockHoverMonitorDidLoseHover(_ monitor: DockHoverMonitor) {
         pendingHoverWorkItem?.cancel()
-        Task { @MainActor [previewSessionController] in
-            previewSessionController.hide(reason: "hoverLost")
+        let mouse = NSEvent.mouseLocation
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if self.previewSessionController.isMouseInsidePanel(mouse) {
+                self.logger.info("dock.hoverLost.panelRetained")
+                return
+            }
+            self.previewSessionController.hide(reason: "hoverLost")
+            self.logger.info("dock.hoverLost.orchestrator")
         }
-        logger.info("dock.hoverLost.orchestrator")
     }
 
     private func makeAnchor(dockItemFrame: CGRect?) -> PreviewPanelAnchor {

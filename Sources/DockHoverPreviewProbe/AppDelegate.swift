@@ -23,6 +23,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             panelDisplay: previewPanelController,
             logger: logger
         )
+        previewPanelController.onRequestHide = { [weak previewSessionController] reason in
+            Task { @MainActor in
+                previewSessionController?.hide(reason: reason)
+            }
+        }
         orchestrator = ProbeOrchestrator(
             permissionService: permissionService,
             logger: logger,

@@ -13,6 +13,8 @@ final class PreviewSessionController {
     private var generation = 0
     private var currentModel: PreviewPanelViewModel?
     private var currentWindowsByID: [PreviewWindowID: PreviewWindow] = [:]
+    private var leaveTimerOwner: PreviewSessionLeaveTimerOwner?
+    private var currentDockItemFrame: CGRect?
 
     init(
         permissionService: PermissionService,
@@ -68,6 +70,8 @@ final class PreviewSessionController {
                 }
             }
         }
+        currentDockItemFrame = anchor.dockItemFrame
+        startLeavePolling()
         logger.info("preview.session.show app=\(appName) count=\(windows.count)")
 
         for window in windows {
@@ -83,9 +87,16 @@ final class PreviewSessionController {
 
     func hide(reason: String) {
         generation += 1
+        leaveTimerOwner?.invalidate()
+        leaveTimerOwner = nil
+        currentDockItemFrame = nil
         currentModel = nil
         currentWindowsByID = [:]
         panelDisplay.hide(reason: reason)
+    }
+
+    func isMouseInsidePanel(_ point: CGPoint) -> Bool {
+        panelDisplay.isMouseInsidePanel(point)
     }
 
     func activate(windowID: PreviewWindowID) async {
@@ -100,5 +111,44 @@ final class PreviewSessionController {
 
     private func isCurrent(_ expectedGeneration: Int) -> Bool {
         generation == expectedGeneration
+    }
+
+    private func startLeavePolling() {
+        leaveTimerOwner?.invalidate()
+        leaveTimerOwner = PreviewSessionLeaveTimerOwner { [weak self] in
+            self?.pollLeaveRegion()
+        }
+    }
+
+    private func pollLeaveRegion() {
+        let mouse = NSEvent.mouseLocation
+        let insideDock = currentDockItemFrame.map { GeometryHelpers.contains(mouse, in: $0, tolerance: 2) } ?? false
+        let insidePanel = panelDisplay.isMouseInsidePanel(mouse)
+        if !insideDock && !insidePanel {
+            hide(reason: "mouseLeftPreviewRegion")
+        }
+    }
+}
+
+private final class PreviewSessionLeaveTimerOwner {
+    private var timer: Timer?
+    private let onTick: @MainActor @Sendable () -> Void
+
+    init(onTick: @MainActor @escaping @Sendable () -> Void) {
+        self.onTick = onTick
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [onTick] _ in
+            Task { @MainActor in
+                onTick()
+            }
+        }
+    }
+
+    func invalidate() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    deinit {
+        invalidate()
     }
 }

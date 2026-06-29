@@ -3,6 +3,8 @@ import SwiftUI
 
 @MainActor
 protocol PreviewPanelDisplaying: AnyObject {
+    var onRequestHide: ((String) -> Void)? { get set }
+
     func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onSelect: @escaping (PreviewWindowID) -> Void)
     func update(model: PreviewPanelViewModel)
     func hide(reason: String)
@@ -11,11 +13,14 @@ protocol PreviewPanelDisplaying: AnyObject {
 
 @MainActor
 final class PreviewPanelController: PreviewPanelDisplaying {
+    var onRequestHide: ((String) -> Void)?
+
     private let logger: ProbeLogger
     private var panel: NSPanel?
     private var hostingController: NSHostingController<PreviewPanelView>?
     private var currentOnSelect: ((PreviewWindowID) -> Void)?
     private var currentAnchor: PreviewPanelAnchor?
+    private var eventMonitorOwner: PreviewPanelEventMonitorOwner?
 
     init(logger: ProbeLogger) {
         self.logger = logger
@@ -83,7 +88,42 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         panel.hidesOnDeactivate = false
         panel.ignoresMouseEvents = false
         panel.isReleasedWhenClosed = false
+        eventMonitorOwner = PreviewPanelEventMonitorOwner { [weak self] reason in
+            self?.onRequestHide?(reason)
+        }
         self.panel = panel
         return panel
+    }
+}
+
+private final class PreviewPanelEventMonitorOwner {
+    private var localMonitor: Any?
+    private var globalMonitor: Any?
+    private let onRequestHide: @MainActor @Sendable (String) -> Void
+
+    init(onRequestHide: @MainActor @escaping @Sendable (String) -> Void) {
+        self.onRequestHide = onRequestHide
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [onRequestHide] event in
+            guard event.keyCode == 53 else { return event }
+            Task { @MainActor in
+                onRequestHide("escape")
+            }
+            return nil
+        }
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [onRequestHide] event in
+            guard event.keyCode == 53 else { return }
+            Task { @MainActor in
+                onRequestHide("escape")
+            }
+        }
+    }
+
+    deinit {
+        if let localMonitor {
+            NSEvent.removeMonitor(localMonitor)
+        }
+        if let globalMonitor {
+            NSEvent.removeMonitor(globalMonitor)
+        }
     }
 }

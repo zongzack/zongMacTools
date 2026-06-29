@@ -52,6 +52,8 @@ private final class OrchestratorFakeActivationService: ActivationService {
 
 @MainActor
 private final class OrchestratorFakePreviewDisplay: PreviewPanelDisplaying {
+    var onRequestHide: ((String) -> Void)?
+
     var showCount = 0
     var hideReasons: [String] = []
 

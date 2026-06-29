@@ -65,6 +65,14 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertEqual(harness.activationService.activatedIDs, [window.id])
         XCTAssertEqual(harness.display.hideReasons, ["activated"])
     }
+
+    func testMouseInsidePanelDelegatesToDisplay() {
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [])
+        harness.display.isMouseInsidePanelResult = true
+
+        XCTAssertTrue(harness.controller.isMouseInsidePanel(CGPoint(x: 12, y: 34)))
+        XCTAssertEqual(harness.display.checkedPoints, [CGPoint(x: 12, y: 34)])
+    }
 }
 
 private final class FakePermissionService: PermissionService {
@@ -132,10 +140,14 @@ private final class FakeActivationService: ActivationService {
 
 @MainActor
 private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
+    var onRequestHide: ((String) -> Void)?
+
     var showCount = 0
     var updateCount = 0
     var lastModel: PreviewPanelViewModel?
     var hideReasons: [String] = []
+    var checkedPoints: [CGPoint] = []
+    var isMouseInsidePanelResult = false
     var selectHandler: ((PreviewWindowID) -> Void)?
 
     func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onSelect: @escaping (PreviewWindowID) -> Void) {
@@ -154,7 +166,8 @@ private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
     }
 
     func isMouseInsidePanel(_ point: CGPoint) -> Bool {
-        false
+        checkedPoints.append(point)
+        return isMouseInsidePanelResult
     }
 }
 
