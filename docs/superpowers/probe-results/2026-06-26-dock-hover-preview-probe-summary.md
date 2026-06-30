@@ -72,8 +72,8 @@ Date: 2026-06-26
   - `swift test`: pass; 2026-06-29 final run passed 27 XCTest cases, 0 failures, after quitting the running probe app.
   - `swift build`: pass; 2026-06-29 final run completed successfully.
   - `Scripts/build_probe_app.sh`: pass; 2026-06-29 final run produced `/Users/zong/Desktop/Project/zongMacTools/build/DockHoverPreviewProbe.app`.
-  - Permissions: pass; fresh packaged launch at 2026-06-29 13:42:49 Asia/Shanghai logged `accessibility=true`, `screenRecording=true`, and `dock.subscribed pid=639`.
+  - Permissions: pass; fresh packaged launch at 2026-06-29 13:42:49 Asia/Shanghai logged `accessibility=true`, `screenRecording=true`, and `dock.subscribed pid=639`. Final Screen Recording denied run on 2026-06-30 logged `screenRecording=false`, suppressed Dock hover preview with `preview.session.skipped screenRecording=false`, suppressed DHP debug preview with `debug.frontmost.skipped screenRecording=false`, and showed no panel by user report. Restore run on 2026-06-30 logged `screenRecording=true`, `dock.subscribed pid=1943`, and Code hover showed `preview.panel.show` plus thumbnail success.
+  - Appearance: pass with log evidence; dark appearance hovers on 2026-06-30 logged `preview.panel.show`, `preview.panel.update`, and `thumbnail.success`; light appearance Code hover after restore logged the same. Shell screenshot capture was unavailable, so no screenshot artifact was attached.
   - Sample apps and interactions: pass by user report after manual run. User observed a Typora narrow-window thumbnail aspect-ratio presentation; accepted as a polish candidate rather than an MVP blocker.
 - Remaining risks:
-  - Screen Recording denied path was covered by automated test and earlier probe evidence, but not manually re-run in the final UI pass.
   - Other Spaces, full-screen Spaces, Stage Manager, Dock auto-hide, left/right Dock, and multiple displays remain unverified in the MVP UI pass.

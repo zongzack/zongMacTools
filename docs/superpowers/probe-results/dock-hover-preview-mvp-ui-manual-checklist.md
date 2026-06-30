@@ -1,6 +1,7 @@
 # Dock Hover Preview MVP UI Manual Checklist
 
 Date: 2026-06-29
+Updated: 2026-06-30
 
 ## Build
 
@@ -11,8 +12,8 @@ Date: 2026-06-29
 ## Permissions
 
 - [x] Accessibility granted for `DockHoverPreviewProbe.app`. Fresh launch log at 2026-06-29 13:42:49 Asia/Shanghai reported `accessibility=true` and `dock.subscribed pid=639`.
-- [x] Screen Recording granted for `DockHoverPreviewProbe.app`. Fresh launch log at 2026-06-29 13:42:49 Asia/Shanghai reported `screenRecording=true`.
-- [ ] With Screen Recording disabled, Dock hover does not show a panel and logs `screenRecording=false`.
+- [x] Screen Recording granted for `DockHoverPreviewProbe.app`. Fresh launch log at 2026-06-29 13:42:49 Asia/Shanghai reported `screenRecording=true`. Restore check at 2026-06-30 17:33-17:34 Asia/Shanghai reported `screenRecording=true`, `dock.subscribed pid=1943`, and Code hover showed `preview.panel.show` plus `thumbnail.success`.
+- [x] With Screen Recording disabled, Dock hover does not show a panel and logs `screenRecording=false`. User manually disabled Screen Recording and reported no panel. Relaunch at 2026-06-30 17:22:46 Asia/Shanghai logged `permissions.refresh accessibility=true screenRecording=false` and `orchestrator.start accessibility=true screenRecording=false`; Code hover at 17:22:53 logged `preview.session.skipped screenRecording=false`; DHP debug at 17:23:02 logged `debug.frontmost.skipped screenRecording=false`.
 
 ## Hover UI
 
@@ -39,7 +40,7 @@ Date: 2026-06-29
 - [x] Panel is clamped inside the visible screen frame. User reported functionality normal after manual run.
 - [x] Card titles fit without overlapping thumbnails. User reported functionality normal after manual run.
 - [x] Missing thumbnail fallback is quiet and usable. User reported functionality normal after manual run.
-- [ ] Panel works in light and dark appearance. Not separately run in both appearances during this pass.
+- [x] Panel works in light and dark appearance. Dark appearance was enabled with `System Events` at 2026-06-30 17:36 Asia/Shanghai; Finder/Code/Codex hovers between 17:40-17:41 logged `preview.panel.show`, `preview.panel.update`, and `thumbnail.success`. Light appearance was restored by 17:42; Code hover at 17:43:34 logged `preview.panel.show`, `preview.panel.update`, and `thumbnail.success`. Shell screenshot capture was unavailable (`screencapture` returned `could not create image from display`), so this pass records functional display logs rather than attached screenshots.
 
 ## Environment Variants
 
