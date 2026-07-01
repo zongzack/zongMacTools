@@ -6,7 +6,7 @@
 
 ## 构建验证
 
-- [x] `swift test` 通过。2026-07-01 最终记录为 32 个 XCTest、0 失败。
+- [x] `swift test` 通过。2026-07-01 Full-screen Space 修复后最终记录为 34 个 XCTest、0 失败。
 - [x] `swift build` 通过。
 - [x] `Scripts/build_probe_app.sh` 可生成 `build/DockHoverPreviewProbe.app`。
 
@@ -48,7 +48,7 @@
 ## 环境变体
 
 - [x] Other normal Space。2026-06-30 和 2026-07-01 在第二个普通桌面验证：preview 展示、缩略图、stale/quick leave、Dock-to-panel 保留、离开隐藏、Esc、点击激活、Dock 重启恢复均正常。后续发现并修复了“移动到相邻未启动 Dock app 时旧 panel 保留”的回归，2026-07-01 人工复测正常。
-- [ ] Full-screen Space。
+- [x] Full-screen Space。2026-07-01 在 Chrome 全屏 Space 验证：preview panel 可显示，位置合理且不越界；快速离开不会留下 stale preview；Dock-to-panel 保留、离开隐藏、点击激活并隐藏、`Esc` 隐藏、移到相邻未启动 Dock app 隐藏旧 panel、Dock 重启恢复均由人工反馈正常。初次验证发现 Chrome 全屏下 ScreenCaptureKit 返回空标题浅条带，导致 panel 出现 3 张卡片；已补回归测试并过滤该类辅助条带，复测后 Chrome 全屏 `windows.query count=1`、`preview.panel.show count=1`、`activation.result` 正常。结果：pass with note。
 - [ ] Stage Manager enabled。
 - [ ] Dock auto-hide enabled。
 - [ ] Dock on left。

@@ -56,6 +56,7 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
                     && window.frame.width >= 80
                     && window.frame.height >= 60
                     && window.windowLayer == 0
+                    && Self.isPreviewableWindow(title: window.title, frame: window.frame)
             }
             let axWindows = readAXWindows(for: app)
             let mapped = candidates.map { scWindow in
@@ -135,5 +136,14 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
 
     private func isMinimized(_ axWindow: AXUIElement) -> Bool {
         AXHelpers.optionalAttribute(kAXMinimizedAttribute as CFString, from: axWindow, as: Bool.self) ?? false
+    }
+
+    static func isPreviewableWindow(title: String?, frame: CGRect) -> Bool {
+        let hasTitle = !(title ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasTitle { return true }
+
+        let aspectRatio = frame.width / max(frame.height, 1)
+        let isWideShallowSurface = frame.width >= 1000 && frame.height <= 180 && aspectRatio >= 6
+        return !isWideShallowSurface
     }
 }

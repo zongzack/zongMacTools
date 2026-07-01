@@ -68,6 +68,16 @@
 - 是否有 `preview.panel.show`、`mouseLeftPreviewRegion`、`hoverValidationFailed` 等日志。
 - 结论：pass / pass with note / blocked / fail。
 
+执行备注（2026-07-01）：
+
+- 结果：pass with note。
+- 设置：macOS 26.5.2，单显示器，Dock 位于底部，Dock auto-hide 关闭，Stage Manager 未启用；验证过程中未改系统设置。重新打包后 macOS TCC 曾要求重新授权 Accessibility 和 Screen Recording，恢复后日志确认权限正常。
+- 操作：在 Chrome 全屏 Space 中 hover Dock 图标，并复核普通 Space。检查 preview 展示、位置不越界、quick leave/stale cancellation、Dock-to-panel 保留、离开隐藏、点击激活并隐藏、`Esc` 隐藏、移到相邻未启动 Dock app 隐藏旧 panel、Dock 重启恢复。
+- 观察：初次验证发现 Chrome 全屏下 panel 出现 3 张卡片。日志显示 ScreenCaptureKit 返回一个真实 Chrome 窗口和两个空标题浅条带窗口。已补回归测试并过滤空标题、极宽、低高度的辅助条带；复测后 Chrome 全屏 `windows.query count=1`、`preview.panel.show count=1`，人工反馈全屏和非全屏均恢复正常。
+- 关键日志：`permissions.refresh accessibility=true screenRecording=true`、`orchestrator.start accessibility=true screenRecording=true`、`dock.subscribed pid=...`、`dock.hoverDelayed bundle=com.google.Chrome matches=true mouseInside=true`、`windows.query app=Google Chrome count=1`、`preview.panel.show app=Google Chrome count=1`、`thumbnail.success`、`activation.result`、`preview.panel.hide reason=activated`、`preview.panel.hide reason=mouseLeftPreviewRegion`。
+- 恢复动作：无系统环境设置变更；仅在重新签名 app 后恢复 TCC 权限。
+- 后续问题：未发现 stuck panel 或意外 Space 切换。仍需继续执行 Dock auto-hide、Dock left/right、Stage Manager 和 Multiple displays。
+
 ### 2. Dock auto-hide
 
 目标：确认 Dock 自动隐藏时，只有 Dock item 实际在鼠标下才显示 preview，Dock 收起时不留下 panel。

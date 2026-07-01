@@ -16,7 +16,7 @@
 目标：把 MVP 从“普通环境可用”推进到“常见 macOS 环境可稳定自用”。
 
 - [x] Other normal Space。
-- [ ] Full-screen Space。
+- [x] Full-screen Space。
 - [ ] Dock auto-hide。
 - [ ] Dock on left。
 - [ ] Dock on right。

@@ -3,6 +3,24 @@ import XCTest
 @testable import DockHoverPreviewProbe
 
 final class WindowQueryServiceTests: XCTestCase {
+    func testAuxiliaryFullScreenStripsAreNotPreviewableWindows() {
+        XCTAssertFalse(ScreenCaptureWindowQueryService.isPreviewableWindow(
+            title: "",
+            frame: CGRect(x: 0, y: 41, width: 2560, height: 81)
+        ))
+        XCTAssertFalse(ScreenCaptureWindowQueryService.isPreviewableWindow(
+            title: "",
+            frame: CGRect(x: 0, y: 0, width: 2560, height: 158)
+        ))
+    }
+
+    func testUntitledNormalSizedWindowsRemainPreviewable() {
+        XCTAssertTrue(ScreenCaptureWindowQueryService.isPreviewableWindow(
+            title: "",
+            frame: CGRect(x: 924, y: 387, width: 710, height: 640)
+        ))
+    }
+
     func testAXMatchDiagnosticsLogLineIncludesMatchingEvidence() {
         let diagnostics = AXMatchDiagnostics(
             axWindowCount: 4,

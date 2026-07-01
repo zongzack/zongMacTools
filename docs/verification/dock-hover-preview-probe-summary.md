@@ -8,7 +8,7 @@
 
 MVP UI 结论：`pass with concerns`。
 
-核心功能已经可用，普通底部 Dock、单显示器、常规 Space 的主流程通过自动测试、打包验证和人工 UI 验收。剩余风险集中在 Full-screen Space、Stage Manager、Dock 自动隐藏、左右 Dock 和多显示器。
+核心功能已经可用，普通底部 Dock、单显示器、常规 Space 的主流程通过自动测试、打包验证和人工 UI 验收。Full-screen Space 已完成跟进验证并修复 Chrome 全屏辅助条带误收录问题。剩余风险集中在 Stage Manager、Dock 自动隐藏、左右 Dock 和多显示器。
 
 ## 硬门槛结果
 
@@ -36,7 +36,7 @@ MVP UI 结论：`pass with concerns`。
 
 已通过：
 
-- `swift test`：2026-07-01 最终记录为 32 个 XCTest、0 失败。
+- `swift test`：2026-07-01 Full-screen Space 修复后最终记录为 34 个 XCTest、0 失败。
 - `swift build`：通过。
 - `Scripts/build_probe_app.sh`：可生成 `build/DockHoverPreviewProbe.app`。
 - 样本 app 主流程：VS Code、Chrome、Typora、IINA、WPS 由人工反馈为功能正常。
@@ -48,13 +48,13 @@ MVP UI 结论：`pass with concerns`。
 - `killall Dock` 后恢复监听。
 - Light / Dark 外观功能路径通过日志和人工观察验证。
 - Other normal Space 通过跟进验证。
+- Full-screen Space 通过跟进验证，结果 `pass with note`。初次验证发现 Chrome 全屏下 ScreenCaptureKit 返回空标题浅条带，导致 panel 出现 3 张卡片；已补回归测试并过滤该类辅助条带。复测日志包含 `permissions.refresh accessibility=true screenRecording=true`、`dock.subscribed pid=...`、Chrome 全屏 `windows.query app=Google Chrome count=1`、`preview.panel.show app=Google Chrome count=1`、`thumbnail.success`、`activation.result` 和 `preview.panel.hide reason=activated`。
 - 修复并验证了两个 hover 手感问题：
   - Dock 到 panel 之间不再过早隐藏。
   - 从有 preview 的 app 移到相邻未启动 Dock app 时，旧 panel 会隐藏。
 
 ## 仍需验证
 
-- Full-screen Space。
 - Dock auto-hide。
 - Dock left。
 - Dock right。
