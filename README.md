@@ -40,9 +40,10 @@ MVP UI 状态：`pass with concerns`。
 
 详细记录见：
 
-- `docs/superpowers/probe-results/2026-06-26-dock-hover-preview-probe-summary.md`
-- `docs/superpowers/probe-results/dock-hover-preview-mvp-ui-manual-checklist.md`
-- `docs/superpowers/specs/2026-06-25-dock-hover-preview-mvp-technical-design.md`
+- `docs/verification/dock-hover-preview-probe-summary.md`
+- `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`
+- `docs/architecture/dock-hover-preview-technical-design.md`
+- `docs/roadmap.md`
 
 ## 运行环境
 
@@ -292,10 +293,10 @@ MVP 阶段坚持以下边界：
 ├── Tests
 │   └── DockHoverPreviewProbeTests
 └── docs
-    └── superpowers
-        ├── plans
-        ├── probe-results
-        └── specs
+    ├── architecture
+    ├── verification
+    ├── roadmap.md
+    └── archive
 ```
 
 ## 后续建议
@@ -305,3 +306,5 @@ MVP 阶段坚持以下边界：
 1. 补跑环境变体验证：全屏 Space、Stage Manager、Dock 自动隐藏、左/右 Dock、多显示器。
 2. 做 UI polish：缩略图真实比例与铺满裁切策略、轻微显示/隐藏动画。
 3. 评估是否需要持久设置页、应用过滤或更完整的窗口状态处理。
+
+完整后续清单见 `docs/roadmap.md`。

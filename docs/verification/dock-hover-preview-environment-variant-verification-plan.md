@@ -1,0 +1,176 @@
+# Dock 悬停窗口预览环境变体验证计划
+
+日期：2026-06-30
+
+最近更新：2026-07-01
+
+## 目标
+
+验证 `DockHoverPreviewProbe` 在不同 macOS 环境变体下是否仍然稳定、安静、可恢复，并把证据写入文档。
+
+本计划不新增产品功能。若验证发现可复现 bug，应先记录证据，再单独走 bugfix 流程。
+
+## 相关文档
+
+- [验证总结](dock-hover-preview-probe-summary.md)
+- [MVP UI 手动验收清单](dock-hover-preview-mvp-ui-manual-checklist.md)
+- [Probe 原始证据](dock-hover-preview-probe-checklist.md)
+- [技术设计](../architecture/dock-hover-preview-technical-design.md)
+- [后续路线](../roadmap.md)
+
+## 通用验证规则
+
+每个场景开始前：
+
+1. 退出正在运行的 app：`pkill -x DockHoverPreviewProbe || true`。
+2. 运行基础验证：
+   - `swift test`
+   - `swift build`
+   - `Scripts/build_probe_app.sh`
+   - `git diff --check`
+3. 启动打包 app：`open build/DockHoverPreviewProbe.app`。
+4. 确认日志包含：
+   - `permissions.refresh accessibility=true screenRecording=true`
+   - `orchestrator.start accessibility=true screenRecording=true`
+   - `dock.subscribed pid=...`
+
+每个场景至少检查：
+
+- Hover 有窗口的 Dock app 是否显示 panel。
+- Panel 是否出现在合理位置且不越界。
+- 快速离开是否取消 stale preview。
+- 从 Dock 图标移动到 panel 是否保留 panel。
+- 离开 panel 是否及时隐藏。
+- 点击卡片是否激活窗口并隐藏 panel。
+- `Esc` 是否隐藏 panel。
+- 移到相邻未启动 Dock app 时是否隐藏旧 panel。
+
+每次改系统设置前必须记录原始状态，验证后恢复。
+
+## 场景清单
+
+### 1. Full-screen Space
+
+目标：确认在全屏 Space 中 hover 不会触发 disruptive Space 切换，也不会留下 stuck panel。
+
+步骤：
+
+1. 打开一个 app 的全屏窗口。
+2. 切到全屏 Space。
+3. Hover Dock 中可见 app 图标。
+4. 观察是否出现 panel、是否触发意外 Space 切换。
+5. 离开 Dock 和 panel 后确认隐藏。
+
+记录：
+
+- 是否显示 panel。
+- 是否出现跨 Space 窗口。
+- 是否有 `preview.panel.show`、`mouseLeftPreviewRegion`、`hoverValidationFailed` 等日志。
+- 结论：pass / pass with note / blocked / fail。
+
+### 2. Dock auto-hide
+
+目标：确认 Dock 自动隐藏时，只有 Dock item 实际在鼠标下才显示 preview，Dock 收起时不留下 panel。
+
+步骤：
+
+1. 记录原始设置：`defaults read com.apple.dock autohide || true`。
+2. 开启 Dock 自动隐藏。
+3. 重启 Dock 或通过系统设置使配置生效。
+4. Hover 有窗口 app。
+5. 测试快速离开、进入 panel、离开 panel、点击卡片。
+6. 恢复原始设置。
+
+记录：
+
+- Dock 弹出/收起时 panel 行为。
+- 是否出现旧 panel 残留。
+- 恢复动作。
+
+### 3. Dock on left
+
+目标：确认左侧 Dock 时 panel 能出现在 Dock item 旁边并保持在可见屏幕内。
+
+步骤：
+
+1. 记录原始 Dock orientation。
+2. 把 Dock 移到左侧。
+3. Hover 样本 app。
+4. 验证 panel 位置、保留区、隐藏、点击激活。
+5. 恢复原始 orientation。
+
+记录：
+
+- Panel frame 是否合理。
+- Dock-to-panel 桥接区是否顺手。
+- 是否需要进一步调 side Dock 几何。
+
+### 4. Dock on right
+
+目标：同左侧 Dock，验证右侧 Dock 的定位和隐藏行为。
+
+步骤与记录同 Dock on left。
+
+### 5. Stage Manager enabled
+
+目标：确认 Stage Manager 开启时，ScreenCaptureKit 返回窗口不会造成错误预览或 stuck panel。
+
+步骤：
+
+1. 记录原始 Stage Manager 状态。
+2. 开启 Stage Manager。
+3. 准备至少两个 app 窗口，其中一个处于当前 stage，一个处于 recent set。
+4. Hover 当前 stage app 和非当前 stage app。
+5. 验证窗口列表、缩略图、点击激活和隐藏行为。
+6. 恢复原始设置。
+
+记录：
+
+- ScreenCaptureKit 是否返回非当前 stage 窗口。
+- 点击是否造成意外切换。
+- 是否需要 Stage Manager 特化策略。
+
+### 6. Multiple displays
+
+目标：确认多显示器时 panel 出现在 Dock/鼠标所在屏幕，且不越界。
+
+前提：需要外接显示器或多显示器环境。
+
+步骤：
+
+1. 记录显示器信息：`system_profiler SPDisplaysDataType`。
+2. 在主显示器和副显示器分别准备 app 窗口。
+3. Hover Dock app。
+4. 验证 panel 所在屏幕、frame clamp、点击激活。
+
+记录：
+
+- 显示器数量和排列。
+- Panel 是否出现在正确屏幕。
+- 是否出现跨屏 frame 计算错误。
+
+## 结果记录模板
+
+每完成一个场景，在 [MVP UI 手动验收清单](dock-hover-preview-mvp-ui-manual-checklist.md) 更新对应条目，并在验证总结中追加摘要。
+
+建议记录格式：
+
+```markdown
+### 场景名
+
+- 日期：YYYY-MM-DD
+- 结果：pass / pass with note / blocked / fail
+- 设置：
+- 操作：
+- 观察：
+- 关键日志：
+- 恢复动作：
+- 后续问题：
+```
+
+## 完成标准
+
+- 每个可执行场景都有明确结果和证据。
+- 受硬件或系统限制无法执行的场景标记为 `blocked` 或 `not available`，不能标记为 pass。
+- 所有临时系统设置已恢复。
+- 验证后 `swift test`、`swift build`、`Scripts/build_probe_app.sh`、`git diff --check` 通过。
