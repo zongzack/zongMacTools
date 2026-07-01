@@ -80,7 +80,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         let mouse = NSEvent.mouseLocation
         Task { @MainActor [weak self] in
             guard let self else { return }
-            if self.previewSessionController.isMouseInsidePanel(mouse) {
+            if self.previewSessionController.isMouseInsidePanelTransitionRegion(mouse) {
                 self.logger.info("dock.hoverLost.panelRetained")
                 return
             }

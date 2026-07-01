@@ -9,6 +9,7 @@ protocol PreviewPanelDisplaying: AnyObject {
     func update(model: PreviewPanelViewModel)
     func hide(reason: String)
     func isMouseInsidePanel(_ point: CGPoint) -> Bool
+    func panelFrame() -> CGRect?
 }
 
 @MainActor
@@ -69,6 +70,11 @@ final class PreviewPanelController: PreviewPanelDisplaying {
     func isMouseInsidePanel(_ point: CGPoint) -> Bool {
         guard let panel, panel.isVisible else { return false }
         return GeometryHelpers.contains(point, in: panel.frame, tolerance: 2)
+    }
+
+    func panelFrame() -> CGRect? {
+        guard let panel, panel.isVisible else { return nil }
+        return panel.frame
     }
 
     private func ensurePanel() -> NSPanel {

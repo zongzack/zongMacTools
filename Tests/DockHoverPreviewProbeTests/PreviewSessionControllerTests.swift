@@ -73,6 +73,106 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertTrue(harness.controller.isMouseInsidePanel(CGPoint(x: 12, y: 34)))
         XCTAssertEqual(harness.display.checkedPoints, [CGPoint(x: 12, y: 34)])
     }
+
+    func testMouseInsideBridgeBetweenDockAndPanelIsInsidePreviewRegion() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
+                mouseLocation: CGPoint(x: 726, y: 24),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 600, y: 58, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 726, y: 53)))
+        XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 300, y: 53)))
+    }
+
+    func testMouseInsideBridgeBetweenDockAndPanelIsInsidePanelTransitionRegion() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
+                mouseLocation: CGPoint(x: 726, y: 24),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 600, y: 58, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertTrue(harness.controller.isMouseInsidePanelTransitionRegion(CGPoint(x: 726, y: 53)))
+    }
+
+    func testMouseInsideDockToleranceBesideIconIsOutsidePanelTransitionRegion() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
+                mouseLocation: CGPoint(x: 726, y: 24),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 600, y: 58, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        let adjacentDockPoint = CGPoint(x: 775, y: 40)
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(adjacentDockPoint))
+        XCTAssertFalse(harness.controller.isMouseInsidePanelTransitionRegion(adjacentDockPoint))
+    }
+
+    func testMouseBesidePanelOutsideBridgeIsOutsidePreviewRegion() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 500, y: 0, width: 52, height: 48),
+                mouseLocation: CGPoint(x: 526, y: 24),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 390, y: 106, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 660, y: 180)))
+    }
+
+    func testMouseInsideBridgeBetweenSideDockAndPanelIsInsidePreviewRegion() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 0, y: 430, width: 48, height: 52),
+                mouseLocation: CGPoint(x: 24, y: 456),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 58, y: 366, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 53, y: 456)))
+        XCTAssertTrue(harness.controller.isMouseInsidePanelTransitionRegion(CGPoint(x: 53, y: 456)))
+        XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 53, y: 700)))
+    }
 }
 
 private final class FakePermissionService: PermissionService {
@@ -148,6 +248,7 @@ private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
     var hideReasons: [String] = []
     var checkedPoints: [CGPoint] = []
     var isMouseInsidePanelResult = false
+    var panelFrameResult: CGRect?
     var selectHandler: ((PreviewWindowID) -> Void)?
 
     func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onSelect: @escaping (PreviewWindowID) -> Void) {
@@ -169,6 +270,10 @@ private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
         checkedPoints.append(point)
         return isMouseInsidePanelResult
     }
+
+    func panelFrame() -> CGRect? {
+        panelFrameResult
+    }
 }
 
 @MainActor
@@ -180,15 +285,20 @@ private final class PreviewSessionHarness {
     let activationService = FakeActivationService()
     let display = FakePreviewPanelDisplay()
     let logger = ProbeLogger()
-    let anchor = PreviewPanelAnchor(
-        dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
-        mouseLocation: CGPoint(x: 726, y: 24),
-        screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
-        visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
-    )
+    let anchor: PreviewPanelAnchor
     let controller: PreviewSessionController
 
-    init(screenRecordingGranted: Bool, windows: [PreviewWindow]) {
+    init(
+        screenRecordingGranted: Bool,
+        windows: [PreviewWindow],
+        anchor: PreviewPanelAnchor = PreviewPanelAnchor(
+            dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
+            mouseLocation: CGPoint(x: 726, y: 24),
+            screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+            visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+        )
+    ) {
+        self.anchor = anchor
         permissionService = FakePermissionService(
             accessibilityGranted: true,
             screenRecordingGranted: screenRecordingGranted

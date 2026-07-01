@@ -15,6 +15,8 @@ final class PreviewSessionController {
     private var currentWindowsByID: [PreviewWindowID: PreviewWindow] = [:]
     private var leaveTimerOwner: PreviewSessionLeaveTimerOwner?
     private var currentDockItemFrame: CGRect?
+    private let previewRegionTolerance: CGFloat = 24
+    private let panelEdgeTolerance: CGFloat = 6
 
     init(
         permissionService: PermissionService,
@@ -99,6 +101,39 @@ final class PreviewSessionController {
         panelDisplay.isMouseInsidePanel(point)
     }
 
+    func isMouseInsidePreviewRegion(_ point: CGPoint) -> Bool {
+        if panelDisplay.isMouseInsidePanel(point) {
+            return true
+        }
+        guard let dockFrame = currentDockItemFrame else {
+            return false
+        }
+        if GeometryHelpers.contains(point, in: dockFrame, tolerance: previewRegionTolerance) {
+            return true
+        }
+        guard let panelFrame = panelDisplay.panelFrame() else {
+            return false
+        }
+        if GeometryHelpers.contains(point, in: panelFrame, tolerance: panelEdgeTolerance) {
+            return true
+        }
+        return GeometryHelpers.contains(point, in: bridgeFrame(between: dockFrame, and: panelFrame), tolerance: 0)
+    }
+
+    func isMouseInsidePanelTransitionRegion(_ point: CGPoint) -> Bool {
+        if panelDisplay.isMouseInsidePanel(point) {
+            return true
+        }
+        guard let dockFrame = currentDockItemFrame,
+              let panelFrame = panelDisplay.panelFrame() else {
+            return false
+        }
+        if GeometryHelpers.contains(point, in: panelFrame, tolerance: panelEdgeTolerance) {
+            return true
+        }
+        return GeometryHelpers.contains(point, in: bridgeFrame(between: dockFrame, and: panelFrame), tolerance: 0)
+    }
+
     func activate(windowID: PreviewWindowID) async {
         guard let window = currentWindowsByID[windowID] else {
             logger.warning("preview.session.activateMissing id=\(windowID.windowID)")
@@ -121,12 +156,29 @@ final class PreviewSessionController {
     }
 
     private func pollLeaveRegion() {
-        let mouse = NSEvent.mouseLocation
-        let insideDock = currentDockItemFrame.map { GeometryHelpers.contains(mouse, in: $0, tolerance: 2) } ?? false
-        let insidePanel = panelDisplay.isMouseInsidePanel(mouse)
-        if !insideDock && !insidePanel {
+        if !isMouseInsidePreviewRegion(NSEvent.mouseLocation) {
             hide(reason: "mouseLeftPreviewRegion")
         }
+    }
+
+    private func bridgeFrame(between dockFrame: CGRect, and panelFrame: CGRect) -> CGRect {
+        let minX = max(min(dockFrame.minX, panelFrame.minX), min(dockFrame.maxX, panelFrame.maxX))
+        let maxX = min(max(dockFrame.minX, panelFrame.minX), max(dockFrame.maxX, panelFrame.maxX))
+        let horizontalOverlap = maxX > minX
+        let bridgeX = horizontalOverlap
+            ? minX
+            : min(dockFrame.midX, panelFrame.midX) - previewRegionTolerance
+        let bridgeWidth = horizontalOverlap
+            ? maxX - minX
+            : previewRegionTolerance * 2
+        let minY = min(dockFrame.maxY, panelFrame.maxY)
+        let maxY = max(dockFrame.minY, panelFrame.minY)
+        return CGRect(
+            x: bridgeX,
+            y: minY,
+            width: bridgeWidth,
+            height: max(0, maxY - minY)
+        ).insetBy(dx: -previewRegionTolerance, dy: -previewRegionTolerance)
     }
 }
 

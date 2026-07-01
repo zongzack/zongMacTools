@@ -68,6 +68,8 @@ private final class OrchestratorFakePreviewDisplay: PreviewPanelDisplaying {
     }
 
     func isMouseInsidePanel(_ point: CGPoint) -> Bool { false }
+
+    func panelFrame() -> CGRect? { nil }
 }
 
 @MainActor

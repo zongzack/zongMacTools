@@ -1,7 +1,7 @@
 # Dock Hover Preview MVP UI Manual Checklist
 
 Date: 2026-06-29
-Updated: 2026-06-30
+Updated: 2026-07-01
 
 ## Build
 
@@ -31,6 +31,8 @@ Updated: 2026-06-30
 - [x] Quick leave before 250 ms does not show a stale panel. User reported functionality normal after manual run.
 - [x] Moving from Dock icon into panel keeps the panel visible. User reported functionality normal after manual run.
 - [x] Moving outside Dock icon and panel hides the panel. User reported functionality normal after manual run.
+- [x] Dock-to-panel hover retention is usable after tuning. 2026-07-01 manual retest reported `this version feels normal`; logs showed `dock.hoverLost.panelRetained` while moving from Dock to panel, `preview.panel.hide reason=mouseLeftPreviewRegion` after leaving the preview region, and `preview.panel.hide reason=activated` after card click.
+- [x] Moving from an app with a visible preview to an adjacent non-running Dock app hides the old panel. 2026-07-01 regression retest passed by user report after distinguishing Dock-to-panel transition retention from adjacent Dock-item hover loss.
 - [x] Escape hides the panel. User reported functionality normal after manual run.
 - [x] `killall Dock` recovers without leaving a stuck panel. User reported functionality normal after manual run.
 
@@ -44,7 +46,7 @@ Updated: 2026-06-30
 
 ## Environment Variants
 
-- [ ] Other normal Space.
+- [x] Other normal Space. 2026-06-30 and 2026-07-01 runs on a second normal desktop used Finder/Code windows. Hover produced `preview.panel.show`, thumbnails succeeded, stale/quick leave paths logged `mouseOutside`, `noCandidate`, and `hoverValidationFailed`, moving from Dock into panel logged `dock.hoverLost.panelRetained`, leaving panel logged `mouseLeftPreviewRegion`, Escape logged `preview.panel.hide reason=escape`, card click logged `activation.result` and `preview.panel.hide reason=activated`, and `killall Dock` resubscribed from `dock.pidChanged` to `dock.subscribed pid=88629` in about 0.007 seconds. A follow-up regression where an old preview stayed visible after moving to an adjacent non-running Dock app was fixed and manually retested as normal on 2026-07-01.
 - [ ] Full-screen Space.
 - [ ] Stage Manager enabled.
 - [ ] Dock auto-hide enabled.
