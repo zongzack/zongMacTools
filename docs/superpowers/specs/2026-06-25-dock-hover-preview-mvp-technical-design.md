@@ -1,13 +1,14 @@
 # Dock Hover Preview MVP Technical Design
 
 Date: 2026-06-25
+Updated: 2026-06-26
 
 ## 1. Goal
 
 Build a personal macOS menu bar utility that reproduces the smallest useful slice of the Windows taskbar preview behavior:
 
 - Hover a Dock application icon.
-- Show that application's currently visible windows on the current desktop.
+- Show that application's eligible windows from the current interactive Space approximation.
 - Display up to 8 preview cards in a horizontal panel above the Dock.
 - Each card shows app icon, static thumbnail, and window title.
 - Click a card to switch to that window.
@@ -23,7 +24,7 @@ In scope for MVP:
 - Manual permission handling for Accessibility and Screen Recording.
 - Main trigger: Dock icon hover.
 - Fallback trigger: menu bar debug action for the frontmost app.
-- Current desktop visible windows only.
+- Current interactive Space visible-window approximation only.
 - Static thumbnails only.
 - Up to 8 windows per app, horizontally scrollable.
 - Click-to-activate behavior.
@@ -37,6 +38,7 @@ Out of scope for MVP:
 - Minimized windows.
 - Windows on other Spaces.
 - Full-screen Space switching.
+- Exact occlusion detection. A window can be listed even if another window partially covers it.
 - Close/minimize/full-screen buttons on preview cards.
 - Keyboard switcher, Cmd+Tab replacement, search, media widgets, calendar widgets, Dock locking, app filters, or settings pages.
 - App Store distribution.
@@ -58,16 +60,19 @@ Relevant reference files:
 Reference lessons to reuse:
 
 - Prefer Dock Accessibility notifications over coordinate-only Dock icon guessing.
+- Treat Dock Accessibility notifications as wake-up signals, not as proof that the mouse is still on the Dock item.
 - Keep Dock hover detection, window discovery, thumbnail capture, preview UI, and activation as separate subsystems.
 - Use a floating `NSPanel` for preview display.
-- Revalidate that the mouse is still on the expected Dock item before showing a delayed preview.
+- Revalidate that the mouse is still inside the expected Dock item frame before showing a delayed preview.
 - Add a recovery/reset path because Dock can restart or rebuild its Accessibility tree.
+- Keep exact window activation isolated because robust implementations may need WindowServer/private fallbacks that are not acceptable by default in V1.
 
 Reference choices to avoid for MVP:
 
 - No global window seeding at launch.
 - No large persistent window cache.
-- No private APIs in V1 unless public API probing fails and the tradeoff is explicitly accepted later.
+- No private APIs in V1. If public API probing fails, make an explicit post-Probe design decision before changing this constraint.
+- Do not copy, translate, or mechanically rewrite DockDoor source, helper extensions, comments, file structure, or private API wrappers. Only reuse observed API strategy and behavioral lessons.
 - No embedded widgets or broad window management behaviors.
 
 ## 4. Development Preconditions
@@ -76,15 +81,15 @@ Current local environment facts:
 
 - macOS version: 26.5.1.
 - Swift available: Apple Swift 6.3.2 via Command Line Tools.
-- Full Xcode is not currently active; `xcodebuild` reports that only Command Line Tools are selected.
+- Full Xcode is currently active at `/Applications/Xcode.app/Contents/Developer`.
 
 Implementation preconditions:
 
-- Install and select full Xcode before building the final `.app` target:
+- Ensure full Xcode is installed and selected before building the final `.app` target:
   - `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`
 - The built app must request and receive:
   - Accessibility permission for Dock AX inspection and window activation.
-  - Screen Recording permission for thumbnail capture.
+  - Screen Recording permission for ScreenCaptureKit window enumeration and thumbnail capture.
 - During local development, use a stable bundle identifier such as `com.zong.DockHoverPreview`.
 
 Full Xcode setup guidance:
@@ -166,6 +171,8 @@ Behavior:
 - Poll permission state every 1 second while the app is running.
 - Never show permission alerts from Dock hover.
 - Menu bar title/icon should indicate whether permissions are complete.
+- If Accessibility permission is missing, do not attach Dock observers and do not attempt AX activation.
+- If Screen Recording permission is missing, normal Dock hover previews are suppressed because V1 window discovery depends on ScreenCaptureKit. The menu bar should show the missing permission and the debug action may log an AX-only diagnostic list, but that list is not considered MVP preview behavior.
 
 ### 5.3 DockHoverMonitor
 
@@ -173,9 +180,10 @@ Responsibilities:
 
 - Attach to the Dock process through Accessibility.
 - Subscribe to `kAXSelectedChildrenChangedNotification` on the Dock list element.
-- Resolve the selected Dock item to an app bundle URL and bundle identifier.
+- Resolve the Dock item currently under the mouse to an app bundle URL and bundle identifier.
 - Return the running app if present.
 - Notify the orchestrator when a new Dock app item is hovered.
+- Notify the orchestrator when the mouse is no longer over the expected Dock app item.
 - Recover if Dock restarts or the subscribed AX element becomes invalid.
 
 Public interface:
@@ -200,11 +208,14 @@ Implementation detail:
 - Create Dock app AX element with `AXUIElementCreateApplication(dockPID)`.
 - Find the Dock list child by checking `kAXRoleAttribute == kAXListRole`.
 - Subscribe to `kAXSelectedChildrenChangedNotification`.
-- On notification, read `kAXSelectedChildrenAttribute`.
+- On notification, read `kAXSelectedChildrenAttribute` as a candidate item only.
 - Only accept items whose subrole is `AXApplicationDockItem`.
 - Read `kAXURLAttribute` from the Dock item and resolve `Bundle(url: appURL)?.bundleIdentifier`.
 - Match running apps with `NSRunningApplication.runningApplications(withBundleIdentifier:)`.
 - If multiple running apps share a bundle ID, use the first instance for MVP.
+- Read the Dock item frame from AX position/size attributes when available.
+- Validate that the current mouse location is inside the candidate Dock item frame before emitting `didHover`.
+- If the selected child persists after the mouse leaves the Dock, treat it as stale and emit `didLoseHover` from the orchestrator polling loop.
 
 Recovery:
 
@@ -214,29 +225,50 @@ Recovery:
 Delay and validation:
 
 - `HoverOrchestrator` applies a 250 ms delay before showing preview.
-- Before showing the preview, re-read the selected Dock item and confirm it still has the same bundle identifier.
+- Before showing the preview, re-read the current candidate Dock item and confirm both:
+  - it resolves to the same bundle identifier;
+  - the current mouse location is still inside the same Dock item frame, or inside a best-effort frame reconstructed from the item position and size.
+- If no reliable Dock item frame can be read, fallback to current mouse location for panel positioning but do not show the panel after the mouse leaves the Dock list bounds.
 
 ### 5.4 WindowQueryService
 
 Responsibilities:
 
-- Given an `NSRunningApplication`, return eligible windows for the current desktop.
-- Include only visible, on-screen, non-minimized windows.
-- Return title, window ID, owning PID, frame, AX element if available, app icon, and optional thumbnail source metadata.
+- Given an `NSRunningApplication`, return eligible windows for the current interactive Space approximation.
+- Include only ScreenCaptureKit-visible, on-screen, non-minimized, normal application windows.
+- Return title, window ID, owning PID, frame, AX element if available, app icon, and thumbnail source metadata.
 
 Public model:
 
 ```swift
-struct PreviewWindow: Identifiable, Hashable {
-    let id: CGWindowID
+struct PreviewWindowID: Hashable {
+    let pid: pid_t
+    let windowID: CGWindowID
+}
+
+enum ThumbnailSource {
+    case screenCaptureKit(SCWindow)
+    case coreGraphics(CGWindowID)
+}
+
+struct PreviewWindow: Identifiable {
+    let id: PreviewWindowID
+    let cgWindowID: CGWindowID
     let app: NSRunningApplication
     let title: String
     let frame: CGRect
+    let scWindow: SCWindow?
     let axElement: AXUIElement?
     let appIcon: NSImage
-    let thumbnail: CGImage?
+    let thumbnailSource: ThumbnailSource?
 }
 ```
+
+Model notes:
+
+- Do not rely on automatic `Hashable` synthesis for `PreviewWindow`; AppKit, CoreGraphics, ScreenCaptureKit, and AX object references are not stable value fields.
+- Keep thumbnails in preview view state or a cache, not in the immutable window query result.
+- Use `(pid, windowID)` as identity. Re-query before activation because a `CGWindowID` can become stale after the window closes or the app restarts.
 
 Recommended V1 discovery path:
 
@@ -256,12 +288,23 @@ AX enrichment:
 
 - Build app AX element with `AXUIElementCreateApplication(app.processIdentifier)`.
 - Read AX windows via `kAXWindowsAttribute`.
-- Try to map AX windows to `SCWindow` entries by window ID if `_AXUIElementGetWindow` is available.
-- If mapping fails, keep `axElement` nil and allow app-level activation fallback.
+- Public V1 mapping strategy:
+  - read AX title, position, size, minimized, and role/subrole;
+  - discard minimized AX windows;
+  - match AX windows to `SCWindow` entries by close frame overlap plus compatible title when available;
+  - prefer exact title + near-equal frame, but tolerate empty titles for apps such as browsers and media players.
+- `_AXUIElementGetWindow` is private. It may be tested in Probe under an explicitly isolated experiment flag, but it is not part of the default V1 implementation path.
+- If public mapping fails, keep `axElement` nil and allow app-level activation fallback. Probe must measure how often this happens for the acceptance apps.
 
-Current desktop behavior:
+Current interactive Space behavior:
 
-- For MVP, treat `SCShareableContent(... onScreenWindowsOnly: true)` plus `SCWindow.isOnScreen` as the current visible desktop source.
+- For MVP, treat `SCShareableContent(... onScreenWindowsOnly: true)` plus `SCWindow.isOnScreen` as a best-effort source for windows present in the user's current interactive environment.
+- This is not a strict Space API. It must be probed with:
+  - another normal Space;
+  - a full-screen Space;
+  - Stage Manager enabled and disabled;
+  - separate Spaces on multiple displays.
+- The MVP should not promise exact occlusion or exact Mission Control Space membership. It should promise no minimized windows, no intentional cross-Space restoration, and no disruptive behavior if ScreenCaptureKit returns fewer windows than expected.
 - Do not try to enumerate windows from other Spaces.
 - Do not restore minimized windows.
 
@@ -286,9 +329,11 @@ protocol ThumbnailService {
 
 V1 strategy:
 
-- First try `SCScreenshotManager.captureImage(contentFilter:configuration:completionHandler:)` with an `SCContentFilter` targeting the matching `SCWindow`.
-- If that proves too heavy during Probe, use `CGWindowListCreateImage` / `CGWindowListCreateImageFromArray` for a static snapshot.
-- Cache thumbnails by `pid + windowID` for 10 seconds.
+- First try `SCScreenshotManager.captureImage(contentFilter:configuration:completionHandler:)` with `SCContentFilter(desktopIndependentWindow:)` for the matching `SCWindow`.
+- Configure the screenshot close to the card thumbnail size and current backing scale instead of capturing full-resolution windows when possible.
+- If ScreenCaptureKit capture is too slow or returns blank images during Probe, use `CGWindowListCreateImage` / `CGWindowListCreateImageFromArray` for a static snapshot fallback.
+- Cache thumbnails by `pid + windowID + frame.size + title` for 10 seconds.
+- Cancel or ignore thumbnail tasks when the hover target changes.
 - Refuse to capture if Screen Recording permission is not granted.
 
 Fallback UI:
@@ -299,8 +344,9 @@ Fallback UI:
 Private API decision:
 
 - DockDoor uses private/window-server capture paths for robust static screenshots.
-- V1 should avoid private APIs unless public capture produces unusable results for the acceptance apps.
-- If private APIs are introduced later, isolate them behind `ThumbnailService` so they can be removed or swapped.
+- V1 does not use private screenshot APIs.
+- If public capture produces unusable results for the acceptance apps, stop after Probe and make an explicit design decision before adding private capture paths.
+- If private APIs are introduced in a later revision, isolate them behind `ThumbnailService` so they can be removed or swapped.
 
 ### 5.6 PreviewPanelController
 
@@ -339,9 +385,12 @@ Positioning:
   - panel x is centered on Dock icon and clamped to screen visible frame.
   - panel y is above Dock icon plus 10 pt.
 - For left/right Dock:
-  - use the same controller, but first implementation may be best-effort.
+  - infer side from the Dock item frame and nearest screen edge;
+  - position beside the Dock icon and clamp to the same screen visible frame;
+  - if side inference fails, fallback to current mouse location.
 - For missing Dock frame:
   - anchor around current mouse location and clamp to screen.
+- Do not use private CoreDock orientation APIs in V1. Dock side inference should be based on public screen geometry and the AX item frame.
 
 ### 5.7 ActivationService
 
@@ -361,10 +410,16 @@ protocol ActivationService {
 
 Behavior:
 
-- Call `window.app.activate(options: [.activateIgnoringOtherApps])`.
-- If `axElement` exists, perform `kAXRaiseAction`.
-- Try setting `kAXMainWindowAttribute` to true when supported.
-- Ignore AX raise errors and keep the UX quiet.
+- Re-query or validate the selected window immediately before activation when feasible.
+- If the app is hidden, call `window.app.unhide()`.
+- If `axElement` exists:
+  - perform `kAXRaiseAction`;
+  - if `kAXMainWindowAttribute` is settable, set it to true;
+  - then call `window.app.activate(options: [])`.
+- Do not rely on `.activateIgnoringOtherApps`; it is deprecated on modern macOS and must not be treated as a correctness guarantee.
+- If `axElement` is nil or AX raise fails, call `window.app.activate(options: [])` and hide the preview.
+- Exact window raise failure is quiet, but Probe must record the failure rate because too many fallbacks means the MVP does not satisfy click-to-window switching.
+- Private WindowServer/front-process helpers are out of V1 unless public activation fails the Probe gate and the tradeoff is explicitly accepted.
 
 Do not implement:
 
@@ -403,24 +458,25 @@ Debug action behavior:
 Dock hover flow:
 
 1. `DockHoverMonitor` receives Dock selected-child notification.
-2. It resolves a `HoveredDockApp`.
+2. It resolves a candidate Dock item and validates that the mouse is currently inside that Dock item frame.
 3. `HoverOrchestrator` cancels any previous pending show.
 4. It waits 250 ms.
-5. It verifies the same Dock item/app is still hovered.
-6. It checks permissions.
+5. It verifies the same Dock item/app is still hovered and the mouse is still inside the Dock item frame or Dock list bounds.
+6. It checks permissions. If Accessibility or Screen Recording is missing, it does not show the preview and relies on menu bar status.
 7. It calls `WindowQueryService.windows(for:)`.
 8. If no eligible windows exist, it hides/does not show the panel.
 9. It shows `PreviewPanelController` with placeholder cards.
 10. It requests thumbnails asynchronously.
-11. Cards update as thumbnails arrive.
+11. Cards update as thumbnails arrive. Thumbnail results from a stale hover generation are ignored.
 12. Clicking a card calls `ActivationService.activate(window:)`.
 13. Panel hides immediately after click.
 
 Mouse-leave flow:
 
 1. Track mouse with a local/global monitor or timer at 30-60 Hz while the panel is visible.
-2. Keep panel open while mouse is inside the preview panel or still over the same Dock item.
+2. Keep panel open while mouse is inside the preview panel or still inside the same Dock item frame.
 3. Hide after the mouse is outside both areas for 150 ms.
+4. If the Dock item frame is unavailable, use the Dock list bounds plus the preview panel frame as the leave region.
 
 Dock recovery flow:
 
@@ -441,13 +497,18 @@ Probe acceptance:
   - app name;
   - bundle identifier;
   - PID;
-  - Dock item frame if available.
+  - Dock item frame;
+  - whether the mouse is inside the Dock item frame at notification time and again after the 250 ms delay.
 - Frontmost-app debug action logs eligible windows:
   - window ID;
   - title;
   - frame;
+  - `SCWindow.isOnScreen`;
+  - window layer;
+  - matched AX element yes/no;
+  - AX title/frame/minimized state when available;
   - thumbnail success/failure.
-- Clicking/selecting a logged window can activate the app and attempt to raise the window.
+- Clicking/selecting a logged window can activate the app and attempt to raise the exact window.
 
 Probe UI:
 
@@ -455,13 +516,24 @@ Probe UI:
 - A lightweight log window or Console logging is enough.
 - No polished preview panel required.
 
-Probe exit criteria:
+Hard Probe gates before preview UI:
 
-- Dock hover detection is stable across the five acceptance apps.
-- Window query returns correct windows for at least VS Code, Chrome, Typora, and IINA.
-- WPS behavior is characterized, even if it needs a V2 adjustment.
+- Dock hover detection is stable across the five acceptance apps with bottom Dock and auto-hide off:
+  - no preview candidate is emitted after the mouse has left the Dock item;
+  - Dock item frame is available or a reliable Dock list bounds fallback is available.
+- Window query returns the expected visible, non-minimized windows for VS Code, Chrome, Typora, and IINA on the current interactive Space.
+- AX mapping succeeds for at least VS Code, Chrome, Typora, and IINA well enough that clicking each logged window raises the exact selected window.
 - At least one static thumbnail method works for ordinary app windows after Screen Recording permission is granted.
-- Activation fallback never leaves the app stuck or visibly broken.
+- Window query plus first placeholder render path is fast enough for hover use. Target: initial card data available within 150 ms after the 250 ms hover delay on the local machine.
+- Dock observer recovers after `killall Dock` within 10 seconds.
+
+Characterization Probe items:
+
+- WPS behavior is characterized, including whether documents belong to helper processes, child windows, or nonstandard AX hierarchies.
+- Another Space, a full-screen Space, Stage Manager, and multiple displays are tested and documented.
+- Screen Recording denied behavior is tested. Expected V1 behavior: no normal Dock preview, no crash, menu bar shows missing permission.
+- Missing Accessibility behavior is tested. Expected V1 behavior: no Dock observer, no hover preview, menu bar shows missing permission.
+- Activation fallback never leaves the app stuck or visibly broken, but exact raise failures are counted. If exact raise fails often for the main acceptance apps, do not proceed to polished UI until the activation strategy is revised.
 
 ## 8. MVP Implementation Milestones
 
@@ -476,13 +548,16 @@ Milestone 2: Dock hover Probe
 
 - Implement Dock AX observer.
 - Log hovered Dock app identity.
+- Validate mouse-inside-Dock-item at notification time and after hover delay.
+- Implement mouse-leave polling using Dock item frame or Dock list bounds.
 - Add health check and reset behavior.
 
 Milestone 3: Window query Probe
 
 - Implement ScreenCaptureKit window enumeration.
-- Filter to current visible desktop windows.
+- Filter to current interactive Space visible-window approximation.
 - Add AX enrichment best effort.
+- Log AX mapping success/failure for each returned window.
 - Add menu action to query frontmost app.
 
 Milestone 4: Thumbnail Probe
@@ -494,7 +569,8 @@ Milestone 4: Thumbnail Probe
 Milestone 5: Activation Probe
 
 - Implement app activation and AX raise.
-- Test click/select behavior against acceptance apps.
+- Test exact click/select behavior against acceptance apps.
+- Do not proceed to polished preview UI if VS Code, Chrome, Typora, or IINA cannot raise selected windows reliably through public APIs.
 
 Milestone 6: Preview panel
 
@@ -520,11 +596,18 @@ Manual tests:
 - WPS: open multiple document windows; verify visible windows appear or document exact mismatch for V2.
 - Typora: open one or more documents; verify preview and activation.
 - IINA: play a video; verify static thumbnail or placeholder appears; real-time playback is not required.
-- No-window app: hover an app with no eligible current-desktop windows; verify no panel appears.
+- No-window app: hover an app with no eligible current interactive Space windows; verify no panel appears.
 - Missing Accessibility permission: menu shows missing state; Dock hover does not spam alerts.
-- Missing Screen Recording permission: menu shows missing state; panel may show icon/title placeholders but must not crash.
+- Missing Screen Recording permission: menu shows missing state; normal Dock hover preview is suppressed and must not crash.
 - Dock restart: run `killall Dock`; app should recover observer after Dock returns.
 - Multi-monitor: panel appears on the screen containing the Dock/mouse and stays inside visible bounds.
+- Dock auto-hide: with Dock auto-hide enabled, hover should show preview only while the Dock item is actually under the mouse; panel hides cleanly when Dock hides.
+- Left/right Dock: panel is positioned beside the Dock item or falls back to mouse location without leaving screen bounds.
+- Other Space: open an app window on another Space; verify the MVP does not intentionally list or switch to it from the current Space.
+- Full-screen Space: full-screen windows do not need previews; hover must not trigger disruptive Space switching.
+- Stage Manager: characterize whether hidden/recent sets appear in ScreenCaptureKit and document any mismatch.
+- Hidden app: hide an app with windows; hover should not show stale unusable cards unless ScreenCaptureKit reports eligible on-screen windows.
+- Partially covered window: window may still appear; exact occlusion is not part of V1.
 
 Non-goals to explicitly verify:
 
@@ -537,11 +620,19 @@ Non-goals to explicitly verify:
 
 Risk: Dock AX selected-child events may change across macOS versions.
 
-Decision: Use DockDoor's proven AX notification strategy first, with a fallback debug menu action. Add a health check and reset path.
+Decision: Use DockDoor's proven AX notification strategy as a wake-up path, but validate the mouse against Dock item geometry before showing UI. Add a health check and reset path.
+
+Risk: Dock AX selected child may persist after the mouse leaves the Dock item.
+
+Decision: Mouse-leave polling and delayed-show validation must use Dock item frame containment or Dock list bounds. Bundle ID equality alone is not sufficient.
 
 Risk: Public screenshot APIs may produce blank or stale images for some apps.
 
 Decision: Keep thumbnails optional. Static image failure degrades to app icon plus title. Do not block MVP on perfect screenshots.
+
+Risk: ScreenCaptureKit on-screen windows may not exactly equal current Mission Control Space membership, especially with Stage Manager and multiple displays.
+
+Decision: Treat ScreenCaptureKit as a current-interactive-environment approximation. Probe and document mismatches. Do not attempt private Space enumeration in V1.
 
 Risk: WPS may expose windows through helper processes or nonstandard AX hierarchy.
 
@@ -549,11 +640,19 @@ Decision: Keep generic matching by PID/bundle first. Characterize WPS during Pro
 
 Risk: Exact AX window raise may fail for some apps.
 
-Decision: Always activate the app first. AX raise is best effort. Failure is silent.
+Decision: Use public AX raise/main-window setting first and record exact raise success during Probe. Failure is silent in UX, but a high failure rate blocks polished UI. Do not rely on `.activateIgnoringOtherApps` because it is deprecated and has no effect on modern macOS.
 
-Risk: Full Xcode is not currently active locally.
+Risk: Private APIs may be tempting for AX-window ID mapping, Dock orientation, or exact activation.
 
-Decision: Document full Xcode as a build prerequisite for the final app. Swift Command Line Tools are sufficient for some experiments, but not the preferred final app workflow.
+Decision: V1 does not use private APIs. Private experiments may be isolated behind Probe-only code paths and require an explicit post-Probe decision before becoming product code.
+
+Risk: Missing Screen Recording permission can break both thumbnail capture and ScreenCaptureKit window enumeration.
+
+Decision: Suppress normal Dock hover previews when Screen Recording is missing. Show permission state in the menu bar and avoid repeated hover prompts.
+
+Risk: Xcode selection can drift between Command Line Tools and full Xcode.
+
+Decision: Full Xcode is now active locally. Keep full Xcode as a build prerequisite for the final app and re-check `xcode-select -p` before implementation.
 
 ## 11. Acceptance Criteria
 
@@ -561,8 +660,12 @@ The MVP is complete when:
 
 - The app runs as a menu bar utility and does not show its own Dock icon.
 - It detects required permissions and provides menu actions to resolve missing permissions.
-- Hovering Dock icons for the acceptance apps shows previews for eligible current-desktop windows.
+- Hovering Dock icons for the acceptance apps shows previews only while the mouse is still on the target Dock item.
+- Previews list eligible windows from the current interactive Space approximation and do not intentionally include minimized or other-Space windows.
 - The panel shows at most 8 cards with app icon, static thumbnail or placeholder, and title.
-- Clicking a card activates the app and best-effort raises the selected window.
+- Clicking a card activates the app and raises the selected window for VS Code, Chrome, Typora, and IINA in the tested Probe scenarios.
+- WPS is either supported generically or documented as a characterized V2 exception with no crash or disruptive behavior.
 - The panel hides when the mouse leaves or after a card click.
-- Missing thumbnails, missing AX raise, and apps with no windows do not produce disruptive UI.
+- Missing thumbnails and apps with no windows do not produce disruptive UI.
+- Missing Accessibility or Screen Recording permissions suppress normal hover previews and are reported through the menu bar/status UI.
+- Dock restart, Dock auto-hide, and multi-monitor positioning are handled without stuck panels.
