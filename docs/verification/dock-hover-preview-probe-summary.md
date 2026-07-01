@@ -6,9 +6,9 @@
 
 ## 总结
 
-MVP UI 结论：`pass with concerns`。
+MVP UI / P0 环境变体结论：`pass with note`。当前可执行环境已完成验证；Multiple displays 因当前只有一个显示器，记录为 `blocked / not available`。
 
-核心功能已经可用，普通底部 Dock、单显示器、常规 Space 的主流程通过自动测试、打包验证和人工 UI 验收。Full-screen Space 已完成跟进验证并修复 Chrome 全屏辅助条带误收录问题；Dock auto-hide 已完成跟进验证并修复底部 reveal edge stale hover 误判；Dock left/right 已完成跟进验证并将 side Dock panel 调整为纵向完整卡片布局。剩余风险集中在 Stage Manager 和多显示器。
+核心功能已经可用，普通底部 Dock、单显示器、常规 Space 的主流程通过自动测试、打包验证和人工 UI 验收。Full-screen Space 已完成跟进验证并修复 Chrome 全屏辅助条带误收录问题；Dock auto-hide 已完成跟进验证并修复底部 reveal edge stale hover 误判；Dock left/right 已完成跟进验证并将 side Dock panel 调整为纵向完整卡片布局；Stage Manager 已完成跟进验证并避免使用斜的系统缩略图或桌面假截图。剩余未实测项只有多显示器，原因是当前硬件环境不可用。
 
 ## 硬门槛结果
 
@@ -36,7 +36,7 @@ MVP UI 结论：`pass with concerns`。
 
 已通过：
 
-- `swift test`：2026-07-01 side Dock 布局适配后最终记录为 38 个 XCTest、0 失败。
+- `swift test`：2026-07-01 Stage Manager 稳定性修复后最终记录为 41 个 XCTest、0 失败。
 - `swift build`：通过。
 - `Scripts/build_probe_app.sh`：可生成 `build/DockHoverPreviewProbe.app`。
 - 样本 app 主流程：VS Code、Chrome、Typora、IINA、WPS 由人工反馈为功能正常。
@@ -51,14 +51,14 @@ MVP UI 结论：`pass with concerns`。
 - Full-screen Space 通过跟进验证，结果 `pass with note`。初次验证发现 Chrome 全屏下 ScreenCaptureKit 返回空标题浅条带，导致 panel 出现 3 张卡片；已补回归测试并过滤该类辅助条带。复测日志包含 `permissions.refresh accessibility=true screenRecording=true`、`dock.subscribed pid=...`、Chrome 全屏 `windows.query app=Google Chrome count=1`、`preview.panel.show app=Google Chrome count=1`、`thumbnail.success`、`activation.result` 和 `preview.panel.hide reason=activated`。
 - Dock auto-hide 通过跟进验证，结果 `pass with note`。初次验证发现点击卡片激活后，再 hover 同一 Dock app 时，auto-hide reveal edge 会让 delayed validation 误判 stale，导致 preview 不再显示；已补回归测试并允许底部 reveal edge 命中对应 Dock item。复测日志包含 `dock.hoverDelayed ... matches=true mouseInside=true`、`preview.panel.show`、`activation.result`、再次 hover 后 `preview.panel.show`，以及 `killall Dock` 后 `dock.pidChanged`、`dock.subscribed pid=...`。验证后已恢复原始 `autohide=0`。
 - Dock left/right 通过跟进验证，结果 `pass with note`。人工验证显示左右 Dock 下 preview 展示、位置不越界、Dock-to-panel 保留、离开隐藏、点击激活、`Esc` 和相邻未启动 app 隐藏旧 panel均正常。基于验证后的视觉判断，side Dock panel 改为纵向排列完整卡片，bottom Dock 保持横向排列；新增测试覆盖 bottom/side Dock layout 选择和 side Dock 3 张完整卡片高度上限。
+- Stage Manager 通过跟进验证，结果 `pass with note`。人工验证显示 hover 程序坞中有窗口的 app 图标可显示 preview panel，位置合理且不越界；quick leave/stale cancellation、Dock-to-panel 保留、离开隐藏、点击激活、`Esc`、相邻未启动 app 隐藏旧 panel 和 Dock 重启恢复均正常。初次验证发现台前调度左侧最近使用分组下，ScreenCaptureKit 可能返回斜的系统缩略图，或者屏幕区域截图会显示桌面/台前调度界面而不是 app 自身内容；已改为当 ScreenCaptureKit 窗口无法匹配 AX 真实窗口时使用 AX fallback 生成卡片，并且无真实 thumbnail source 时只显示图标占位，不再尝试 CoreGraphics 或屏幕区域截图。关键日志包含 `permissions.refresh accessibility=true screenRecording=true`、`dock.hoverDelayed ... matches=true mouseInside=true`、`windows.axFallback`、`preview.panel.show`、`thumbnail.success`、`preview.panel.hide reason=mouseLeftPreviewRegion`。验证后 `defaults read com.apple.WindowManager GloballyEnabled` 返回 `0`，已恢复验证前关闭状态。
 - 修复并验证了两个 hover 手感问题：
   - Dock 到 panel 之间不再过早隐藏。
   - 从有 preview 的 app 移到相邻未启动 Dock app 时，旧 panel 会隐藏。
 
-## 仍需验证
+## 未实测 / 受限项
 
-- Stage Manager。
-- Multiple displays。
+- Multiple displays：2026-07-01 当前硬件环境仅检测到 1 个显示器 `Mi Monitor`，无法执行多显示器行为验证；结果记录为 `blocked / not available`，不写成 pass。
 
 ## 相关文档
 

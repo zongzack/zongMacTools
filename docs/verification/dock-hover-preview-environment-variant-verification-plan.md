@@ -76,7 +76,7 @@
 - 观察：初次验证发现 Chrome 全屏下 panel 出现 3 张卡片。日志显示 ScreenCaptureKit 返回一个真实 Chrome 窗口和两个空标题浅条带窗口。已补回归测试并过滤空标题、极宽、低高度的辅助条带；复测后 Chrome 全屏 `windows.query count=1`、`preview.panel.show count=1`，人工反馈全屏和非全屏均恢复正常。
 - 关键日志：`permissions.refresh accessibility=true screenRecording=true`、`orchestrator.start accessibility=true screenRecording=true`、`dock.subscribed pid=...`、`dock.hoverDelayed bundle=com.google.Chrome matches=true mouseInside=true`、`windows.query app=Google Chrome count=1`、`preview.panel.show app=Google Chrome count=1`、`thumbnail.success`、`activation.result`、`preview.panel.hide reason=activated`、`preview.panel.hide reason=mouseLeftPreviewRegion`。
 - 恢复动作：无系统环境设置变更；仅在重新签名 app 后恢复 TCC 权限。
-- 后续问题：未发现 stuck panel 或意外 Space 切换。仍需继续执行 Dock auto-hide、Dock left/right、Stage Manager 和 Multiple displays。
+- 后续问题：未发现 stuck panel 或意外 Space 切换。Dock auto-hide、Dock left/right、Stage Manager 后续均已完成；Multiple displays 因当前硬件环境不可用记录为 blocked / not available。
 
 ### 2. Dock auto-hide
 
@@ -155,16 +155,26 @@
 
 1. 记录原始 Stage Manager 状态。
 2. 开启 Stage Manager。
-3. 准备至少两个 app 窗口，其中一个处于当前 stage，一个处于 recent set。
-4. Hover 当前 stage app 和非当前 stage app。
+3. 准备至少两个 app 窗口，其中一个处于当前台前调度分组，一个处于左侧最近使用分组。
+4. Hover 当前台前调度分组 app 和非当前台前调度分组 app 的程序坞图标。
 5. 验证窗口列表、缩略图、点击激活和隐藏行为。
 6. 恢复原始设置。
 
 记录：
 
-- ScreenCaptureKit 是否返回非当前 stage 窗口。
+- ScreenCaptureKit 是否返回非当前台前调度分组窗口。
 - 点击是否造成意外切换。
 - 是否需要 Stage Manager 特化策略。
+
+执行备注（2026-07-01）：
+
+- 结果：pass with note。
+- 设置：原始 `defaults read com.apple.WindowManager GloballyEnabled` 未开启；用户手动开启台前调度后执行验证。Dock 位于底部，Dock auto-hide 关闭，当前仅 1 个显示器 `Mi Monitor`。
+- 操作：hover 程序坞中有窗口的 app 图标，覆盖当前台前调度分组和左侧最近使用分组中的 app；检查 preview 展示、位置不越界、quick leave/stale cancellation、Dock-to-panel 保留、离开 panel 隐藏、点击激活并隐藏、`Esc` 隐藏、移到相邻未启动 Dock app 隐藏旧 panel、Dock 重启恢复。
+- 观察：初次验证发现左侧最近使用分组下 ScreenCaptureKit 可能返回斜的系统缩略图；随后尝试屏幕区域截图会显示桌面/台前调度界面，而不是 app 自身窗口内容。最终策略为：若 ScreenCaptureKit 候选窗口能匹配 AX 真实窗口，则继续显示真实缩略图；若候选窗口无法匹配 AX 真实窗口，则使用 AX fallback 生成 preview 卡片，并且没有真实 thumbnail source 时只显示图标占位，不显示斜图或桌面假图。左侧台前调度缩略栏本身不是程序坞，不纳入 MVP hover 范围。
+- 关键日志：`permissions.refresh accessibility=true screenRecording=true`、`orchestrator.start accessibility=true screenRecording=true`、`dock.subscribed pid=...`、`dock.hoverDelayed ... matches=true mouseInside=true`、`windows.axFallback`、`preview.panel.show`、`thumbnail.success`、`dock.hoverLost.panelRetained`、`preview.panel.hide reason=mouseLeftPreviewRegion`。
+- 恢复动作：验证后恢复台前调度到原始关闭状态，`defaults read com.apple.WindowManager GloballyEnabled` 返回 `0`。
+- 后续问题：公开 API 无法保证为左侧最近使用分组提供真实窗口像素；当前按稳定性优先降级为图标占位，后续若要优化显示效果应进入 P2 polish 或单独研究，不扩大 MVP。
 
 ### 6. Multiple displays
 
@@ -184,6 +194,15 @@
 - 显示器数量和排列。
 - Panel 是否出现在正确屏幕。
 - 是否出现跨屏 frame 计算错误。
+
+执行备注（2026-07-01）：
+
+- 结果：blocked / not available。
+- 设置：`system_profiler SPDisplaysDataType` 仅检测到 1 个显示器 `Mi Monitor`，分辨率 5120 x 2880，UI Looks like 2560 x 1440，Main Display: Yes，Mirror: Off。
+- 操作：未执行多显示器 hover 行为验证，因为当前没有副显示器或可用多显示器环境。
+- 观察：不能将单显示器结果外推为多显示器 pass。
+- 恢复动作：无系统设置变更。
+- 后续问题：接入外接显示器后，需要重新执行本场景并检查 panel 所在屏幕、frame clamp 和点击激活行为。
 
 ## 结果记录模板
 

@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import XCTest
 @testable import DockHoverPreviewProbe
@@ -41,5 +42,43 @@ final class WindowQueryServiceTests: XCTestCase {
         XCTAssertTrue(line.contains("bestAXFrame=(10.0, 20.0, 300.0, 200.0)"))
         XCTAssertTrue(line.contains("threshold=0.72"))
         XCTAssertTrue(line.contains("minimizedSkipped=1"))
+    }
+
+    func testAXFallbackWindowsCreatePreviewCardsWithoutThumbnailSource() {
+        let snapshots = [
+            AXWindowSnapshot(
+                title: "Termius - Hosts",
+                frame: CGRect(x: 415, y: 182, width: 1515, height: 1130),
+                element: nil
+            )
+        ]
+
+        let windows = ScreenCaptureWindowQueryService.fallbackPreviewWindows(
+            from: snapshots,
+            app: NSRunningApplication.current
+        )
+
+        XCTAssertEqual(windows.count, 1)
+        XCTAssertEqual(windows[0].title, "Termius - Hosts")
+        XCTAssertEqual(windows[0].frame, CGRect(x: 415, y: 182, width: 1515, height: 1130))
+        XCTAssertNil(windows[0].thumbnailSource)
+    }
+
+    func testUsesAXFallbackWhenStageManagerThumbnailsDoNotMatchAXWindows() {
+        XCTAssertTrue(ScreenCaptureWindowQueryService.shouldUseAXFallback(
+            candidateCount: 3,
+            matchedCandidateCount: 0,
+            axWindowCount: 3
+        ))
+        XCTAssertFalse(ScreenCaptureWindowQueryService.shouldUseAXFallback(
+            candidateCount: 3,
+            matchedCandidateCount: 1,
+            axWindowCount: 3
+        ))
+        XCTAssertFalse(ScreenCaptureWindowQueryService.shouldUseAXFallback(
+            candidateCount: 3,
+            matchedCandidateCount: 0,
+            axWindowCount: 0
+        ))
     }
 }

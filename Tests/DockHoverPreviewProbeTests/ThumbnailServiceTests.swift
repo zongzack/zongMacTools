@@ -52,6 +52,18 @@ final class ThumbnailServiceTests: XCTestCase {
         XCTAssertTrue(logs.contains("thumbnail.cgFailed id=12"))
     }
 
+    func testPlaceholderWindowWithoutThumbnailSourceDoesNotRunCoreGraphicsCapture() async {
+        let service = StaticThumbnailService(
+            logger: ProbeLogger(),
+            captureWithScreenCaptureKit: { _ in XCTFail("SCK capture should not run without a source"); return nil },
+            captureWithCoreGraphics: { _ in XCTFail("CoreGraphics capture should not run without a source"); return nil }
+        )
+
+        let image = await service.thumbnail(for: makeWindow(windowID: 14, thumbnailSource: nil))
+
+        XCTAssertNil(image)
+    }
+
     func testThumbnailSuccessLogsScreenCaptureKitMethod() async {
         let logger = ProbeLogger()
         let service = StaticThumbnailService(
@@ -65,7 +77,10 @@ final class ThumbnailServiceTests: XCTestCase {
         XCTAssertTrue(logger.snapshot().joined(separator: "\n").contains("thumbnail.success id=13 method=sck width=5 height=6"))
     }
 
-    private func makeWindow(windowID: CGWindowID = 10) -> PreviewWindow {
+    private func makeWindow(
+        windowID: CGWindowID = 10,
+        thumbnailSource: ThumbnailSource? = .coreGraphics(10)
+    ) -> PreviewWindow {
         PreviewWindow(
             id: PreviewWindowID(pid: getpid(), windowID: windowID),
             cgWindowID: windowID,
@@ -75,7 +90,7 @@ final class ThumbnailServiceTests: XCTestCase {
             scWindow: nil,
             axElement: nil,
             appIcon: NSImage(size: NSSize(width: 32, height: 32)),
-            thumbnailSource: nil
+            thumbnailSource: thumbnailSource
         )
     }
 

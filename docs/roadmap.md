@@ -20,10 +20,10 @@
 - [x] Dock auto-hide。
 - [x] Dock on left。
 - [x] Dock on right。
-- [ ] Stage Manager。
-- [ ] Multiple displays。
-- [ ] 将每个环境变体的结果写入 `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`。
-- [ ] 对验证中发现的 bug 单独补测试并修复。
+- [x] Stage Manager。
+- [x] Multiple displays。当前环境仅 1 个显示器，结果记录为 blocked / not available。
+- [x] 将每个环境变体的结果写入 `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`。
+- [x] 对验证中发现的 bug 单独补测试并修复。
 
 验收标准：
 

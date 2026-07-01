@@ -6,7 +6,7 @@
 
 ## 构建验证
 
-- [x] `swift test` 通过。2026-07-01 side Dock 布局适配后最终记录为 38 个 XCTest、0 失败。
+- [x] `swift test` 通过。2026-07-01 Stage Manager 稳定性修复后最终记录为 41 个 XCTest、0 失败。
 - [x] `swift build` 通过。
 - [x] `Scripts/build_probe_app.sh` 可生成 `build/DockHoverPreviewProbe.app`。
 
@@ -52,10 +52,10 @@
 - [x] Dock auto-hide enabled。2026-07-01 临时开启 Dock auto-hide 验证：Dock 弹出后 preview panel 可显示，位置在 Dock 图标附近且不越界；Dock-to-panel 保留、离开隐藏、移动到相邻未启动 app 隐藏旧 panel、Dock 重启恢复由日志和人工反馈正常。初次验证发现点击卡片激活后，再 hover 同一 Dock app 时 auto-hide reveal edge 会被 delayed validation 误判为 stale，导致不再显示 preview；已补回归测试并允许底部 reveal edge 命中对应 Dock item，复测后人工反馈问题解决。验证后已恢复原始 `autohide=0`。结果：pass with note。
 - [x] Dock on left。2026-07-01 人工验证：preview panel 可显示，位置在 Dock item 旁边且不越界；hover、Dock-to-panel 保留、离开隐藏、点击激活、`Esc`、相邻未启动 app 隐藏旧 panel等行为反馈正常。验证后将 side Dock panel 从横向卡片条改为纵向排列，单张卡片仍保留完整缩略图和标题尺寸，最多显示 3 张完整卡片后竖向滚动。结果：pass with note。
 - [x] Dock on right。2026-07-01 人工验证：preview panel 可显示，位置在 Dock item 旁边且不越界；hover、Dock-to-panel 保留、离开隐藏、点击激活、`Esc`、相邻未启动 app 隐藏旧 panel等行为反馈正常。验证后同 Dock on left 使用纵向排列的完整卡片，减少横向侵入工作区。结果：pass with note。
-- [ ] Stage Manager enabled。
-- [ ] Multiple displays。
+- [x] Stage Manager enabled。2026-07-01 人工验证：hover 程序坞中有窗口的 app 图标可显示 preview panel，位置合理且不越界；快速离开取消 stale preview；Dock-to-panel 保留、离开 panel 隐藏、点击卡片激活并隐藏、`Esc` 隐藏、移动到相邻未启动 app 隐藏旧 panel、Dock 重启恢复均反馈正常。初次验证发现台前调度左侧最近使用分组会让 ScreenCaptureKit 返回斜的系统缩略图，或返回无法代表 app 自身内容的桌面区域；已补 AX fallback 和缩略图源保护。当前策略是：当前台前调度分组能拿到真实窗口缩略图时显示真实缩略图；最近使用分组若公开 API 只暴露斜图或非真实窗口像素，则显示图标占位，不显示错误缩略图。验证后台前调度已恢复为原始关闭状态。结果：pass with note。
+- [x] Multiple displays。2026-07-01 当前硬件环境仅检测到 1 个显示器：Mi Monitor，无法执行多显示器行为验证。结果：blocked / not available。
 
 ## 备注
 
-- 当前验收结论是 `pass with concerns`。
-- 未完成的环境变体不应写成通过，需按 [环境变体验证计划](dock-hover-preview-environment-variant-verification-plan.md) 继续执行。
+- 当前 P0 环境变体验收结论是 `pass with note`；多显示器因当前硬件不可用，明确记录为 `blocked / not available`，不计为通过。
+- 后续若接入外接显示器，需按 [环境变体验证计划](dock-hover-preview-environment-variant-verification-plan.md) 重新执行 Multiple displays 场景。

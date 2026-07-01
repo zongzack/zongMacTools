@@ -91,15 +91,21 @@ final class StaticThumbnailService: ThumbnailService, @unchecked Sendable {
     }
 
     private func captureWithScreenCaptureKit(window: PreviewWindow) async -> CGImage? {
+        guard window.thumbnailSource != nil else { return nil }
         if let captureWithScreenCaptureKitOverride {
             return await captureWithScreenCaptureKitOverride(window)
         }
-        guard case let .screenCaptureKit(scWindow)? = window.thumbnailSource else { return nil }
-        let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+        let filter: SCContentFilter
         let configuration = SCStreamConfiguration()
         configuration.width = 440
         configuration.height = 248
         configuration.minimumFrameInterval = CMTime(value: 1, timescale: 1)
+        switch window.thumbnailSource {
+        case .screenCaptureKit(let scWindow):
+            filter = SCContentFilter(desktopIndependentWindow: scWindow)
+        case .coreGraphics, nil:
+            return nil
+        }
         do {
             return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
         } catch {
@@ -109,10 +115,18 @@ final class StaticThumbnailService: ThumbnailService, @unchecked Sendable {
     }
 
     private func captureWithCoreGraphics(window: PreviewWindow) -> CGImage? {
+        guard let thumbnailSource = window.thumbnailSource else { return nil }
         if let captureWithCoreGraphicsOverride {
             return captureWithCoreGraphicsOverride(window)
         }
-        let array = [NSNumber(value: window.cgWindowID)] as CFArray
+        let windowID: CGWindowID
+        switch thumbnailSource {
+        case .screenCaptureKit:
+            windowID = window.cgWindowID
+        case .coreGraphics(let cgWindowID):
+            windowID = cgWindowID
+        }
+        let array = [NSNumber(value: windowID)] as CFArray
         return CGImage(
             windowListFromArrayScreenBounds: .null,
             windowArray: array,

@@ -33,12 +33,19 @@ struct AXMatchDiagnostics {
 }
 
 private struct AXMatchResult {
-    let element: AXUIElement?
+    let snapshot: AXWindowSnapshot?
     let diagnostics: AXMatchDiagnostics
+}
+
+struct AXWindowSnapshot {
+    let title: String
+    let frame: CGRect
+    let element: AXUIElement?
 }
 
 final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Sendable {
     private let logger: ProbeLogger
+    private static let fallbackWindowIDBase: UInt32 = 0xFF00_0000
 
     init(logger: ProbeLogger) {
         self.logger = logger
@@ -59,10 +66,22 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
                     && Self.isPreviewableWindow(title: window.title, frame: window.frame)
             }
             let axWindows = readAXWindows(for: app)
-            let mapped = candidates.map { scWindow in
+            let mappedCandidates = candidates.map { scWindow in
                 let window = makePreviewWindow(scWindow: scWindow, app: app, axWindows: axWindows)
                 logger.info(window.matchDiagnostics.logLine(windowID: scWindow.windowID, scFrame: scWindow.frame))
-                return window.previewWindow
+                return window
+            }
+            let matchedCandidateCount = mappedCandidates.filter(\.matchDiagnostics.matched).count
+            let mapped: [PreviewWindow]
+            if Self.shouldUseAXFallback(
+                candidateCount: candidates.count,
+                matchedCandidateCount: matchedCandidateCount,
+                axWindowCount: axWindows.count
+            ) {
+                mapped = Self.fallbackPreviewWindows(from: axWindows, app: app)
+                logger.info("windows.axFallback app=\(app.localizedName ?? "unknown") count=\(mapped.count)")
+            } else {
+                mapped = mappedCandidates.map(\.previewWindow)
             }
             let sorted = mapped.sorted { lhs, rhs in
                 let lhsArea = lhs.frame.width * lhs.frame.height
@@ -83,15 +102,21 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
         }
     }
 
-    private func readAXWindows(for app: NSRunningApplication) -> [AXUIElement] {
+    private func readAXWindows(for app: NSRunningApplication) -> [AXWindowSnapshot] {
         guard AXIsProcessTrusted() else { return [] }
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
-        return AXHelpers.optionalAttribute(kAXWindowsAttribute as CFString, from: appElement, as: [AXUIElement].self) ?? []
+        let windows = AXHelpers.optionalAttribute(kAXWindowsAttribute as CFString, from: appElement, as: [AXUIElement].self) ?? []
+        return windows.compactMap { window in
+            guard !isMinimized(window) else { return nil }
+            guard let frame = AXHelpers.frame(of: window) else { return nil }
+            let title = AXHelpers.stringAttribute(kAXTitleAttribute as CFString, from: window) ?? "(untitled)"
+            return AXWindowSnapshot(title: title, frame: frame, element: window)
+        }
     }
 
-    private func makePreviewWindow(scWindow: SCWindow, app: NSRunningApplication, axWindows: [AXUIElement]) -> (previewWindow: PreviewWindow, matchDiagnostics: AXMatchDiagnostics) {
+    private func makePreviewWindow(scWindow: SCWindow, app: NSRunningApplication, axWindows: [AXWindowSnapshot]) -> (previewWindow: PreviewWindow, matchDiagnostics: AXMatchDiagnostics) {
         let match = bestAXMatch(for: scWindow, axWindows: axWindows)
-        let title = match.element.flatMap { AXHelpers.stringAttribute(kAXTitleAttribute as CFString, from: $0) }
+        let title = match.snapshot?.title
             ?? scWindow.title
             ?? "(untitled)"
         let previewWindow = PreviewWindow(
@@ -101,41 +126,59 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
             title: title,
             frame: scWindow.frame,
             scWindow: scWindow,
-            axElement: match.element,
+            axElement: match.snapshot?.element,
             appIcon: app.icon ?? NSImage(size: NSSize(width: 32, height: 32)),
             thumbnailSource: .screenCaptureKit(scWindow)
         )
         return (previewWindow, match.diagnostics)
     }
 
-    private func bestAXMatch(for scWindow: SCWindow, axWindows: [AXUIElement]) -> AXMatchResult {
-        var minimizedCount = 0
-        let scored = axWindows.compactMap { ax -> (AXUIElement, Double, CGRect)? in
-            guard !isMinimized(ax) else {
-                minimizedCount += 1
-                return nil
-            }
-            guard let frame = AXHelpers.frame(of: ax) else { return nil }
-            let score = GeometryHelpers.frameMatchScore(scFrame: scWindow.frame, axFrame: frame)
-            return (ax, score, frame)
+    private func bestAXMatch(for scWindow: SCWindow, axWindows: [AXWindowSnapshot]) -> AXMatchResult {
+        let scored = axWindows.map { axWindow -> (AXWindowSnapshot, Double) in
+            let score = GeometryHelpers.frameMatchScore(scFrame: scWindow.frame, axFrame: axWindow.frame)
+            return (axWindow, score)
         }
         let best = scored.sorted { $0.1 > $1.1 }.first
-        let matchedElement = best.flatMap { $0.1 >= axMatchThreshold ? $0.0 : nil }
+        let matchedSnapshot = best.flatMap { $0.1 >= axMatchThreshold ? $0.0 : nil }
         return AXMatchResult(
-            element: matchedElement,
+            snapshot: matchedSnapshot,
             diagnostics: AXMatchDiagnostics(
                 axWindowCount: axWindows.count,
-                minimizedCount: minimizedCount,
+                minimizedCount: 0,
                 threshold: axMatchThreshold,
-                matched: matchedElement != nil,
+                matched: matchedSnapshot != nil,
                 bestScore: best?.1,
-                bestFrame: best?.2
+                bestFrame: best?.0.frame
             )
         )
     }
 
     private func isMinimized(_ axWindow: AXUIElement) -> Bool {
         AXHelpers.optionalAttribute(kAXMinimizedAttribute as CFString, from: axWindow, as: Bool.self) ?? false
+    }
+
+    static func fallbackPreviewWindows(from axWindows: [AXWindowSnapshot], app: NSRunningApplication) -> [PreviewWindow] {
+        axWindows
+            .filter { isPreviewableWindow(title: $0.title, frame: $0.frame) }
+            .enumerated()
+            .map { index, axWindow in
+                let windowID = CGWindowID(fallbackWindowIDBase + UInt32(index))
+                return PreviewWindow(
+                    id: PreviewWindowID(pid: app.processIdentifier, windowID: windowID),
+                    cgWindowID: windowID,
+                    app: app,
+                    title: axWindow.title,
+                    frame: axWindow.frame,
+                    scWindow: nil,
+                    axElement: axWindow.element,
+                    appIcon: app.icon ?? NSImage(size: NSSize(width: 32, height: 32)),
+                    thumbnailSource: nil
+                )
+            }
+    }
+
+    static func shouldUseAXFallback(candidateCount: Int, matchedCandidateCount: Int, axWindowCount: Int) -> Bool {
+        axWindowCount > 0 && (candidateCount == 0 || matchedCandidateCount == 0)
     }
 
     static func isPreviewableWindow(title: String?, frame: CGRect) -> Bool {
