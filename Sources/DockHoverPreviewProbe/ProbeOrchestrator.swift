@@ -60,7 +60,14 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
             let stillHovered = monitor.resolveCurrentHoveredDockApp()
             let matches = stillHovered?.bundleIdentifier == app.bundleIdentifier
             let validationFrame = stillHovered?.dockItemFrame
-            let mouseInside = validationFrame.map { GeometryHelpers.contains(NSEvent.mouseLocation, in: $0, tolerance: 2) } ?? false
+            let mouseInside = validationFrame.map {
+                GeometryHelpers.containsDockItemHover(
+                    NSEvent.mouseLocation,
+                    dockItemFrame: $0,
+                    screenFrame: self.makeAnchor(dockItemFrame: $0).screenFrame,
+                    tolerance: 2
+                )
+            } ?? false
             self.logger.info("dock.hoverDelayed bundle=\(app.bundleIdentifier) matches=\(matches) mouseInside=\(mouseInside) frame=\(String(describing: validationFrame))")
             guard matches, mouseInside, let hoveredApp = stillHovered else {
                 self.previewSessionController.hide(reason: "hoverValidationFailed")

@@ -9,6 +9,24 @@ final class GeometryHelpersTests: XCTestCase {
         XCTAssertFalse(GeometryHelpers.contains(CGPoint(x: 98.5, y: 230), in: rect, tolerance: 1))
     }
 
+    func testDockItemHoverAcceptsBottomAutoHideRevealEdge() {
+        let dockItemFrame = CGRect(x: 827.2218, y: 10, width: 74.2148, height: 86.2148)
+        let screenFrame = CGRect(x: 0, y: 0, width: 2560, height: 1440)
+
+        XCTAssertTrue(GeometryHelpers.containsDockItemHover(
+            CGPoint(x: 835.98, y: 0.02),
+            dockItemFrame: dockItemFrame,
+            screenFrame: screenFrame,
+            tolerance: 2
+        ))
+        XCTAssertFalse(GeometryHelpers.containsDockItemHover(
+            CGPoint(x: 910, y: 0.02),
+            dockItemFrame: dockItemFrame,
+            screenFrame: screenFrame,
+            tolerance: 2
+        ))
+    }
+
     func testConvertTopLeftFrameToBottomLeftFrameMatchesDockMouseCoordinates() {
         let displayFrame = CGRect(x: 0, y: 0, width: 3008, height: 1692)
         let rawAXFrame = CGRect(x: 1055.618408203125, y: 1633.5828857421875, width: 36.4171142578125, height: 48.4171142578125)

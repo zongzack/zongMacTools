@@ -46,7 +46,7 @@ final class PreviewSessionControllerTests: XCTestCase {
         let task = Task {
             await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
         }
-        await Task.yield()
+        await harness.thumbnailService.waitUntilSuspended()
         harness.controller.hide(reason: "test")
         harness.thumbnailService.resume()
         await task.value
@@ -207,16 +207,32 @@ private final class FakeThumbnailService: ThumbnailService, @unchecked Sendable 
     var images: [PreviewWindowID: CGImage] = [:]
     var suspend = false
     private var continuation: CheckedContinuation<Void, Never>?
+    private var suspendedContinuation: CheckedContinuation<Void, Never>?
+    private var isSuspended = false
 
     func thumbnail(for window: PreviewWindow) async -> CGImage? {
         if suspend {
-            await withCheckedContinuation { continuation = $0 }
+            await withCheckedContinuation {
+                isSuspended = true
+                continuation = $0
+                suspendedContinuation?.resume()
+                suspendedContinuation = nil
+            }
         }
         return images[window.id]
     }
 
+    func waitUntilSuspended() async {
+        if isSuspended { return }
+
+        await withCheckedContinuation {
+            suspendedContinuation = $0
+        }
+    }
+
     func resume() {
         suspend = false
+        isSuspended = false
         continuation?.resume()
         continuation = nil
     }

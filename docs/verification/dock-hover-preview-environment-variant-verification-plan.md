@@ -97,6 +97,16 @@
 - 是否出现旧 panel 残留。
 - 恢复动作。
 
+执行备注（2026-07-01）：
+
+- 结果：pass with note。
+- 设置：原始 `defaults read com.apple.dock autohide` 为 `0`；临时写入 `autohide=true` 并 `killall Dock` 使配置生效。Dock orientation 未设置，Stage Manager 未设置，单显示器。
+- 操作：在 Dock auto-hide 开启时启动打包 app，确认权限和 Dock 订阅正常；让 Dock 从底部弹出后 hover VS Code/Codex/Termius 等有窗口 app，检查 preview 展示、位置、Dock-to-panel 保留、离开隐藏、点击激活、相邻未启动 app 隐藏旧 panel、Dock 重启恢复。
+- 观察：初次验证发现点击卡片激活后，再 hover 同一 Dock app 时不再显示 preview。日志显示 auto-hide reveal edge 下鼠标位于屏幕底部 `y≈0`，Dock item frame 已移动到 `y≈10...86`，delayed validation 误判 `mouseInside=false` 并隐藏为 `hoverValidationFailed`。已补回归测试并允许底部 reveal edge 命中对应 Dock item；复测后人工反馈问题解决。
+- 关键日志：`permissions.refresh accessibility=true screenRecording=true`、`orchestrator.start accessibility=true screenRecording=true`、`dock.subscribed pid=...`、`dock.hoverDelayed ... matches=true mouseInside=true`、`preview.panel.show`、`thumbnail.success`、`activation.result`、再次 hover 后 `preview.panel.show`、`preview.panel.hide reason=mouseLeftPreviewRegion`、`dock.pidChanged`、`dock.subscribed pid=...`。
+- 恢复动作：验证后执行 `defaults write com.apple.dock autohide -bool false && killall Dock`，确认 `defaults read com.apple.dock autohide` 返回 `0`。
+- 后续问题：未发现 stuck panel；若后续在左右 Dock auto-hide 中出现类似 reveal edge 问题，需要为侧边 reveal edge 单独补测试。
+
 ### 3. Dock on left
 
 目标：确认左侧 Dock 时 panel 能出现在 Dock item 旁边并保持在可见屏幕内。

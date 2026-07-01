@@ -108,7 +108,8 @@ final class DockHoverMonitor: @unchecked Sendable {
         }
         let frame = convertDockItemFrameForMouseCoordinates(rawFrame)
         let mouse = NSEvent.mouseLocation
-        guard GeometryHelpers.contains(mouse, in: frame, tolerance: 2) else {
+        let screenFrame = screenFrameForMouseOrFrame(frame)
+        guard GeometryHelpers.containsDockItemHover(mouse, dockItemFrame: frame, screenFrame: screenFrame, tolerance: 2) else {
             logger.info("dock.selectedStale bundle=\(bundleIdentifier) mouse=\(mouse) frame=\(frame)")
             return nil
         }
@@ -161,6 +162,14 @@ final class DockHoverMonitor: @unchecked Sendable {
         return GeometryHelpers.convertTopLeftFrameToBottomLeftFrame(rawFrame, in: screen.frame)
     }
 
+    private func screenFrameForMouseOrFrame(_ frame: CGRect) -> CGRect {
+        let mouse = NSEvent.mouseLocation
+        return NSScreen.screens.first { GeometryHelpers.contains(mouse, in: $0.frame, tolerance: 0) }?.frame
+            ?? NSScreen.screens.first { $0.frame.intersects(frame) }?.frame
+            ?? NSScreen.main?.frame
+            ?? CGRect(x: 0, y: 0, width: 1512, height: 982)
+    }
+
     private func healthCheck() {
         let currentDock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first
         if currentDock?.processIdentifier != dockPID {
@@ -187,7 +196,13 @@ final class DockHoverMonitor: @unchecked Sendable {
     private func pollMouseLeave() {
         guard let lastHovered else { return }
         guard let frame = lastHovered.dockItemFrame else { return }
-        if !GeometryHelpers.contains(NSEvent.mouseLocation, in: frame, tolerance: 2) {
+        let mouse = NSEvent.mouseLocation
+        if !GeometryHelpers.containsDockItemHover(
+            mouse,
+            dockItemFrame: frame,
+            screenFrame: screenFrameForMouseOrFrame(frame),
+            tolerance: 2
+        ) {
             self.lastHovered = nil
             logger.info("dock.hoverLost reason=mouseOutside frame=\(frame)")
             delegate?.dockHoverMonitorDidLoseHover(self)

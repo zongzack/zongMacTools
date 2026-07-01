@@ -17,7 +17,7 @@
 
 - [x] Other normal Space。
 - [x] Full-screen Space。
-- [ ] Dock auto-hide。
+- [x] Dock auto-hide。
 - [ ] Dock on left。
 - [ ] Dock on right。
 - [ ] Stage Manager。

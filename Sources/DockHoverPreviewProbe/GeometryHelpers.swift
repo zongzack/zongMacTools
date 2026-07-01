@@ -5,6 +5,21 @@ enum GeometryHelpers {
         rect.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
     }
 
+    static func containsDockItemHover(_ point: CGPoint, dockItemFrame: CGRect, screenFrame: CGRect, tolerance: CGFloat) -> Bool {
+        if contains(point, in: dockItemFrame, tolerance: tolerance) {
+            return true
+        }
+
+        let revealBandHeight: CGFloat = 16
+        let bottomRevealBand = CGRect(
+            x: dockItemFrame.minX,
+            y: screenFrame.minY,
+            width: dockItemFrame.width,
+            height: max(0, min(revealBandHeight, dockItemFrame.minY - screenFrame.minY))
+        )
+        return contains(point, in: bottomRevealBand, tolerance: tolerance)
+    }
+
     static func convertTopLeftFrameToBottomLeftFrame(_ frame: CGRect, in displayFrame: CGRect) -> CGRect {
         CGRect(
             x: frame.origin.x,
