@@ -65,6 +65,42 @@ final class PreviewPanelLayoutEngineTests: XCTestCase {
         XCTAssertEqual(frame.midY, 456, accuracy: 0.001)
     }
 
+    func testBottomDockUsesHorizontalPanelLayout() {
+        let anchor = PreviewPanelAnchor(
+            dockItemFrame: CGRect(x: 730, y: 0, width: 52, height: 48),
+            mouseLocation: CGPoint(x: 756, y: 24),
+            screenFrame: screenFrame,
+            visibleFrame: visibleFrame
+        )
+
+        XCTAssertEqual(PreviewPanelLayoutEngine.panelLayout(for: anchor), .horizontal)
+    }
+
+    func testSideDockUsesVerticalPanelLayout() {
+        let leftAnchor = PreviewPanelAnchor(
+            dockItemFrame: CGRect(x: 0, y: 430, width: 48, height: 52),
+            mouseLocation: CGPoint(x: 24, y: 456),
+            screenFrame: screenFrame,
+            visibleFrame: visibleFrame
+        )
+        let rightAnchor = PreviewPanelAnchor(
+            dockItemFrame: CGRect(x: 1464, y: 430, width: 48, height: 52),
+            mouseLocation: CGPoint(x: 1488, y: 456),
+            screenFrame: screenFrame,
+            visibleFrame: visibleFrame
+        )
+
+        XCTAssertEqual(PreviewPanelLayoutEngine.panelLayout(for: leftAnchor), .vertical)
+        XCTAssertEqual(PreviewPanelLayoutEngine.panelLayout(for: rightAnchor), .vertical)
+    }
+
+    func testVerticalPanelSizeKeepsFullCardWidthAndCapsAtThreeCards() {
+        let size = PreviewPanelMetrics.panelSize(cardCount: 5, layout: .vertical)
+
+        XCTAssertEqual(size.width, 256, accuracy: 0.001)
+        XCTAssertEqual(size.height, 556, accuracy: 0.001)
+    }
+
     func testMissingDockFrameFallsBackToMouseLocationAndClamps() {
         let anchor = PreviewPanelAnchor(
             dockItemFrame: nil,

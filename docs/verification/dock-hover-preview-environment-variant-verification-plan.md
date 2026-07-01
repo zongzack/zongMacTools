@@ -125,11 +125,27 @@
 - Dock-to-panel 桥接区是否顺手。
 - 是否需要进一步调 side Dock 几何。
 
+执行备注（2026-07-01）：
+
+- 结果：pass with note。
+- 设置：用户手动验证 Dock on left；验证后未要求保留系统设置变更。
+- 操作：hover 有窗口 Dock app，检查 preview 展示、位置不越界、Dock-to-panel 保留、离开隐藏、点击激活、`Esc` 隐藏、移到相邻未启动 app 隐藏旧 panel。
+- 观察：功能行为反馈正常。视觉上横向 panel 在 side Dock 下横向侵入工作区较多；已将 side Dock panel 改为纵向排列，单张卡片仍保持完整缩略图和标题尺寸，最多 3 张完整卡片后竖向滚动。
+- 后续问题：Stage Manager 和 Multiple displays 仍需继续验证。
+
 ### 4. Dock on right
 
 目标：同左侧 Dock，验证右侧 Dock 的定位和隐藏行为。
 
 步骤与记录同 Dock on left。
+
+执行备注（2026-07-01）：
+
+- 结果：pass with note。
+- 设置：用户手动验证 Dock on right；验证后未要求保留系统设置变更。
+- 操作：同 Dock on left。
+- 观察：功能行为反馈正常。与 Dock on left 一样，side Dock 使用纵向完整卡片 panel，bottom Dock 保持横向 panel。
+- 后续问题：Stage Manager 和 Multiple displays 仍需继续验证。
 
 ### 5. Stage Manager enabled
 

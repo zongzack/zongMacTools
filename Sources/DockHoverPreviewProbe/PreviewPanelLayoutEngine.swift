@@ -22,6 +22,15 @@ enum PreviewPanelLayoutEngine {
         return CGRect(origin: clamp(origin: proposedOrigin, panelSize: panelSize, visibleFrame: anchor.visibleFrame), size: panelSize)
     }
 
+    static func panelLayout(for anchor: PreviewPanelAnchor) -> PreviewPanelLayout {
+        switch inferDockEdge(anchor: anchor) {
+        case .bottom:
+            return .horizontal
+        case .left, .right:
+            return .vertical
+        }
+    }
+
     static func inferDockEdge(anchor: PreviewPanelAnchor) -> DockEdge {
         guard let frame = anchor.dockItemFrame else { return .bottom }
         let edgeBand: CGFloat = 80

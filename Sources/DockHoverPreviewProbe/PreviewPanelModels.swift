@@ -7,6 +7,11 @@ enum DockEdge: Equatable {
     case right
 }
 
+enum PreviewPanelLayout: Equatable {
+    case horizontal
+    case vertical
+}
+
 struct PreviewPanelAnchor: Equatable {
     let dockItemFrame: CGRect?
     let mouseLocation: CGPoint

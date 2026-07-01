@@ -32,7 +32,8 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         currentAnchor = anchor
 
         let panel = ensurePanel()
-        let view = PreviewPanelView(model: model) { [weak self] id in
+        let layout = PreviewPanelLayoutEngine.panelLayout(for: anchor)
+        let view = PreviewPanelView(model: model, layout: layout) { [weak self] id in
             self?.currentOnSelect?(id)
         }
 
@@ -45,8 +46,8 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         }
 
         panel.contentViewController?.view.layoutSubtreeIfNeeded()
-        let fittingSize = panel.contentViewController?.view.fittingSize ?? NSSize(width: 256, height: 180)
-        let frame = PreviewPanelLayoutEngine.frame(for: fittingSize, anchor: anchor)
+        let panelSize = PreviewPanelMetrics.panelSize(cardCount: model.cards.count, layout: layout)
+        let frame = PreviewPanelLayoutEngine.frame(for: panelSize, anchor: anchor)
         panel.setFrame(frame, display: true)
         panel.orderFrontRegardless()
         logger.info("preview.panel.show app=\(model.appName) count=\(model.cards.count) frame=\(frame)")

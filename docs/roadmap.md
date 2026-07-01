@@ -18,8 +18,8 @@
 - [x] Other normal Space。
 - [x] Full-screen Space。
 - [x] Dock auto-hide。
-- [ ] Dock on left。
-- [ ] Dock on right。
+- [x] Dock on left。
+- [x] Dock on right。
 - [ ] Stage Manager。
 - [ ] Multiple displays。
 - [ ] 将每个环境变体的结果写入 `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`。

@@ -6,7 +6,7 @@
 
 ## 构建验证
 
-- [x] `swift test` 通过。2026-07-01 Dock auto-hide 修复后最终记录为 35 个 XCTest、0 失败。
+- [x] `swift test` 通过。2026-07-01 side Dock 布局适配后最终记录为 38 个 XCTest、0 失败。
 - [x] `swift build` 通过。
 - [x] `Scripts/build_probe_app.sh` 可生成 `build/DockHoverPreviewProbe.app`。
 
@@ -50,9 +50,9 @@
 - [x] Other normal Space。2026-06-30 和 2026-07-01 在第二个普通桌面验证：preview 展示、缩略图、stale/quick leave、Dock-to-panel 保留、离开隐藏、Esc、点击激活、Dock 重启恢复均正常。后续发现并修复了“移动到相邻未启动 Dock app 时旧 panel 保留”的回归，2026-07-01 人工复测正常。
 - [x] Full-screen Space。2026-07-01 在 Chrome 全屏 Space 验证：preview panel 可显示，位置合理且不越界；快速离开不会留下 stale preview；Dock-to-panel 保留、离开隐藏、点击激活并隐藏、`Esc` 隐藏、移到相邻未启动 Dock app 隐藏旧 panel、Dock 重启恢复均由人工反馈正常。初次验证发现 Chrome 全屏下 ScreenCaptureKit 返回空标题浅条带，导致 panel 出现 3 张卡片；已补回归测试并过滤该类辅助条带，复测后 Chrome 全屏 `windows.query count=1`、`preview.panel.show count=1`、`activation.result` 正常。结果：pass with note。
 - [x] Dock auto-hide enabled。2026-07-01 临时开启 Dock auto-hide 验证：Dock 弹出后 preview panel 可显示，位置在 Dock 图标附近且不越界；Dock-to-panel 保留、离开隐藏、移动到相邻未启动 app 隐藏旧 panel、Dock 重启恢复由日志和人工反馈正常。初次验证发现点击卡片激活后，再 hover 同一 Dock app 时 auto-hide reveal edge 会被 delayed validation 误判为 stale，导致不再显示 preview；已补回归测试并允许底部 reveal edge 命中对应 Dock item，复测后人工反馈问题解决。验证后已恢复原始 `autohide=0`。结果：pass with note。
+- [x] Dock on left。2026-07-01 人工验证：preview panel 可显示，位置在 Dock item 旁边且不越界；hover、Dock-to-panel 保留、离开隐藏、点击激活、`Esc`、相邻未启动 app 隐藏旧 panel等行为反馈正常。验证后将 side Dock panel 从横向卡片条改为纵向排列，单张卡片仍保留完整缩略图和标题尺寸，最多显示 3 张完整卡片后竖向滚动。结果：pass with note。
+- [x] Dock on right。2026-07-01 人工验证：preview panel 可显示，位置在 Dock item 旁边且不越界；hover、Dock-to-panel 保留、离开隐藏、点击激活、`Esc`、相邻未启动 app 隐藏旧 panel等行为反馈正常。验证后同 Dock on left 使用纵向排列的完整卡片，减少横向侵入工作区。结果：pass with note。
 - [ ] Stage Manager enabled。
-- [ ] Dock on left。
-- [ ] Dock on right。
 - [ ] Multiple displays。
 
 ## 备注

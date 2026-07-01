@@ -8,7 +8,7 @@
 
 MVP UI 结论：`pass with concerns`。
 
-核心功能已经可用，普通底部 Dock、单显示器、常规 Space 的主流程通过自动测试、打包验证和人工 UI 验收。Full-screen Space 已完成跟进验证并修复 Chrome 全屏辅助条带误收录问题；Dock auto-hide 已完成跟进验证并修复底部 reveal edge stale hover 误判。剩余风险集中在 Stage Manager、左右 Dock 和多显示器。
+核心功能已经可用，普通底部 Dock、单显示器、常规 Space 的主流程通过自动测试、打包验证和人工 UI 验收。Full-screen Space 已完成跟进验证并修复 Chrome 全屏辅助条带误收录问题；Dock auto-hide 已完成跟进验证并修复底部 reveal edge stale hover 误判；Dock left/right 已完成跟进验证并将 side Dock panel 调整为纵向完整卡片布局。剩余风险集中在 Stage Manager 和多显示器。
 
 ## 硬门槛结果
 
@@ -36,7 +36,7 @@ MVP UI 结论：`pass with concerns`。
 
 已通过：
 
-- `swift test`：2026-07-01 Dock auto-hide 修复后最终记录为 35 个 XCTest、0 失败。
+- `swift test`：2026-07-01 side Dock 布局适配后最终记录为 38 个 XCTest、0 失败。
 - `swift build`：通过。
 - `Scripts/build_probe_app.sh`：可生成 `build/DockHoverPreviewProbe.app`。
 - 样本 app 主流程：VS Code、Chrome、Typora、IINA、WPS 由人工反馈为功能正常。
@@ -50,14 +50,13 @@ MVP UI 结论：`pass with concerns`。
 - Other normal Space 通过跟进验证。
 - Full-screen Space 通过跟进验证，结果 `pass with note`。初次验证发现 Chrome 全屏下 ScreenCaptureKit 返回空标题浅条带，导致 panel 出现 3 张卡片；已补回归测试并过滤该类辅助条带。复测日志包含 `permissions.refresh accessibility=true screenRecording=true`、`dock.subscribed pid=...`、Chrome 全屏 `windows.query app=Google Chrome count=1`、`preview.panel.show app=Google Chrome count=1`、`thumbnail.success`、`activation.result` 和 `preview.panel.hide reason=activated`。
 - Dock auto-hide 通过跟进验证，结果 `pass with note`。初次验证发现点击卡片激活后，再 hover 同一 Dock app 时，auto-hide reveal edge 会让 delayed validation 误判 stale，导致 preview 不再显示；已补回归测试并允许底部 reveal edge 命中对应 Dock item。复测日志包含 `dock.hoverDelayed ... matches=true mouseInside=true`、`preview.panel.show`、`activation.result`、再次 hover 后 `preview.panel.show`，以及 `killall Dock` 后 `dock.pidChanged`、`dock.subscribed pid=...`。验证后已恢复原始 `autohide=0`。
+- Dock left/right 通过跟进验证，结果 `pass with note`。人工验证显示左右 Dock 下 preview 展示、位置不越界、Dock-to-panel 保留、离开隐藏、点击激活、`Esc` 和相邻未启动 app 隐藏旧 panel均正常。基于验证后的视觉判断，side Dock panel 改为纵向排列完整卡片，bottom Dock 保持横向排列；新增测试覆盖 bottom/side Dock layout 选择和 side Dock 3 张完整卡片高度上限。
 - 修复并验证了两个 hover 手感问题：
   - Dock 到 panel 之间不再过早隐藏。
   - 从有 preview 的 app 移到相邻未启动 Dock app 时，旧 panel 会隐藏。
 
 ## 仍需验证
 
-- Dock left。
-- Dock right。
 - Stage Manager。
 - Multiple displays。
 
