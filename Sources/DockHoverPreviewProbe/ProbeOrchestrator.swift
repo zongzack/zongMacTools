@@ -1,21 +1,49 @@
 import AppKit
 
+struct HoverPreviewCandidate {
+    let app: NSRunningApplication
+    let bundleIdentifier: String
+    let dockItemFrame: CGRect?
+}
+
 @MainActor
 final class ProbeOrchestrator: DockHoverMonitorDelegate {
     private let permissionService: PermissionService
     private let logger: ProbeLogger
     private let previewSessionController: PreviewSessionController
-    private lazy var dockHoverMonitor = DockHoverMonitor(logger: logger)
-    private var pendingHoverWorkItem: DispatchWorkItem?
+    private let settingsStore: DockHoverPreviewSettingsStore
+    private let targetTracker: AppTargetTracker
+    private let hoverDelayScheduler: HoverDelayScheduling
+    private let frontmostApplicationProvider: FrontmostApplicationProviding
 
-    init(permissionService: PermissionService, logger: ProbeLogger, previewSessionController: PreviewSessionController) {
+    private lazy var dockHoverMonitor = DockHoverMonitor(logger: logger)
+    private var pendingHoverCancellation: HoverDelayCancellation?
+    private var pendingHoverBundleIdentifier: String?
+    private var pendingHoverGeneration = 0
+    private var settingsObserverToken: UUID?
+    private var isStopping = false
+
+    init(
+        permissionService: PermissionService,
+        logger: ProbeLogger,
+        previewSessionController: PreviewSessionController,
+        settingsStore: DockHoverPreviewSettingsStore,
+        targetTracker: AppTargetTracker,
+        hoverDelayScheduler: HoverDelayScheduling = DispatchHoverDelayScheduler(),
+        frontmostApplicationProvider: FrontmostApplicationProviding = WorkspaceFrontmostApplicationProvider()
+    ) {
         self.permissionService = permissionService
         self.logger = logger
         self.previewSessionController = previewSessionController
+        self.settingsStore = settingsStore
+        self.targetTracker = targetTracker
+        self.hoverDelayScheduler = hoverDelayScheduler
+        self.frontmostApplicationProvider = frontmostApplicationProvider
         self.dockHoverMonitor.delegate = self
     }
 
     func start() {
+        startObservingSettings()
         let state = permissionService.refresh()
         logger.info("orchestrator.start accessibility=\(state.accessibilityGranted) screenRecording=\(state.screenRecordingGranted)")
         if state.accessibilityGranted {
@@ -26,24 +54,28 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     }
 
     func stop() {
-        pendingHoverWorkItem?.cancel()
-        Task { @MainActor [previewSessionController] in
-            previewSessionController.hide(reason: "orchestratorStop")
-        }
+        cancelPendingHover()
+        stopObservingSettings()
+        previewSessionController.hide(reason: "orchestratorStop")
+        isStopping = true
         dockHoverMonitor.stop()
+        isStopping = false
         logger.info("orchestrator.stop")
     }
 
     func showFrontmostAppProbe() {
         guard permissionService.refresh().screenRecordingGranted else {
-            Task { @MainActor [previewSessionController] in
-                previewSessionController.hide(reason: "screenRecording=false")
-            }
+            previewSessionController.hide(reason: "screenRecording=false")
             logger.warning("debug.frontmost.skipped screenRecording=false")
             return
         }
-        guard let app = NSWorkspace.shared.frontmostApplication else {
+        guard let app = frontmostApplicationProvider.frontmostApplication() else {
             logger.warning("debug.frontmost.noApp")
+            return
+        }
+        if isExcluded(app.bundleIdentifier, in: settingsStore.snapshot) {
+            previewSessionController.hide(reason: "appExcluded")
+            logger.info("debug.frontmost.skipped reason=appExcluded bundle=\(app.bundleIdentifier ?? "nil")")
             return
         }
         let anchor = makeAnchor(dockItemFrame: nil)
@@ -53,47 +85,208 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         }
     }
 
+    func cancelPendingHoverForMenu(reason: String) {
+        cancelPendingHover()
+        logger.info("orchestrator.pendingHoverCancelled reason=\(reason)")
+    }
+
+    func hidePreviewForMenu(reason: String) {
+        previewSessionController.hide(reason: reason)
+    }
+
     func dockHoverMonitor(_ monitor: DockHoverMonitor, didHover app: HoveredDockApp) {
-        pendingHoverWorkItem?.cancel()
-        let workItem = DispatchWorkItem { [weak self, weak monitor] in
-            guard let self, let monitor else { return }
-            let stillHovered = monitor.resolveCurrentHoveredDockApp()
-            let matches = stillHovered?.bundleIdentifier == app.bundleIdentifier
-            let validationFrame = stillHovered?.dockItemFrame
-            let mouseInside = validationFrame.map {
-                GeometryHelpers.containsDockItemHover(
-                    NSEvent.mouseLocation,
-                    dockItemFrame: $0,
-                    screenFrame: self.makeAnchor(dockItemFrame: $0).screenFrame,
-                    tolerance: 2
-                )
-            } ?? false
-            self.logger.info("dock.hoverDelayed bundle=\(app.bundleIdentifier) matches=\(matches) mouseInside=\(mouseInside) frame=\(String(describing: validationFrame))")
-            guard matches, mouseInside, let hoveredApp = stillHovered else {
-                self.previewSessionController.hide(reason: "hoverValidationFailed")
-                return
+        targetTracker.updateLatestHoveredDockApp(
+            AppTarget(
+                bundleIdentifier: app.bundleIdentifier,
+                displayName: app.app.localizedName ?? app.bundleIdentifier
+            )
+        )
+        let candidate = HoverPreviewCandidate(
+            app: app.app,
+            bundleIdentifier: app.bundleIdentifier,
+            dockItemFrame: app.dockItemFrame
+        )
+        schedulePreviewAfterDelay(candidate: candidate) { [weak monitor] in
+            guard let hovered = monitor?.resolveCurrentHoveredDockApp() else {
+                return nil
             }
-            let anchor = self.makeAnchor(dockItemFrame: validationFrame)
-            Task { @MainActor [previewSessionController] in
-                await previewSessionController.showPreview(for: hoveredApp.app, anchor: anchor)
-            }
+            return HoverPreviewCandidate(
+                app: hovered.app,
+                bundleIdentifier: hovered.bundleIdentifier,
+                dockItemFrame: hovered.dockItemFrame
+            )
         }
-        pendingHoverWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
     }
 
     func dockHoverMonitorDidLoseHover(_ monitor: DockHoverMonitor) {
-        pendingHoverWorkItem?.cancel()
-        let mouse = NSEvent.mouseLocation
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            if self.previewSessionController.isMouseInsidePanelTransitionRegion(mouse) {
-                self.logger.info("dock.hoverLost.panelRetained")
-                return
-            }
-            self.previewSessionController.hide(reason: "hoverLost")
-            self.logger.info("dock.hoverLost.orchestrator")
+        guard !isStopping else {
+            return
         }
+        cancelPendingHover()
+        let mouse = NSEvent.mouseLocation
+        if previewSessionController.isMouseInsidePanelTransitionRegion(mouse) {
+            logger.info("dock.hoverLost.panelRetained")
+            return
+        }
+        previewSessionController.hide(reason: "hoverLost")
+        logger.info("dock.hoverLost.orchestrator")
+    }
+
+    func schedulePreviewAfterDelayForTesting(
+        app: NSRunningApplication,
+        bundleIdentifier: String,
+        dockItemFrame: CGRect?
+    ) {
+        let candidate = HoverPreviewCandidate(
+            app: app,
+            bundleIdentifier: bundleIdentifier,
+            dockItemFrame: dockItemFrame
+        )
+        schedulePreviewAfterDelay(candidate: candidate) {
+            candidate
+        }
+    }
+
+    func validateDelayedHoverForTesting(
+        candidate: HoverPreviewCandidate,
+        resolved: HoverPreviewCandidate?,
+        mouseInside: Bool
+    ) {
+        validateDelayedHover(candidate: candidate, resolved: resolved, mouseInside: mouseInside)
+    }
+
+    private func startObservingSettings() {
+        guard settingsObserverToken == nil else {
+            return
+        }
+        settingsObserverToken = settingsStore.addObserver { [weak self] settings in
+            self?.settingsDidChange(settings)
+        }
+    }
+
+    private func stopObservingSettings() {
+        guard let settingsObserverToken else {
+            return
+        }
+        settingsStore.removeObserver(settingsObserverToken)
+        self.settingsObserverToken = nil
+    }
+
+    private func settingsDidChange(_ settings: DockHoverPreviewSettings) {
+        if !settings.isDockHoverPreviewEnabled {
+            cancelPendingHover()
+            previewSessionController.hide(reason: "settingsDisabled")
+            logger.info("dock.hoverSkipped reason=settingsDisabled source=settingsObserver")
+            return
+        }
+
+        guard let pendingHoverBundleIdentifier,
+              settings.excludedAppBundleIdentifiers.contains(pendingHoverBundleIdentifier) else {
+            return
+        }
+        cancelPendingHover()
+        previewSessionController.hide(reason: "appExcluded")
+        logger.info("dock.hoverSkipped reason=appExcluded source=settingsObserver bundle=\(pendingHoverBundleIdentifier)")
+    }
+
+    private func schedulePreviewAfterDelay(
+        candidate: HoverPreviewCandidate,
+        resolveCurrentCandidate: @escaping @MainActor () -> HoverPreviewCandidate?
+    ) {
+        cancelPendingHover()
+
+        let settings = settingsStore.snapshot
+        guard settings.isDockHoverPreviewEnabled else {
+            previewSessionController.hide(reason: "settingsDisabled")
+            logger.info("dock.hoverSkipped reason=settingsDisabled bundle=\(candidate.bundleIdentifier)")
+            return
+        }
+        guard !settings.excludedAppBundleIdentifiers.contains(candidate.bundleIdentifier) else {
+            previewSessionController.hide(reason: "appExcluded")
+            logger.info("dock.hoverSkipped reason=appExcluded bundle=\(candidate.bundleIdentifier)")
+            return
+        }
+
+        pendingHoverGeneration += 1
+        let hoverGeneration = pendingHoverGeneration
+        pendingHoverBundleIdentifier = candidate.bundleIdentifier
+        pendingHoverCancellation = hoverDelayScheduler.schedule(afterMilliseconds: settings.hoverDelayMilliseconds) { [weak self] in
+            guard let self else { return }
+            guard self.isCurrentPendingHover(hoverGeneration) else { return }
+            let resolved = resolveCurrentCandidate()
+            self.handleDelayedHover(candidate: candidate, resolved: resolved, generation: hoverGeneration)
+        }
+    }
+
+    private func handleDelayedHover(
+        candidate: HoverPreviewCandidate,
+        resolved: HoverPreviewCandidate?,
+        generation: Int
+    ) {
+        guard isCurrentPendingHover(generation) else {
+            return
+        }
+        pendingHoverCancellation = nil
+        pendingHoverBundleIdentifier = nil
+        let validationFrame = resolved?.dockItemFrame
+        let mouseInside = validationFrame.map {
+            GeometryHelpers.containsDockItemHover(
+                NSEvent.mouseLocation,
+                dockItemFrame: $0,
+                screenFrame: makeAnchor(dockItemFrame: $0).screenFrame,
+                tolerance: 2
+            )
+        } ?? false
+        validateDelayedHover(candidate: candidate, resolved: resolved, mouseInside: mouseInside)
+    }
+
+    private func validateDelayedHover(
+        candidate: HoverPreviewCandidate,
+        resolved: HoverPreviewCandidate?,
+        mouseInside: Bool
+    ) {
+        let matches = resolved?.bundleIdentifier == candidate.bundleIdentifier
+        let validationFrame = resolved?.dockItemFrame
+        logger.info("dock.hoverDelayed bundle=\(candidate.bundleIdentifier) matches=\(matches) mouseInside=\(mouseInside) frame=\(String(describing: validationFrame))")
+
+        let settings = settingsStore.snapshot
+        guard settings.isDockHoverPreviewEnabled else {
+            previewSessionController.hide(reason: "settingsDisabled")
+            logger.info("dock.hoverDelayed.skipped reason=settingsDisabled bundle=\(candidate.bundleIdentifier)")
+            return
+        }
+        guard !settings.excludedAppBundleIdentifiers.contains(candidate.bundleIdentifier) else {
+            previewSessionController.hide(reason: "appExcluded")
+            logger.info("dock.hoverDelayed.skipped reason=appExcluded bundle=\(candidate.bundleIdentifier)")
+            return
+        }
+        guard matches, mouseInside, let resolved else {
+            previewSessionController.hide(reason: "hoverValidationFailed")
+            return
+        }
+
+        let anchor = makeAnchor(dockItemFrame: validationFrame)
+        Task { @MainActor [previewSessionController] in
+            await previewSessionController.showPreview(for: resolved.app, anchor: anchor)
+        }
+    }
+
+    private func cancelPendingHover() {
+        pendingHoverCancellation?.cancel()
+        pendingHoverCancellation = nil
+        pendingHoverBundleIdentifier = nil
+        pendingHoverGeneration += 1
+    }
+
+    private func isCurrentPendingHover(_ generation: Int) -> Bool {
+        generation == pendingHoverGeneration
+    }
+
+    private func isExcluded(_ bundleIdentifier: String?, in settings: DockHoverPreviewSettings) -> Bool {
+        guard let bundleIdentifier else {
+            return false
+        }
+        return settings.excludedAppBundleIdentifiers.contains(bundleIdentifier)
     }
 
     private func makeAnchor(dockItemFrame: CGRect?) -> PreviewPanelAnchor {
@@ -108,5 +301,15 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
             screenFrame: screenFrame,
             visibleFrame: visibleFrame
         )
+    }
+}
+
+extension ProbeOrchestrator: MenuOrchestrating {
+    func cancelPendingHover(reason: String) {
+        cancelPendingHoverForMenu(reason: reason)
+    }
+
+    func hidePreview(reason: String) {
+        hidePreviewForMenu(reason: reason)
     }
 }

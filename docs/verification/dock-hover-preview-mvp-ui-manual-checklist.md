@@ -2,13 +2,32 @@
 
 日期：2026-06-29
 
-最近更新：2026-07-01
+最近更新：2026-07-02
 
 ## 构建验证
 
-- [x] `swift test` 通过。2026-07-01 Stage Manager 稳定性修复后最终记录为 41 个 XCTest、0 失败。
+- [x] `swift test` 通过。2026-07-02 Task 11 门禁记录为 98 个 XCTest、0 失败。
 - [x] `swift build` 通过。
-- [x] `Scripts/build_probe_app.sh` 可生成 `build/DockHoverPreviewProbe.app`。
+- [x] `Scripts/build_probe_app.sh` 可生成 `build/zongMacTools.app`，其中 executable 仍为 `DockHoverPreviewProbe`。
+- [x] `git diff --check` 通过。
+
+## P1 自动验证
+
+- [x] Settings defaults 保持 MVP 行为：enabled、250 ms、standard retention、max 8 cards、excluded apps 为空、English。
+- [x] Settings 非法值回退并记录 `settings.invalid`，不会覆盖原始 defaults 或导致 hover preview 崩溃。
+- [x] Hover delay、enabled/disabled、excluded apps、retention、max cards、language、Launch at Login 菜单路径均有 XCTest 覆盖。
+- [x] Screen Recording 缺失时继续静默抑制 preview UI。
+- [x] Stale hover cancellation 仍有 generation / delayed hover 回归测试覆盖。
+- [x] `Scripts/build_probe_app.sh` 生成 `build/zongMacTools.app/Contents/Resources/zongMacTools.icns` 并通过 `codesign --verify --deep --strict build/zongMacTools.app`。
+
+## P1 手动验证队列
+
+- [ ] Finder 显示 `zongMacTools.app` 和 Z icon。
+- [ ] System Settings > Privacy & Security 的 Accessibility / Screen Recording 权限行显示 `zongMacTools` 名称和 icon；如 TCC 需要，删除旧项后重新添加再确认。
+- [ ] Login Items 中状态与 `SMAppService.mainApp.status` 一致；`.requiresApproval` 时 Open Login Items Settings 可打开系统设置且不反复提示。
+- [ ] 真实菜单交互更新 checkmark，且 Disable / Exclude 不留下 stale panel。
+- [ ] 默认启动行为保持 MVP 等价：enabled、250 ms、standard retention、max 8 cards、excluded apps 为空、English。
+- [ ] 抽样 Dock auto-hide、left/right Dock、Stage Manager 环境下 P1 设置不会引入 stuck panel 或过期 hover。
 
 ## 权限验证
 

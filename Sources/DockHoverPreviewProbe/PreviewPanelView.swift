@@ -31,7 +31,7 @@ struct PreviewPanelView: View {
     }
 
     private var horizontalContent: some View {
-        ScrollView(.horizontal, showsIndicators: model.cards.count > 3) {
+        ScrollView(.horizontal, showsIndicators: model.cards.count > PreviewPanelMetrics.maxVisibleHorizontalCards) {
             HStack(spacing: PreviewPanelMetrics.cardSpacing) {
                 ForEach(model.cards) { card in
                     PreviewCardView(card: card) {
@@ -139,6 +139,7 @@ enum PreviewPanelMetrics {
     static let panelPadding: CGFloat = 12
     static let panelCornerRadius: CGFloat = 8
     static let cardSpacing: CGFloat = 8
+    static let maxVisibleHorizontalCards = 8
     static let maxVisibleVerticalCards = 3
     static let cardWidth: CGFloat = 232
     static let cardHeight: CGFloat = 172
@@ -154,9 +155,10 @@ enum PreviewPanelMetrics {
         let safeCardCount = max(cardCount, 1)
         switch layout {
         case .horizontal:
+            let visibleCardCount = min(safeCardCount, maxVisibleHorizontalCards)
             return CGSize(
-                width: CGFloat(safeCardCount) * cardWidth
-                    + CGFloat(max(safeCardCount - 1, 0)) * cardSpacing
+                width: CGFloat(visibleCardCount) * cardWidth
+                    + CGFloat(max(visibleCardCount - 1, 0)) * cardSpacing
                     + panelPadding * 2,
                 height: cardHeight + panelPadding * 2
             )

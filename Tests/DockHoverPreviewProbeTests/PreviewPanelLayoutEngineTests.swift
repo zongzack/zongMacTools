@@ -101,6 +101,14 @@ final class PreviewPanelLayoutEngineTests: XCTestCase {
         XCTAssertEqual(size.height, 556, accuracy: 0.001)
     }
 
+    func testHorizontalPanelSizeCapsVisibleWidthWhenMaxCardsIsTwelve() {
+        let eightCardSize = PreviewPanelMetrics.panelSize(cardCount: 8, layout: .horizontal)
+        let twelveCardSize = PreviewPanelMetrics.panelSize(cardCount: 12, layout: .horizontal)
+
+        XCTAssertEqual(twelveCardSize.width, eightCardSize.width, accuracy: 0.001)
+        XCTAssertEqual(twelveCardSize.height, eightCardSize.height, accuracy: 0.001)
+    }
+
     func testMissingDockFrameFallsBackToMouseLocationAndClamps() {
         let anchor = PreviewPanelAnchor(
             dockItemFrame: nil,

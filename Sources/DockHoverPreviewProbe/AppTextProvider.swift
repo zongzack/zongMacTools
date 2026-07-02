@@ -1,0 +1,265 @@
+import Foundation
+
+enum LocalizedTextKey: String, CaseIterable {
+    case dockHoverPreviewStatusEnabled
+    case dockHoverPreviewStatusDisabled
+    case enableDockHoverPreview
+    case disableDockHoverPreview
+    case hoverDelay
+    case panelRetention
+    case maxCards
+    case language
+    case excludedApps
+    case excludeApp
+    case excludeNamedApp
+    case includeNamedApp
+    case clearExcludedApps
+    case moreExcludedApps
+    case launchAtLoginEnabled
+    case launchAtLoginNotRegistered
+    case launchAtLoginRequiresApproval
+    case launchAtLoginNotFound
+    case enableLaunchAtLogin
+    case disableLaunchAtLogin
+    case openLoginItemsSettings
+    case requestAccessibilityPrompt
+    case openAccessibilitySettings
+    case openScreenRecordingSettings
+    case refreshPermissions
+    case debugShowPreviewForFrontmostApp
+    case quit
+}
+
+struct AppTextProvider: Equatable {
+    let language: DisplayLanguage
+
+    func string(_ key: LocalizedTextKey) -> String {
+        switch language {
+        case .english:
+            englishText(for: key)
+        case .simplifiedChinese:
+            simplifiedChineseText(for: key)
+        }
+    }
+
+    func string(_ key: LocalizedTextKey, appName: String) -> String {
+        string(key).replacingOccurrences(of: "%@", with: appName)
+    }
+
+    func string(_ key: LocalizedTextKey, count: Int) -> String {
+        if key == .moreExcludedApps {
+            return moreExcludedApps(count: count)
+        }
+        return string(key).replacingOccurrences(of: "%d", with: "\(count)")
+    }
+
+    func excludeNamedApp(_ appName: String) -> String {
+        string(.excludeNamedApp, appName: appName)
+    }
+
+    func includeNamedApp(_ appName: String) -> String {
+        string(.includeNamedApp, appName: appName)
+    }
+
+    func moreExcludedApps(count: Int) -> String {
+        switch language {
+        case .english where count == 1:
+            "1 more excluded app"
+        default:
+            string(.moreExcludedApps).replacingOccurrences(of: "%d", with: "\(count)")
+        }
+    }
+
+    func languageDisplayName(_ language: DisplayLanguage) -> String {
+        switch language {
+        case .english:
+            "English"
+        case .simplifiedChinese:
+            "\u{7B80}\u{4F53}\u{4E2D}\u{6587}"
+        }
+    }
+
+    func accessibilityStatus(granted: Bool) -> String {
+        switch language {
+        case .english:
+            "Accessibility: \(granted ? "granted" : "missing")"
+        case .simplifiedChinese:
+            "\u{8F85}\u{52A9}\u{529F}\u{80FD}\u{FF1A}\(permissionStatus(granted: granted))"
+        }
+    }
+
+    func screenRecordingStatus(granted: Bool) -> String {
+        switch language {
+        case .english:
+            "Screen Recording: \(granted ? "granted" : "missing")"
+        case .simplifiedChinese:
+            "\u{5C4F}\u{5E55}\u{5F55}\u{5236}\u{FF1A}\(permissionStatus(granted: granted))"
+        }
+    }
+
+    func panelRetentionDisplayName(_ mode: PanelRetentionMode) -> String {
+        switch language {
+        case .english:
+            switch mode {
+            case .tight:
+                "Tight"
+            case .standard:
+                "Standard"
+            case .forgiving:
+                "Forgiving"
+            }
+        case .simplifiedChinese:
+            switch mode {
+            case .tight:
+                "\u{7D27}\u{51D1}"
+            case .standard:
+                "\u{6807}\u{51C6}"
+            case .forgiving:
+                "\u{5BBD}\u{677E}"
+            }
+        }
+    }
+
+    func excludedAppListTitle(appName: String?, bundleIdentifier: String) -> String {
+        guard let appName, !appName.isEmpty, appName != bundleIdentifier else {
+            return self.bundleIdentifier(bundleIdentifier)
+        }
+        return "\(externalAppName(appName)) (\(self.bundleIdentifier(bundleIdentifier)))"
+    }
+
+    func externalAppName(_ appName: String) -> String {
+        appName
+    }
+
+    func externalWindowTitle(_ windowTitle: String) -> String {
+        windowTitle
+    }
+
+    func bundleIdentifier(_ bundleIdentifier: String) -> String {
+        bundleIdentifier
+    }
+
+    private func permissionStatus(granted: Bool) -> String {
+        granted
+            ? "\u{5DF2}\u{6388}\u{6743}"
+            : "\u{7F3A}\u{5931}"
+    }
+
+    private func englishText(for key: LocalizedTextKey) -> String {
+        switch key {
+        case .dockHoverPreviewStatusEnabled:
+            "Dock Hover Preview: Enabled"
+        case .dockHoverPreviewStatusDisabled:
+            "Dock Hover Preview: Disabled"
+        case .enableDockHoverPreview:
+            "Enable Dock Hover Preview"
+        case .disableDockHoverPreview:
+            "Disable Dock Hover Preview"
+        case .hoverDelay:
+            "Hover Delay"
+        case .panelRetention:
+            "Panel Retention"
+        case .maxCards:
+            "Max Cards"
+        case .language:
+            "Language"
+        case .excludedApps:
+            "Excluded Apps"
+        case .excludeApp:
+            "Exclude App"
+        case .excludeNamedApp:
+            "Exclude %@"
+        case .includeNamedApp:
+            "Include %@"
+        case .clearExcludedApps:
+            "Clear Excluded Apps"
+        case .moreExcludedApps:
+            "%d more excluded apps"
+        case .launchAtLoginEnabled:
+            "Launch at Login: Enabled"
+        case .launchAtLoginNotRegistered:
+            "Launch at Login: Not Registered"
+        case .launchAtLoginRequiresApproval:
+            "Launch at Login: Requires Approval"
+        case .launchAtLoginNotFound:
+            "Launch at Login: Not Found"
+        case .enableLaunchAtLogin:
+            "Enable Launch at Login"
+        case .disableLaunchAtLogin:
+            "Disable Launch at Login"
+        case .openLoginItemsSettings:
+            "Open Login Items Settings"
+        case .requestAccessibilityPrompt:
+            "Request Accessibility Prompt"
+        case .openAccessibilitySettings:
+            "Open Accessibility Settings"
+        case .openScreenRecordingSettings:
+            "Open Screen Recording Settings"
+        case .refreshPermissions:
+            "Refresh Permissions"
+        case .debugShowPreviewForFrontmostApp:
+            "Debug: Show Preview For Frontmost App"
+        case .quit:
+            "Quit"
+        }
+    }
+
+    private func simplifiedChineseText(for key: LocalizedTextKey) -> String {
+        switch key {
+        case .dockHoverPreviewStatusEnabled:
+            "Dock \u{60AC}\u{505C}\u{9884}\u{89C8}\u{FF1A}\u{5DF2}\u{542F}\u{7528}"
+        case .dockHoverPreviewStatusDisabled:
+            "Dock \u{60AC}\u{505C}\u{9884}\u{89C8}\u{FF1A}\u{5DF2}\u{505C}\u{7528}"
+        case .enableDockHoverPreview:
+            "\u{542F}\u{7528} Dock \u{60AC}\u{505C}\u{9884}\u{89C8}"
+        case .disableDockHoverPreview:
+            "\u{505C}\u{7528} Dock \u{60AC}\u{505C}\u{9884}\u{89C8}"
+        case .hoverDelay:
+            "\u{60AC}\u{505C}\u{5EF6}\u{8FDF}"
+        case .panelRetention:
+            "\u{9762}\u{677F}\u{4FDD}\u{7559}\u{624B}\u{611F}"
+        case .maxCards:
+            "\u{6700}\u{5927}\u{5361}\u{7247}\u{6570}"
+        case .language:
+            "\u{663E}\u{793A}\u{8BED}\u{8A00}"
+        case .excludedApps:
+            "\u{6392}\u{9664}\u{7684} App"
+        case .excludeApp:
+            "\u{6392}\u{9664} App"
+        case .excludeNamedApp:
+            "\u{6392}\u{9664} %@"
+        case .includeNamedApp:
+            "\u{6062}\u{590D} %@"
+        case .clearExcludedApps:
+            "\u{6E05}\u{7A7A}\u{6392}\u{9664}\u{5217}\u{8868}"
+        case .moreExcludedApps:
+            "\u{8FD8}\u{6709} %d \u{4E2A}\u{5DF2}\u{6392}\u{9664} App"
+        case .launchAtLoginEnabled:
+            "\u{5F00}\u{673A}\u{542F}\u{52A8}\u{FF1A}\u{5DF2}\u{542F}\u{7528}"
+        case .launchAtLoginNotRegistered:
+            "\u{5F00}\u{673A}\u{542F}\u{52A8}\u{FF1A}\u{672A}\u{6CE8}\u{518C}"
+        case .launchAtLoginRequiresApproval:
+            "\u{5F00}\u{673A}\u{542F}\u{52A8}\u{FF1A}\u{9700}\u{8981}\u{6279}\u{51C6}"
+        case .launchAtLoginNotFound:
+            "\u{5F00}\u{673A}\u{542F}\u{52A8}\u{FF1A}\u{672A}\u{627E}\u{5230}"
+        case .enableLaunchAtLogin:
+            "\u{542F}\u{7528}\u{5F00}\u{673A}\u{542F}\u{52A8}"
+        case .disableLaunchAtLogin:
+            "\u{505C}\u{7528}\u{5F00}\u{673A}\u{542F}\u{52A8}"
+        case .openLoginItemsSettings:
+            "\u{6253}\u{5F00}\u{767B}\u{5F55}\u{9879}\u{8BBE}\u{7F6E}"
+        case .requestAccessibilityPrompt:
+            "\u{8BF7}\u{6C42}\u{8F85}\u{52A9}\u{529F}\u{80FD}\u{6388}\u{6743}\u{63D0}\u{793A}"
+        case .openAccessibilitySettings:
+            "\u{6253}\u{5F00}\u{8F85}\u{52A9}\u{529F}\u{80FD}\u{8BBE}\u{7F6E}"
+        case .openScreenRecordingSettings:
+            "\u{6253}\u{5F00}\u{5C4F}\u{5E55}\u{5F55}\u{5236}\u{8BBE}\u{7F6E}"
+        case .refreshPermissions:
+            "\u{5237}\u{65B0}\u{6743}\u{9650}\u{72B6}\u{6001}"
+        case .debugShowPreviewForFrontmostApp:
+            "\u{8C03}\u{8BD5}\u{FF1A}\u{9884}\u{89C8}\u{5F53}\u{524D}\u{524D}\u{53F0} App"
+        case .quit:
+            "\u{9000}\u{51FA}"
+        }
+    }
+}

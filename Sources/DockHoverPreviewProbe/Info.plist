@@ -11,20 +11,24 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>DockHoverPreviewProbe</string>
+    <string>zongMacTools</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
     <string>0.1.0</string>
     <key>CFBundleVersion</key>
     <string>1</string>
+    <key>CFBundleDisplayName</key>
+    <string>zongMacTools</string>
+    <key>CFBundleIconFile</key>
+    <string>zongMacTools</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSAppleEventsUsageDescription</key>
-    <string>DockHoverPreviewProbe uses public activation APIs while testing window switching behavior.</string>
+    <string>zongMacTools uses public activation APIs while testing window switching behavior.</string>
     <key>NSScreenCaptureUsageDescription</key>
-    <string>DockHoverPreviewProbe captures static window thumbnails during local probe testing.</string>
+    <string>zongMacTools captures static window thumbnails during local probe testing.</string>
 </dict>
 </plist>

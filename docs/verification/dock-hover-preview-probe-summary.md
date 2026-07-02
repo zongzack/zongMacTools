@@ -2,13 +2,15 @@
 
 日期：2026-06-26
 
-最近更新：2026-07-01
+最近更新：2026-07-02
 
 ## 总结
 
 MVP UI / P0 环境变体结论：`pass with note`。当前可执行环境已完成验证；Multiple displays 因当前只有一个显示器，记录为 `blocked / not available`。
 
 核心功能已经可用，普通底部 Dock、单显示器、常规 Space 的主流程通过自动测试、打包验证和人工 UI 验收。Full-screen Space 已完成跟进验证并修复 Chrome 全屏辅助条带误收录问题；Dock auto-hide 已完成跟进验证并修复底部 reveal edge stale hover 误判；Dock left/right 已完成跟进验证并将 side Dock panel 调整为纵向完整卡片布局；Stage Manager 已完成跟进验证并避免使用斜的系统缩略图或桌面假截图。剩余未实测项只有多显示器，原因是当前硬件环境不可用。
+
+P1 settings implementation 自动验证已通过，P1 manual validation 已于 2026-07-02 由用户反馈完成。已验证范围包括 settings 持久化和非法值回退、hover delay、enabled/disabled、retention、max cards、excluded apps、display language、Launch at Login fake/system service wrapper、AppDelegate wiring、`zongMacTools.app` 打包、icon 生成，以及 Finder/TCC/Login Items/真实菜单交互人工复验。
 
 ## 硬门槛结果
 
@@ -36,9 +38,10 @@ MVP UI / P0 环境变体结论：`pass with note`。当前可执行环境已完�
 
 已通过：
 
-- `swift test`：2026-07-01 Stage Manager 稳定性修复后最终记录为 41 个 XCTest、0 失败。
+- `swift test`：2026-07-02 Task 11 门禁记录为 98 个 XCTest、0 失败。
 - `swift build`：通过。
-- `Scripts/build_probe_app.sh`：可生成 `build/DockHoverPreviewProbe.app`。
+- `Scripts/build_probe_app.sh`：可生成 `build/zongMacTools.app`，其中 executable 仍为 `DockHoverPreviewProbe`。
+- `git diff --check`：通过。
 - 样本 app 主流程：VS Code、Chrome、Typora、IINA、WPS 由人工反馈为功能正常。
 - 点击卡片激活窗口并隐藏 panel。
 - 快速离开取消 stale preview。
@@ -55,6 +58,26 @@ MVP UI / P0 环境变体结论：`pass with note`。当前可执行环境已完�
 - 修复并验证了两个 hover 手感问题：
   - Dock 到 panel 之间不再过早隐藏。
   - 从有 preview 的 app 移到相邻未启动 Dock app 时，旧 panel 会隐藏。
+
+## P1 自动验证结果
+
+已通过：
+
+- `swift test`：2026-07-02 Task 11 门禁记录为 98 个 XCTest、0 失败。
+- `swift build`：通过。
+- `Scripts/build_probe_app.sh`：通过，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`。
+- `git diff --check`：通过。
+- `plutil -p build/zongMacTools.app/Contents/Info.plist | grep zongMacTools`：通过，包含 `CFBundleName`、`CFBundleDisplayName`、`CFBundleIconFile` 和 usage descriptions。
+- `test -f build/zongMacTools.app/Contents/Resources/zongMacTools.icns`：通过。
+- `codesign --verify --deep --strict build/zongMacTools.app`：通过。
+
+P1 manual validation 已完成：
+
+- Finder shows `zongMacTools.app` with the Z icon：通过，用户反馈完成。
+- System Settings permission rows show `zongMacTools` and icon after re-adding permissions if TCC requires it：通过，用户反馈完成。
+- Launch at Login 状态跟随 `SMAppService.mainApp.status`；`.requiresApproval` 可打开 Login Items Settings 且不重复打扰：通过，用户反馈完成。
+- 真实菜单 actions 更新 checkmark，不留下 stale panel：通过，用户反馈完成。
+- Dock auto-hide、left/right Dock、Stage Manager 下抽样确认 P1 设置不破坏 P0 行为：通过，用户反馈完成。
 
 ## 未实测 / 受限项
 

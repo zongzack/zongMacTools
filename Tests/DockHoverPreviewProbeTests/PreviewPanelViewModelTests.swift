@@ -7,10 +7,19 @@ final class PreviewPanelViewModelTests: XCTestCase {
     func testPanelViewModelCapsCardsAtEight() {
         let cards = (1...10).map { makeCard(id: CGWindowID($0), title: "Window \($0)") }
 
-        let model = PreviewPanelViewModel(appName: "Code", cards: cards)
+        let model = PreviewPanelViewModel(appName: "Code", cards: cards, maxCardCount: 8)
 
         XCTAssertEqual(model.cards.count, 8)
         XCTAssertEqual(model.cards.last?.title, "Window 8")
+    }
+
+    func testPanelViewModelDoesNotApplyIndependentEightCardLimit() {
+        let cards = (1...12).map { makeCard(id: CGWindowID($0), title: "Window \($0)") }
+
+        let model = PreviewPanelViewModel(appName: "Code", cards: cards, maxCardCount: 12)
+
+        XCTAssertEqual(model.cards.count, 12)
+        XCTAssertEqual(model.cards.last?.title, "Window 12")
     }
 
     func testUpdateThumbnailStopsLoadingForMatchingCardOnly() {
@@ -22,7 +31,8 @@ final class PreviewPanelViewModelTests: XCTestCase {
             cards: [
                 makeCard(id: matchingID.windowID, title: "Project"),
                 makeCard(id: otherID.windowID, title: "Terminal")
-            ]
+            ],
+            maxCardCount: 8
         )
 
         model.updateThumbnail(thumbnail, for: matchingID)

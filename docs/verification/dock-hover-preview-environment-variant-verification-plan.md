@@ -2,7 +2,7 @@
 
 日期：2026-06-30
 
-最近更新：2026-07-01
+最近更新：2026-07-02
 
 ## 目标
 
@@ -28,7 +28,7 @@
    - `swift build`
    - `Scripts/build_probe_app.sh`
    - `git diff --check`
-3. 启动打包 app：`open build/DockHoverPreviewProbe.app`。
+3. 启动打包 app：`open build/zongMacTools.app`。
 4. 确认日志包含：
    - `permissions.refresh accessibility=true screenRecording=true`
    - `orchestrator.start accessibility=true screenRecording=true`
@@ -44,6 +44,7 @@
 - 点击卡片是否激活窗口并隐藏 panel。
 - `Esc` 是否隐藏 panel。
 - 移到相邻未启动 Dock app 时是否隐藏旧 panel。
+- P1 设置抽样：Disable / Enable、delay、retention、max cards、excluded app 不应引入 stuck panel 或过期 hover。
 
 每次改系统设置前必须记录原始状态，验证后恢复。
 

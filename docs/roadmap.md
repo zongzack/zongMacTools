@@ -36,13 +36,16 @@
 
 目标：让工具变成长期自用时可调、可控、不打扰。
 
-- [ ] 菜单栏增加 Enable / Disable Dock hover preview。
-- [ ] 支持 hover delay 设置：例如 150 ms、250 ms、400 ms。
-- [ ] 支持 panel hide / retention 手感设置。
-- [ ] 支持最大卡片数设置，默认 8。
-- [ ] 支持 excluded apps，不对指定 app 显示 preview。
-- [ ] 支持 Launch at Login。
-- [ ] 设置持久化到 `UserDefaults`。
+- [x] 菜单栏增加 Enable / Disable Dock hover preview。
+- [x] 支持 hover delay 设置：例如 150 ms、250 ms、400 ms。
+- [x] 支持 panel hide / retention 手感设置。
+- [x] 支持最大卡片数设置，默认 8。
+- [x] 支持 excluded apps，不对指定 app 显示 preview。
+- [x] 支持 Launch at Login。
+- [x] 支持应用自身显示语言切换：English / 简体中文。只切换本工具静态 UI 文案，不翻译 app 名称、窗口标题、bundle id、系统权限名称或系统设置页面名称。
+- [x] 设置持久化到 `UserDefaults`。
+
+状态：2026-07-02 已完成实现、自动验证和人工验证。
 
 验收标准：
 

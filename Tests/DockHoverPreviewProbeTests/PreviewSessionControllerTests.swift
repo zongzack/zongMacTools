@@ -37,6 +37,50 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertNotNil(harness.display.lastModel?.cards.first?.thumbnail)
     }
 
+    func testPreviewSessionUsesConfiguredMaxCardCount() async {
+        let windows = (1...6).map { makeWindow(id: CGWindowID($0)) }
+        let settingsStore = FakeSettingsStore(snapshot: .defaultsWith(maxCardCount: 3))
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: windows,
+            settingsStore: settingsStore
+        )
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.count, 3)
+        XCTAssertEqual(harness.queryService.requestedLimits, [3])
+    }
+
+    func testShowPreviewTracksCurrentPreviewApp() async throws {
+        let app = try bundledRunningApplication()
+        let bundleIdentifier = try XCTUnwrap(app.bundleIdentifier)
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [makeWindow(id: 1)],
+            app: app
+        )
+
+        await harness.controller.showPreview(for: app, anchor: harness.anchor)
+
+        XCTAssertEqual(harness.targetTracker.exclusionTarget?.bundleIdentifier, bundleIdentifier)
+        XCTAssertEqual(harness.targetTracker.exclusionTarget?.displayName, app.localizedName ?? bundleIdentifier)
+    }
+
+    func testHideClearsCurrentPreviewAppTarget() async throws {
+        let app = try bundledRunningApplication()
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [makeWindow(id: 1)],
+            app: app
+        )
+
+        await harness.controller.showPreview(for: app, anchor: harness.anchor)
+        harness.controller.hide(reason: "test")
+
+        XCTAssertNil(harness.targetTracker.exclusionTarget)
+    }
+
     func testHideInvalidatesStaleThumbnailUpdates() async {
         let window = makeWindow(id: 1)
         let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
@@ -74,11 +118,13 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertEqual(harness.display.checkedPoints, [CGPoint(x: 12, y: 34)])
     }
 
-    func testMouseInsideBridgeBetweenDockAndPanelIsInsidePreviewRegion() async {
+    func testStandardRetentionMatchesExistingBridgeBehavior() async {
         let window = makeWindow(id: 1)
+        let settingsStore = FakeSettingsStore(snapshot: .defaultsWith(retention: .standard))
         let harness = PreviewSessionHarness(
             screenRecordingGranted: true,
             windows: [window],
+            settingsStore: settingsStore,
             anchor: PreviewPanelAnchor(
                 dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
                 mouseLocation: CGPoint(x: 726, y: 24),
@@ -92,6 +138,100 @@ final class PreviewSessionControllerTests: XCTestCase {
 
         XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 726, y: 53)))
         XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 300, y: 53)))
+    }
+
+    func testTightRetentionShrinksDockTolerance() async {
+        let window = makeWindow(id: 1)
+        let settingsStore = FakeSettingsStore(snapshot: .defaultsWith(retention: .tight))
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            settingsStore: settingsStore,
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
+                mouseLocation: CGPoint(x: 726, y: 24),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 600, y: 58, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 775, y: 40)))
+    }
+
+    func testForgivingRetentionExpandsDockTolerance() async {
+        let window = makeWindow(id: 1)
+        let settingsStore = FakeSettingsStore(snapshot: .defaultsWith(retention: .forgiving))
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            settingsStore: settingsStore,
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
+                mouseLocation: CGPoint(x: 726, y: 24),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 600, y: 58, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 787, y: 40)))
+    }
+
+    func testSettingsObserverUpdatesRetentionImmediatelyWithoutShowingAgain() async {
+        let window = makeWindow(id: 1)
+        let settingsStore = FakeSettingsStore(snapshot: .defaultsWith(retention: .standard))
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            settingsStore: settingsStore,
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
+                mouseLocation: CGPoint(x: 726, y: 24),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 600, y: 58, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 775, y: 40)))
+
+        harness.controller.startObservingSettings()
+        settingsStore.replaceSnapshot(.defaultsWith(retention: .tight))
+
+        XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 775, y: 40)))
+        XCTAssertEqual(harness.queryService.requestedLimits, [8])
+        XCTAssertEqual(harness.display.hideReasons, [])
+
+        settingsStore.replaceSnapshot(.defaultsWith(retention: .forgiving))
+
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 787, y: 40)))
+        XCTAssertEqual(harness.queryService.requestedLimits, [8])
+        XCTAssertEqual(harness.display.hideReasons, [])
+
+        harness.controller.stopObservingSettings()
+    }
+
+    func testSettingsObserverStartIsIdempotentAndStopRemovesObserver() {
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [])
+
+        harness.controller.startObservingSettings()
+        harness.controller.startObservingSettings()
+
+        XCTAssertEqual(harness.settingsStore.observers.count, 1)
+
+        harness.controller.stopObservingSettings()
+
+        XCTAssertEqual(harness.settingsStore.observers.count, 0)
+
+        harness.controller.stopObservingSettings()
+
+        XCTAssertEqual(harness.settingsStore.observers.count, 0)
     }
 
     func testMouseInsideBridgeBetweenDockAndPanelIsInsidePanelTransitionRegion() async {
@@ -155,9 +295,11 @@ final class PreviewSessionControllerTests: XCTestCase {
 
     func testMouseInsideBridgeBetweenSideDockAndPanelIsInsidePreviewRegion() async {
         let window = makeWindow(id: 1)
+        let settingsStore = FakeSettingsStore(snapshot: .defaultsWith(retention: .tight))
         let harness = PreviewSessionHarness(
             screenRecordingGranted: true,
             windows: [window],
+            settingsStore: settingsStore,
             anchor: PreviewPanelAnchor(
                 dockItemFrame: CGRect(x: 0, y: 430, width: 48, height: 52),
                 mouseLocation: CGPoint(x: 24, y: 456),
@@ -169,8 +311,9 @@ final class PreviewSessionControllerTests: XCTestCase {
 
         await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
 
-        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 53, y: 456)))
-        XCTAssertTrue(harness.controller.isMouseInsidePanelTransitionRegion(CGPoint(x: 53, y: 456)))
+        let gapCenterPoint = CGPoint(x: 53, y: 456)
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(gapCenterPoint))
+        XCTAssertTrue(harness.controller.isMouseInsidePanelTransitionRegion(gapCenterPoint))
         XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 53, y: 700)))
     }
 }
@@ -193,13 +336,68 @@ private final class FakePermissionService: PermissionService {
 
 private final class FakeWindowQueryService: WindowQueryService, @unchecked Sendable {
     let windows: [PreviewWindow]
+    private(set) var requestedLimits: [Int] = []
 
     init(windows: [PreviewWindow]) {
         self.windows = windows
     }
 
-    func windows(for app: NSRunningApplication) async -> [PreviewWindow] {
-        windows
+    func windows(for app: NSRunningApplication, limit: Int) async -> [PreviewWindow] {
+        requestedLimits.append(limit)
+        return Array(windows.prefix(limit))
+    }
+}
+
+@MainActor
+private final class FakeSettingsStore: DockHoverPreviewSettingsStore {
+    private(set) var observers: [UUID: @MainActor (DockHoverPreviewSettings) -> Void] = [:]
+    private(set) var updateCount = 0
+    var snapshot: DockHoverPreviewSettings
+
+    init(snapshot: DockHoverPreviewSettings = .defaults) {
+        self.snapshot = snapshot
+    }
+
+    @discardableResult
+    func addObserver(_ observer: @MainActor @escaping (DockHoverPreviewSettings) -> Void) -> UUID {
+        let token = UUID()
+        observers[token] = observer
+        return token
+    }
+
+    func removeObserver(_ token: UUID) {
+        observers.removeValue(forKey: token)
+    }
+
+    func update(transform: (inout DockHoverPreviewSettings) -> Void) {
+        updateCount += 1
+        transform(&snapshot)
+        observers.values.forEach { $0(snapshot) }
+    }
+
+    func replaceSnapshot(_ next: DockHoverPreviewSettings) {
+        snapshot = next
+        observers.values.forEach { $0(snapshot) }
+    }
+}
+
+private extension DockHoverPreviewSettings {
+    static func defaultsWith(
+        enabled: Bool = true,
+        hoverDelayMilliseconds: Int = 250,
+        maxCardCount: Int = 8,
+        retention: PanelRetentionMode = .standard,
+        excludedApps: Set<String> = [],
+        language: DisplayLanguage = .english
+    ) -> DockHoverPreviewSettings {
+        var settings = DockHoverPreviewSettings.defaults
+        settings.isDockHoverPreviewEnabled = enabled
+        settings.hoverDelayMilliseconds = hoverDelayMilliseconds
+        settings.maxCardCount = maxCardCount
+        settings.panelRetentionMode = retention
+        settings.excludedAppBundleIdentifiers = excludedApps
+        settings.displayLanguage = language
+        return settings
     }
 }
 
@@ -294,19 +492,24 @@ private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
 
 @MainActor
 private final class PreviewSessionHarness {
-    let app = NSRunningApplication.current
+    let app: NSRunningApplication
     let permissionService: FakePermissionService
     let queryService: FakeWindowQueryService
     let thumbnailService = FakeThumbnailService()
     let activationService = FakeActivationService()
     let display = FakePreviewPanelDisplay()
     let logger = ProbeLogger()
+    let settingsStore: FakeSettingsStore
+    let targetTracker: AppTargetTracker
     let anchor: PreviewPanelAnchor
     let controller: PreviewSessionController
 
     init(
         screenRecordingGranted: Bool,
         windows: [PreviewWindow],
+        settingsStore: FakeSettingsStore = FakeSettingsStore(),
+        targetTracker: AppTargetTracker? = nil,
+        app: NSRunningApplication = .current,
         anchor: PreviewPanelAnchor = PreviewPanelAnchor(
             dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
             mouseLocation: CGPoint(x: 726, y: 24),
@@ -314,7 +517,10 @@ private final class PreviewSessionHarness {
             visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
         )
     ) {
+        self.app = app
         self.anchor = anchor
+        self.settingsStore = settingsStore
+        self.targetTracker = targetTracker ?? AppTargetTracker(selfBundleIdentifier: "com.zong.DockHoverPreviewProbe")
         permissionService = FakePermissionService(
             accessibilityGranted: true,
             screenRecordingGranted: screenRecordingGranted
@@ -326,6 +532,8 @@ private final class PreviewSessionHarness {
             thumbnailService: thumbnailService,
             activationService: activationService,
             panelDisplay: display,
+            settingsStore: settingsStore,
+            targetTracker: self.targetTracker,
             logger: logger
         )
     }
@@ -357,4 +565,16 @@ private func makeImage() -> CGImage {
         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
     )!
     return context.makeImage()!
+}
+
+private func bundledRunningApplication(
+    file: StaticString = #filePath,
+    line: UInt = #line
+) throws -> NSRunningApplication {
+    try XCTUnwrap(
+        NSWorkspace.shared.runningApplications.first { $0.bundleIdentifier != nil },
+        "Expected at least one running application with a bundle identifier",
+        file: file,
+        line: line
+    )
 }

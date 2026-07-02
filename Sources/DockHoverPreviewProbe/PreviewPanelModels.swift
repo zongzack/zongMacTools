@@ -34,9 +34,9 @@ struct PreviewPanelViewModel {
     let appName: String
     private(set) var cards: [PreviewCardViewModel]
 
-    init(appName: String, cards: [PreviewCardViewModel]) {
+    init(appName: String, cards: [PreviewCardViewModel], maxCardCount: Int) {
         self.appName = appName
-        self.cards = Array(cards.prefix(8))
+        self.cards = Array(cards.prefix(max(maxCardCount, 0)))
     }
 
     mutating func updateThumbnail(_ thumbnail: CGImage?, for id: PreviewWindowID) {

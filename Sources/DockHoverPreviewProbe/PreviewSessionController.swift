@@ -8,6 +8,8 @@ final class PreviewSessionController {
     private let thumbnailService: ThumbnailService
     private let activationService: ActivationService
     private let panelDisplay: PreviewPanelDisplaying
+    private let settingsStore: DockHoverPreviewSettingsStore
+    private let targetTracker: AppTargetTracker
     private let logger: ProbeLogger
 
     private var generation = 0
@@ -15,8 +17,8 @@ final class PreviewSessionController {
     private var currentWindowsByID: [PreviewWindowID: PreviewWindow] = [:]
     private var leaveTimerOwner: PreviewSessionLeaveTimerOwner?
     private var currentDockItemFrame: CGRect?
-    private let previewRegionTolerance: CGFloat = 24
-    private let panelEdgeTolerance: CGFloat = 6
+    private var currentRetentionParameters = PanelRetentionMode.standard.parameters
+    private var settingsObserverToken: UUID?
 
     init(
         permissionService: PermissionService,
@@ -24,6 +26,8 @@ final class PreviewSessionController {
         thumbnailService: ThumbnailService,
         activationService: ActivationService,
         panelDisplay: PreviewPanelDisplaying,
+        settingsStore: DockHoverPreviewSettingsStore,
+        targetTracker: AppTargetTracker,
         logger: ProbeLogger
     ) {
         self.permissionService = permissionService
@@ -31,6 +35,8 @@ final class PreviewSessionController {
         self.thumbnailService = thumbnailService
         self.activationService = activationService
         self.panelDisplay = panelDisplay
+        self.settingsStore = settingsStore
+        self.targetTracker = targetTracker
         self.logger = logger
     }
 
@@ -44,7 +50,9 @@ final class PreviewSessionController {
 
         generation += 1
         let sessionGeneration = generation
-        let windows = Array(await windowQueryService.windows(for: app).prefix(8))
+        let settings = settingsStore.snapshot
+        currentRetentionParameters = settings.panelRetentionParameters
+        let windows = await windowQueryService.windows(for: app, limit: settings.maxCardCount)
         guard isCurrent(sessionGeneration) else { return }
         guard !windows.isEmpty else {
             hide(reason: "noWindows")
@@ -53,6 +61,7 @@ final class PreviewSessionController {
         }
 
         let appName = app.localizedName ?? app.bundleIdentifier ?? "Unknown App"
+        targetTracker.updateCurrentPreviewApp(AppTarget(app: app))
         let cards = windows.map { window in
             PreviewCardViewModel(
                 id: window.id,
@@ -64,7 +73,11 @@ final class PreviewSessionController {
             )
         }
         currentWindowsByID = Dictionary(uniqueKeysWithValues: windows.map { ($0.id, $0) })
-        currentModel = PreviewPanelViewModel(appName: appName, cards: cards)
+        currentModel = PreviewPanelViewModel(
+            appName: appName,
+            cards: cards,
+            maxCardCount: settings.maxCardCount
+        )
         if let currentModel {
             panelDisplay.show(model: currentModel, anchor: anchor) { [weak self] id in
                 Task { @MainActor in
@@ -87,6 +100,26 @@ final class PreviewSessionController {
         }
     }
 
+    func startObservingSettings() {
+        guard settingsObserverToken == nil else {
+            return
+        }
+
+        currentRetentionParameters = settingsStore.snapshot.panelRetentionParameters
+        settingsObserverToken = settingsStore.addObserver { [weak self] settings in
+            self?.currentRetentionParameters = settings.panelRetentionParameters
+        }
+    }
+
+    func stopObservingSettings() {
+        guard let settingsObserverToken else {
+            return
+        }
+
+        settingsStore.removeObserver(settingsObserverToken)
+        self.settingsObserverToken = nil
+    }
+
     func hide(reason: String) {
         generation += 1
         leaveTimerOwner?.invalidate()
@@ -94,6 +127,7 @@ final class PreviewSessionController {
         currentDockItemFrame = nil
         currentModel = nil
         currentWindowsByID = [:]
+        targetTracker.updateCurrentPreviewApp(nil)
         panelDisplay.hide(reason: reason)
     }
 
@@ -108,16 +142,21 @@ final class PreviewSessionController {
         guard let dockFrame = currentDockItemFrame else {
             return false
         }
-        if GeometryHelpers.contains(point, in: dockFrame, tolerance: previewRegionTolerance) {
+        let retentionParameters = currentRetentionParameters
+        if GeometryHelpers.contains(point, in: dockFrame, tolerance: retentionParameters.dockItemTolerance) {
             return true
         }
         guard let panelFrame = panelDisplay.panelFrame() else {
             return false
         }
-        if GeometryHelpers.contains(point, in: panelFrame, tolerance: panelEdgeTolerance) {
+        if GeometryHelpers.contains(point, in: panelFrame, tolerance: retentionParameters.panelEdgeTolerance) {
             return true
         }
-        return GeometryHelpers.contains(point, in: bridgeFrame(between: dockFrame, and: panelFrame), tolerance: 0)
+        return GeometryHelpers.contains(
+            point,
+            in: bridgeFrame(between: dockFrame, and: panelFrame, inset: retentionParameters.bridgeInset),
+            tolerance: 0
+        )
     }
 
     func isMouseInsidePanelTransitionRegion(_ point: CGPoint) -> Bool {
@@ -128,10 +167,15 @@ final class PreviewSessionController {
               let panelFrame = panelDisplay.panelFrame() else {
             return false
         }
-        if GeometryHelpers.contains(point, in: panelFrame, tolerance: panelEdgeTolerance) {
+        let retentionParameters = currentRetentionParameters
+        if GeometryHelpers.contains(point, in: panelFrame, tolerance: retentionParameters.panelEdgeTolerance) {
             return true
         }
-        return GeometryHelpers.contains(point, in: bridgeFrame(between: dockFrame, and: panelFrame), tolerance: 0)
+        return GeometryHelpers.contains(
+            point,
+            in: bridgeFrame(between: dockFrame, and: panelFrame, inset: retentionParameters.bridgeInset),
+            tolerance: 0
+        )
     }
 
     func activate(windowID: PreviewWindowID) async {
@@ -161,16 +205,25 @@ final class PreviewSessionController {
         }
     }
 
-    private func bridgeFrame(between dockFrame: CGRect, and panelFrame: CGRect) -> CGRect {
-        let minX = max(min(dockFrame.minX, panelFrame.minX), min(dockFrame.maxX, panelFrame.maxX))
-        let maxX = min(max(dockFrame.minX, panelFrame.minX), max(dockFrame.maxX, panelFrame.maxX))
-        let horizontalOverlap = maxX > minX
-        let bridgeX = horizontalOverlap
-            ? minX
-            : min(dockFrame.midX, panelFrame.midX) - previewRegionTolerance
-        let bridgeWidth = horizontalOverlap
-            ? maxX - minX
-            : previewRegionTolerance * 2
+    private func bridgeFrame(between dockFrame: CGRect, and panelFrame: CGRect, inset: CGFloat) -> CGRect {
+        let overlapMinY = max(dockFrame.minY, panelFrame.minY)
+        let overlapMaxY = min(dockFrame.maxY, panelFrame.maxY)
+
+        let hasVerticalOverlap = overlapMaxY > overlapMinY
+
+        if hasVerticalOverlap {
+            let minX = min(dockFrame.maxX, panelFrame.maxX)
+            let maxX = max(dockFrame.minX, panelFrame.minX)
+            return CGRect(
+                x: minX,
+                y: overlapMinY,
+                width: max(0, maxX - minX),
+                height: overlapMaxY - overlapMinY
+            ).insetBy(dx: -inset, dy: -inset)
+        }
+
+        let bridgeX = min(dockFrame.midX, panelFrame.midX) - inset
+        let bridgeWidth = inset * 2
         let minY = min(dockFrame.maxY, panelFrame.maxY)
         let maxY = max(dockFrame.minY, panelFrame.minY)
         return CGRect(
@@ -178,7 +231,7 @@ final class PreviewSessionController {
             y: minY,
             width: bridgeWidth,
             height: max(0, maxY - minY)
-        ).insetBy(dx: -previewRegionTolerance, dy: -previewRegionTolerance)
+        ).insetBy(dx: -inset, dy: -inset)
     }
 }
 

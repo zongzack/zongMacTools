@@ -6,7 +6,7 @@ import ScreenCaptureKit
 private let axMatchThreshold = 0.72
 
 protocol WindowQueryService: Sendable {
-    func windows(for app: NSRunningApplication) async -> [PreviewWindow]
+    func windows(for app: NSRunningApplication, limit: Int) async -> [PreviewWindow]
 }
 
 struct AXMatchDiagnostics {
@@ -51,7 +51,7 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
         self.logger = logger
     }
 
-    func windows(for app: NSRunningApplication) async -> [PreviewWindow] {
+    func windows(for app: NSRunningApplication, limit: Int) async -> [PreviewWindow] {
         let start = CFAbsoluteTimeGetCurrent()
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
@@ -90,12 +90,14 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
                 if lhs.title != rhs.title { return lhs.title < rhs.title }
                 return lhs.cgWindowID < rhs.cgWindowID
             }
+            let safeLimit = max(limit, 0)
+            let limited = Array(sorted.prefix(safeLimit))
             let elapsedMS = Int((CFAbsoluteTimeGetCurrent() - start) * 1000)
-            logger.info("windows.query app=\(app.localizedName ?? "unknown") count=\(sorted.count) elapsedMS=\(elapsedMS)")
-            sorted.prefix(8).forEach { window in
+            logger.info("windows.query app=\(app.localizedName ?? "unknown") count=\(limited.count) totalCount=\(sorted.count) limit=\(safeLimit) elapsedMS=\(elapsedMS)")
+            limited.forEach { window in
                 logger.info("windows.item id=\(window.cgWindowID) pid=\(window.id.pid) title=\(window.title) frame=\(window.frame) axMatched=\(window.axElement != nil)")
             }
-            return Array(sorted.prefix(8))
+            return limited
         } catch {
             logger.error("windows.queryFailed app=\(app.localizedName ?? "unknown") error=\(error)")
             return []
