@@ -12,6 +12,8 @@ MVP UI / P0 环境变体结论：`pass with note`。当前可执行环境已完�
 
 P1 settings implementation 自动验证已通过，P1 manual validation 已于 2026-07-02 由用户反馈完成。已验证范围包括 settings 持久化和非法值回退、hover delay、enabled/disabled、retention、max cards、excluded apps、display language、Launch at Login fake/system service wrapper、AppDelegate wiring、`zongMacTools.app` 打包、icon 生成，以及 Finder/TCC/Login Items/真实菜单交互人工复验。
 
+P2 UI polish 自动验证已完成，覆盖 preview panel fit/fill 显示模式、窄窗口 fit、loading/unavailable placeholder、本地化 `No thumbnail` / `无缩略图`、show/hide animation、Reduce Motion 降级以及 Light / Dark visual token。P2 manual visual validation 尚未运行；bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied 和 quick stale cancellation 均保持 `not run`。
+
 ## 硬门槛结果
 
 | 验证项 | 结果 | 证据摘要 |
@@ -79,6 +81,28 @@ P1 manual validation 已完成：
 - 真实菜单 actions 更新 checkmark，不留下 stale panel：通过，用户反馈完成。
 - Dock auto-hide、left/right Dock、Stage Manager 下抽样确认 P1 设置不破坏 P0 行为：通过，用户反馈完成。
 
+## P2 自动验证结果
+
+已通过：
+
+- `swift test`：2026-07-03 13:31:05 Asia/Shanghai，130 XCTest，0 failures，exit 0。
+- `swift build`：通过，exit 0。
+- `Scripts/build_probe_app.sh`：通过，exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature。
+
+覆盖范围：
+
+- `PreviewPanelViewModelTests`：缩略图更新、nil thumbnail 停止 loading、默认 fill、窄窗口 fit、宽窗口 fill、panel unavailable 文案。
+- `PreviewPanelViewRenderingTests`：fill / fit render plan、固定 thumbnail container、loading spinner、unavailable text branch。
+- `PreviewSessionControllerTests`：从窗口 frame 选择 thumbnail display mode、thumbnail unavailable 文案随 display language 使用 `No thumbnail` / `无缩略图`、Screen Recording denied 保持不 show panel。
+- `PreviewPanelControllerTests`：show/hide animation、Reduce Motion 降级、hide 后 panel frame 与命中测试、hide animation race、update 不重复触发 show animation。
+- `PreviewPanelVisualStyleTests`：Light / Dark visual token 的 panel border、shadow、placeholder surface 和 hover state 基础约束。
+- `AppTextProviderTests`：English `No thumbnail` 与简体中文 `无缩略图`。
+
+P2 manual visual validation：
+
+- 状态：`not run`。
+- 未运行项：bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied、quick stale cancellation。
+
 ## 未实测 / 受限项
 
 - Multiple displays：2026-07-01 当前硬件环境仅检测到 1 个显示器 `Mi Monitor`，无法执行多显示器行为验证；结果记录为 `blocked / not available`，不写成 pass。
@@ -87,6 +111,7 @@ P1 manual validation 已完成：
 
 - 架构设计：[dock-hover-preview-technical-design.md](../architecture/dock-hover-preview-technical-design.md)
 - MVP UI 手动验收：[dock-hover-preview-mvp-ui-manual-checklist.md](dock-hover-preview-mvp-ui-manual-checklist.md)
+- P2 UI polish 手动验收：[dock-hover-preview-p2-ui-polish-manual-checklist.md](dock-hover-preview-p2-ui-polish-manual-checklist.md)
 - Probe 原始证据：[dock-hover-preview-probe-checklist.md](dock-hover-preview-probe-checklist.md)
 - 环境变体验证计划：[dock-hover-preview-environment-variant-verification-plan.md](dock-hover-preview-environment-variant-verification-plan.md)
 - 后续路线：[roadmap.md](../roadmap.md)

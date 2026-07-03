@@ -44,6 +44,67 @@ final class PreviewPanelViewModelTests: XCTestCase {
         XCTAssertTrue(model.cards[1].isLoadingThumbnail)
     }
 
+    func testUpdateThumbnailNilMarksMatchingCardUnavailable() {
+        let matchingID = PreviewWindowID(pid: 100, windowID: 1)
+        var model = PreviewPanelViewModel(
+            appName: "Code",
+            cards: [makeCard(id: matchingID.windowID, title: "Project")],
+            maxCardCount: 8
+        )
+
+        model.updateThumbnail(nil, for: matchingID)
+
+        XCTAssertNil(model.cards[0].thumbnail)
+        XCTAssertFalse(model.cards[0].isLoadingThumbnail)
+    }
+
+    func testCardThumbnailDisplayModeDefaultsToFill() {
+        let card = makeCard(id: 1, title: "Project")
+
+        XCTAssertEqual(card.thumbnailDisplayMode, .fill)
+        XCTAssertEqual(card.effectiveThumbnailDisplayMode, .fill)
+    }
+
+    func testCardThumbnailDisplayModeFitsNearlySquareSourceFrames() {
+        let card = PreviewCardViewModel(
+            id: PreviewWindowID(pid: 100, windowID: 1),
+            title: "Project",
+            appName: "Code",
+            appIcon: NSImage(size: NSSize(width: 16, height: 16)),
+            thumbnail: nil,
+            isLoadingThumbnail: true,
+            sourceFrame: CGRect(x: 0, y: 0, width: 600, height: 600)
+        )
+
+        XCTAssertEqual(card.thumbnailDisplayMode, .fit)
+        XCTAssertEqual(card.effectiveThumbnailDisplayMode, .fit)
+    }
+
+    func testCardThumbnailDisplayModeFillsWideSourceFrames() {
+        let card = PreviewCardViewModel(
+            id: PreviewWindowID(pid: 100, windowID: 1),
+            title: "Project",
+            appName: "Code",
+            appIcon: NSImage(size: NSSize(width: 16, height: 16)),
+            thumbnail: nil,
+            isLoadingThumbnail: true,
+            sourceFrame: CGRect(x: 0, y: 0, width: 1600, height: 900)
+        )
+
+        XCTAssertEqual(card.thumbnailDisplayMode, .fill)
+    }
+
+    func testPanelViewModelCarriesThumbnailUnavailableText() {
+        let model = PreviewPanelViewModel(
+            appName: "Code",
+            cards: [makeCard(id: 1, title: "Project")],
+            maxCardCount: 8,
+            thumbnailUnavailableText: "No thumbnail"
+        )
+
+        XCTAssertEqual(model.thumbnailUnavailableText, "No thumbnail")
+    }
+
     func testCardAccessibilityLabelIncludesAppNameAndTitle() {
         let card = makeCard(id: 1, title: "Project")
 

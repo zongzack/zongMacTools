@@ -13,18 +13,57 @@ protocol PreviewPanelDisplaying: AnyObject {
 }
 
 @MainActor
+protocol MotionPreferenceProviding {
+    var accessibilityDisplayShouldReduceMotion: Bool { get }
+}
+
+enum PreviewPanelAnimationMode: Equatable {
+    case standard
+    case reducedMotion
+
+    var usesScaleOrOffset: Bool {
+        self == .standard
+    }
+}
+
+@MainActor
+protocol PanelAnimationControlling: AnyObject {
+    func cancelAnimations(for panel: NSPanel)
+    func animateShow(
+        panel: NSPanel,
+        mode: PreviewPanelAnimationMode,
+        completion: @escaping @MainActor @Sendable () -> Bool
+    )
+    func animateHide(
+        panel: NSPanel,
+        mode: PreviewPanelAnimationMode,
+        completion: @escaping @MainActor @Sendable () -> Bool
+    )
+}
+
+@MainActor
 final class PreviewPanelController: PreviewPanelDisplaying {
     var onRequestHide: ((String) -> Void)?
 
     private let logger: ProbeLogger
+    private let motionPreferences: MotionPreferenceProviding
+    private let animator: PanelAnimationControlling
     private var panel: NSPanel?
     private var hostingController: NSHostingController<PreviewPanelView>?
     private var currentOnSelect: ((PreviewWindowID) -> Void)?
     private var currentAnchor: PreviewPanelAnchor?
+    private var logicalPanelFrame: CGRect?
+    private var presentationGeneration = 0
     private var eventMonitorOwner: PreviewPanelEventMonitorOwner?
 
-    init(logger: ProbeLogger) {
+    init(
+        logger: ProbeLogger,
+        motionPreferences: MotionPreferenceProviding = SystemMotionPreferenceProvider(),
+        animator: PanelAnimationControlling = NSPanelAnimationController()
+    ) {
         self.logger = logger
+        self.motionPreferences = motionPreferences
+        self.animator = animator
     }
 
     func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onSelect: @escaping (PreviewWindowID) -> Void) {
@@ -32,6 +71,73 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         currentAnchor = anchor
 
         let panel = ensurePanel()
+        let frame = render(model: model, anchor: anchor, in: panel)
+        logicalPanelFrame = frame
+        presentationGeneration += 1
+        let generation = presentationGeneration
+        let mode = animationMode()
+        animator.cancelAnimations(for: panel)
+        panel.ignoresMouseEvents = false
+        panel.orderFrontRegardless()
+        animator.animateShow(panel: panel, mode: mode) { [weak self] in
+            guard
+                let self,
+                self.presentationGeneration == generation,
+                self.panel === panel
+            else {
+                return false
+            }
+            panel.alphaValue = 1
+            panel.contentView?.layer?.setAffineTransform(.identity)
+            return true
+        }
+        logger.info("preview.panel.show app=\(model.appName) count=\(model.cards.count) frame=\(frame)")
+    }
+
+    func update(model: PreviewPanelViewModel) {
+        guard let currentAnchor, let panel else { return }
+        let frame = render(model: model, anchor: currentAnchor, in: panel)
+        logicalPanelFrame = frame
+        logger.info("preview.panel.update app=\(model.appName) count=\(model.cards.count)")
+    }
+
+    func hide(reason: String) {
+        guard let panel else { return }
+        logicalPanelFrame = nil
+        currentAnchor = nil
+        currentOnSelect = nil
+        presentationGeneration += 1
+        let generation = presentationGeneration
+        let mode = animationMode()
+        animator.cancelAnimations(for: panel)
+        panel.ignoresMouseEvents = true
+        animator.animateHide(panel: panel, mode: mode) { [weak self, weak panel] in
+            guard
+                let self,
+                let panel,
+                self.presentationGeneration == generation,
+                self.panel === panel
+            else {
+                return false
+            }
+            panel.orderOut(nil)
+            panel.alphaValue = 1
+            panel.contentView?.layer?.setAffineTransform(.identity)
+            return true
+        }
+        logger.info("preview.panel.hide reason=\(reason)")
+    }
+
+    func isMouseInsidePanel(_ point: CGPoint) -> Bool {
+        guard let frame = logicalPanelFrame else { return false }
+        return GeometryHelpers.contains(point, in: frame, tolerance: 2)
+    }
+
+    func panelFrame() -> CGRect? {
+        logicalPanelFrame
+    }
+
+    private func render(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, in panel: NSPanel) -> CGRect {
         let layout = PreviewPanelLayoutEngine.panelLayout(for: anchor)
         let view = PreviewPanelView(model: model, layout: layout) { [weak self] id in
             self?.currentOnSelect?(id)
@@ -49,33 +155,7 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         let panelSize = PreviewPanelMetrics.panelSize(cardCount: model.cards.count, layout: layout)
         let frame = PreviewPanelLayoutEngine.frame(for: panelSize, anchor: anchor)
         panel.setFrame(frame, display: true)
-        panel.orderFrontRegardless()
-        logger.info("preview.panel.show app=\(model.appName) count=\(model.cards.count) frame=\(frame)")
-    }
-
-    func update(model: PreviewPanelViewModel) {
-        guard let currentAnchor else { return }
-        let onSelect = currentOnSelect ?? { _ in }
-        show(model: model, anchor: currentAnchor, onSelect: onSelect)
-        logger.info("preview.panel.update app=\(model.appName) count=\(model.cards.count)")
-    }
-
-    func hide(reason: String) {
-        guard let panel else { return }
-        panel.orderOut(nil)
-        currentAnchor = nil
-        currentOnSelect = nil
-        logger.info("preview.panel.hide reason=\(reason)")
-    }
-
-    func isMouseInsidePanel(_ point: CGPoint) -> Bool {
-        guard let panel, panel.isVisible else { return false }
-        return GeometryHelpers.contains(point, in: panel.frame, tolerance: 2)
-    }
-
-    func panelFrame() -> CGRect? {
-        guard let panel, panel.isVisible else { return nil }
-        return panel.frame
+        return frame
     }
 
     private func ensurePanel() -> NSPanel {
@@ -100,6 +180,112 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         }
         self.panel = panel
         return panel
+    }
+
+    private func animationMode() -> PreviewPanelAnimationMode {
+        motionPreferences.accessibilityDisplayShouldReduceMotion ? .reducedMotion : .standard
+    }
+}
+
+@MainActor
+private struct SystemMotionPreferenceProvider: MotionPreferenceProviding {
+    var accessibilityDisplayShouldReduceMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+}
+
+@MainActor
+private final class NSPanelAnimationController: PanelAnimationControlling {
+    private let showDuration: TimeInterval = 0.14
+    private let hideDuration: TimeInterval = 0.10
+    private let transformAnimationKey = "dockHoverPreviewPanelTransform"
+
+    func cancelAnimations(for panel: NSPanel) {
+        panel.contentView?.layer?.removeAnimation(forKey: transformAnimationKey)
+        panel.contentView?.layer?.setAffineTransform(.identity)
+        panel.alphaValue = 1
+    }
+
+    func animateShow(
+        panel: NSPanel,
+        mode: PreviewPanelAnimationMode,
+        completion: @escaping @MainActor @Sendable () -> Bool
+    ) {
+        guard mode == .standard else {
+            panel.alphaValue = 1
+            panel.contentView?.layer?.setAffineTransform(.identity)
+            _ = completion()
+            return
+        }
+
+        panel.contentView?.wantsLayer = true
+        panel.alphaValue = 0
+        panel.contentView?.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.98, y: 0.98))
+        animateTransform(
+            on: panel,
+            from: CATransform3DMakeScale(0.98, 0.98, 1),
+            to: CATransform3DIdentity,
+            duration: showDuration
+        )
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = showDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().alphaValue = 1
+        } completionHandler: {
+            MainActor.assumeIsolated {
+                _ = completion()
+            }
+        }
+    }
+
+    func animateHide(
+        panel: NSPanel,
+        mode: PreviewPanelAnimationMode,
+        completion: @escaping @MainActor @Sendable () -> Bool
+    ) {
+        guard mode == .standard else {
+            panel.alphaValue = 1
+            panel.contentView?.layer?.setAffineTransform(.identity)
+            _ = completion()
+            return
+        }
+
+        panel.contentView?.wantsLayer = true
+        panel.alphaValue = 1
+        panel.contentView?.layer?.setAffineTransform(.identity)
+        animateTransform(
+            on: panel,
+            from: CATransform3DIdentity,
+            to: CATransform3DMakeScale(0.985, 0.985, 1),
+            duration: hideDuration
+        )
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = hideDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().alphaValue = 0
+        } completionHandler: {
+            MainActor.assumeIsolated {
+                _ = completion()
+            }
+        }
+    }
+
+    private func animateTransform(
+        on panel: NSPanel,
+        from: CATransform3D,
+        to: CATransform3D,
+        duration: TimeInterval
+    ) {
+        guard let layer = panel.contentView?.layer else { return }
+        let animation = CABasicAnimation(keyPath: "transform")
+        animation.fromValue = from
+        animation.toValue = to
+        animation.duration = duration
+        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        layer.add(animation, forKey: transformAnimationKey)
+        layer.transform = to
     }
 }
 

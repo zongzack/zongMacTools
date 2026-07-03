@@ -14,7 +14,7 @@
 - 每张卡片包含应用图标、窗口标题、静态缩略图或占位图。
 - 点击卡片后尝试激活对应窗口，并隐藏面板。
 
-当前状态是 MVP/P0 UI `pass with note`，P1 基础设置实现、自动验证和人工验证均已完成。普通底部 Dock、全屏 Space、Dock auto-hide、左右 Dock 和 Stage Manager 已完成 P0 验证；多显示器因当前硬件不可用仍为 `blocked / not available`。
+当前状态是 MVP/P0 UI `pass with note`，P1 基础设置实现、自动验证和人工验证均已完成；P2 UI polish 自动验证已完成，人工视觉验证尚未运行。普通底部 Dock、全屏 Space、Dock auto-hide、左右 Dock 和 Stage Manager 已完成 P0 验证；多显示器因当前硬件不可用仍为 `blocked / not available`。
 
 ## 范围
 
@@ -31,6 +31,11 @@ MVP 范围内：
 - stale hover cancellation 是一等行为：过期 hover、快速离开、候选变化都不能留下旧面板。
 - P1 设置持久化到 `UserDefaults`，默认值保持 MVP 行为：enabled、250 ms、standard retention、max 8 cards、excluded apps 为空、English。
 - Launch at Login 只通过公开 `ServiceManagement` / `SMAppService.mainApp` 读取和修改。
+- P2 UI polish 仅扩展 preview panel 的 ViewModel、SwiftUI 渲染、视觉 token 和 panel 动画；不新增 settings key，不修改 P1 默认值。
+- P2 缩略图默认使用 fill；窄窗口按窗口比例自动使用 fit，缩略图容器尺寸保持稳定。
+- P2 区分 loading 与 unavailable placeholder；thumbnail unavailable 文案由当前 display language 提供，English 为 `No thumbnail`，简体中文为 `无缩略图`。
+- P2 show / hide 动画由 panel controller 处理，并读取系统 Reduce Motion；Reduce Motion 打开时走无 scale/offset 的降级路径。
+- P2 Light / Dark 使用集中 visual token 表达 panel/card 边框、阴影、hover state 和 placeholder surface。
 
 MVP 范围外：
 
@@ -127,15 +132,15 @@ MVP 范围外：
 - `ActivationService.swift`：优先 AX raise，再调用 `NSRunningApplication.activate(options: [])`。
 - 如果 AX element 缺失或 raise 失败，仍激活 app 并隐藏面板。
 - 不依赖 `.activateIgnoringOtherApps`，它在现代 macOS 上已不可靠且废弃。
-- 不使用私有 WindowServer/front-process API。
+- 激活路径只使用 AX raise 和 `NSRunningApplication.activate(options: [])`。
 
 ### 预览面板 UI
 
-- `PreviewPanelModels.swift`：anchor、卡片 view model、panel view model。
+- `PreviewPanelModels.swift`：anchor、卡片 view model、panel view model。P2 增加 `ThumbnailDisplayMode`，默认 `.fill`，当窗口 frame aspect ratio `< 1.2` 时使用 `.fit`；`updateThumbnail(nil, for:)` 会让对应卡片停止 loading 并进入 unavailable 语义。
 - `PreviewPanelLayoutEngine.swift`：根据 Dock item frame、鼠标位置和可见屏幕区域计算面板 frame。
-- `PreviewPanelView.swift`：SwiftUI 横向卡片 UI。
-- `PreviewPanelController.swift`：拥有非激活 `NSPanel`，负责 show/update/hide、Esc 监听和 panel frame 查询。
-- `PreviewSessionController.swift`：会话状态机，负责权限抑制、max cards、retention 参数、窗口查询、缩略图更新、点击激活和鼠标离开轮询。
+- `PreviewPanelView.swift`：SwiftUI 卡片 UI。P2 通过 `PreviewThumbnailRenderPlan` 映射 `.fill` / `.fit` 渲染分支；loading 显示 app icon + spinner，unavailable 显示 app icon + 本地化 `No thumbnail` / `无缩略图`；Light / Dark 视觉常量集中在 `PreviewPanelVisualStyle`。
+- `PreviewPanelController.swift`：拥有非激活 `NSPanel`，负责 show/update/hide、Reduce Motion aware animation、Esc 监听和 panel frame 查询。update 只更新内容和 frame，不重复触发 show animation。
+- `PreviewSessionController.swift`：会话状态机，负责权限抑制、max cards、retention 参数、窗口查询、thumbnail unavailable 文案注入、缩略图更新、点击激活和鼠标离开轮询。
 
 面板行为：
 
@@ -144,6 +149,9 @@ MVP 范围外：
 - Dock-to-panel 移动使用窄桥接区保留。
 - 常规 leave timer 使用 Dock frame、panel frame 和桥接区组成的 preview region。
 - Dock hover lost 使用更严格的 panel transition region，避免相邻 Dock item 保留旧 panel。
+- P2 show 动画只处理 opacity/transform，不改变 layout size；hide 动画开始后，旧 panel 不再作为可交互区域参与命中判断。
+- Reduce Motion 打开时，show/hide 走降级路径，不使用 scale/offset 动画。
+- P2 visual token 保持系统 material 方向；Light / Dark 下分别约束 panel border、shadow、card hover 和 placeholder surface。
 
 ## 主要流程
 
@@ -156,8 +164,8 @@ Dock hover：
 5. 如果 bundle 或鼠标命中不匹配，隐藏/取消。
 6. 如果权限允许，按当前 max cards 设置查询窗口。
 7. 无窗口则隐藏。
-8. 有窗口则显示 placeholder 卡片。
-9. 缩略图异步返回后更新卡片。
+8. 有窗口则显示 loading 卡片。
+9. 缩略图异步返回后更新卡片；缩略图返回 `nil` 时，对应卡片进入 unavailable placeholder。
 10. 点击卡片激活窗口并隐藏。
 
 鼠标离开：
@@ -180,12 +188,12 @@ Dock 恢复：
 - 不做精确遮挡检测。
 - 某些 app 的 AX raise 可能只能退化为 app-level activation。
 - 每次 ad-hoc 重新签名 app 后，macOS TCC 可能需要重新授权，系统权限列表显示名称应为 `zongMacTools`。
-- 窄窗口缩略图保持真实比例时，可能看起来没有铺满缩略图区域。
+- P2 窄窗口 fit、Light / Dark token、Reduce Motion 和 show/hide animation 的视觉效果仍需人工复验。
 - Launch at Login 自动测试覆盖服务构造和 fake-driven menu tests；真实状态已通过签名后的 `build/zongMacTools.app` 和系统 Login Items 人工验证。
 
 ## 验收标准
 
-MVP/P1 当前验收标准：
+MVP/P1/P2 当前验收标准：
 
 - 菜单栏 app 能启动，且不显示自己的 Dock 图标。
 - Accessibility 与 Screen Recording 权限状态可见。
@@ -202,7 +210,11 @@ MVP/P1 当前验收标准：
 - Screen Recording 缺失时继续静默抑制 preview UI。
 - Launch at Login 使用公开 `ServiceManagement`。
 - P1 manual validation 已完成：Finder/TCC/Login Items 中的 `zongMacTools` 名称和 Z icon、真实菜单 checkmark/交互、Launch at Login 状态。
+- P2 自动验证已完成：`swift test` 在 2026-07-03 13:31:05 Asia/Shanghai 记录 130 XCTest、0 failures、exit 0；`swift build` exit 0；`Scripts/build_probe_app.sh` exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature。
+- P2 不改变 P1 defaults，也不新增 settings key。
+- P2 ViewModel 和 UI 层覆盖 thumbnail `.fill` / `.fit`、窄窗口 fit、loading/unavailable placeholder、本地化 `No thumbnail` / `无缩略图`、show/hide animation、Reduce Motion 降级以及 Light / Dark visual token。
 
 待补验收：
 
 - Multiple displays。
+- P2 manual visual validation：bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied、quick stale cancellation。

@@ -27,6 +27,7 @@ enum LocalizedTextKey: String, CaseIterable {
     case openScreenRecordingSettings
     case refreshPermissions
     case debugShowPreviewForFrontmostApp
+    case noThumbnail
     case quit
 }
 
@@ -199,6 +200,8 @@ struct AppTextProvider: Equatable {
             "Refresh Permissions"
         case .debugShowPreviewForFrontmostApp:
             "Debug: Show Preview For Frontmost App"
+        case .noThumbnail:
+            "No thumbnail"
         case .quit:
             "Quit"
         }
@@ -258,6 +261,8 @@ struct AppTextProvider: Equatable {
             "\u{5237}\u{65B0}\u{6743}\u{9650}\u{72B6}\u{6001}"
         case .debugShowPreviewForFrontmostApp:
             "\u{8C03}\u{8BD5}\u{FF1A}\u{9884}\u{89C8}\u{5F53}\u{524D}\u{524D}\u{53F0} App"
+        case .noThumbnail:
+            "\u{65E0}\u{7F29}\u{7565}\u{56FE}"
         case .quit:
             "\u{9000}\u{51FA}"
         }

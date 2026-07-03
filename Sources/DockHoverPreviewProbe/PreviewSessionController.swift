@@ -61,6 +61,7 @@ final class PreviewSessionController {
         }
 
         let appName = app.localizedName ?? app.bundleIdentifier ?? "Unknown App"
+        let textProvider = AppTextProvider(language: settings.displayLanguage)
         targetTracker.updateCurrentPreviewApp(AppTarget(app: app))
         let cards = windows.map { window in
             PreviewCardViewModel(
@@ -69,14 +70,16 @@ final class PreviewSessionController {
                 appName: appName,
                 appIcon: window.appIcon,
                 thumbnail: nil,
-                isLoadingThumbnail: true
+                isLoadingThumbnail: true,
+                sourceFrame: window.frame
             )
         }
         currentWindowsByID = Dictionary(uniqueKeysWithValues: windows.map { ($0.id, $0) })
         currentModel = PreviewPanelViewModel(
             appName: appName,
             cards: cards,
-            maxCardCount: settings.maxCardCount
+            maxCardCount: settings.maxCardCount,
+            thumbnailUnavailableText: textProvider.string(.noThumbnail)
         )
         if let currentModel {
             panelDisplay.show(model: currentModel, anchor: anchor) { [weak self] id in

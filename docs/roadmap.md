@@ -57,12 +57,14 @@
 
 目标：让预览面板更像成熟 macOS 小工具。
 
-- [ ] 缩略图显示模式：保持比例 / 裁切填满。
-- [ ] 改善窄窗口缩略图展示。
-- [ ] 增加轻量 show / hide 动画，并尊重 Reduce Motion。
-- [ ] 优化 loading 和 placeholder 状态。
-- [ ] 优化多窗口标题截断和卡片宽度。
-- [ ] 复查 Light / Dark 下的材质、边框和阴影。
+- [x] 缩略图显示模式：保持比例 / 裁切填满。
+- [x] 改善窄窗口缩略图展示。
+- [x] 增加轻量 show / hide 动画，并尊重 Reduce Motion。
+- [x] 优化 loading 和 placeholder 状态。
+- [x] 优化多窗口标题截断和卡片宽度。
+- [x] 复查 Light / Dark 下的材质、边框和阴影。
+
+状态：2026-07-03 已完成实现和自动验证；P2 manual visual validation 尚未运行。
 
 验收标准：
 

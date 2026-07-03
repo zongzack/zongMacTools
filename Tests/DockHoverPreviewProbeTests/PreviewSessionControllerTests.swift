@@ -12,6 +12,7 @@ final class PreviewSessionControllerTests: XCTestCase {
 
         XCTAssertEqual(harness.display.hideReasons, ["screenRecording=false"])
         XCTAssertEqual(harness.display.showCount, 0)
+        XCTAssertNil(harness.display.lastModel)
     }
 
     func testNoWindowsHidesPanel() async {
@@ -35,6 +36,50 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertEqual(harness.display.lastModel?.cards.count, 1)
         XCTAssertTrue(harness.display.lastModel?.cards.first?.isLoadingThumbnail == false)
         XCTAssertNotNil(harness.display.lastModel?.cards.first?.thumbnail)
+    }
+
+    func testThumbnailFailureMarksCardUnavailableWithoutImage() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(harness.display.showCount, 1)
+        XCTAssertEqual(harness.display.updateCount, 1)
+        XCTAssertNil(harness.display.lastModel?.cards.first?.thumbnail)
+        XCTAssertEqual(harness.display.lastModel?.cards.first?.isLoadingThumbnail, false)
+    }
+
+    func testPreviewSessionUsesWindowFrameForThumbnailDisplayMode() async {
+        let narrowWindow = makeWindow(
+            id: 1,
+            frame: CGRect(x: 100, y: 100, width: 700, height: 700)
+        )
+        let wideWindow = makeWindow(
+            id: 2,
+            frame: CGRect(x: 100, y: 100, width: 1600, height: 900)
+        )
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [narrowWindow, wideWindow]
+        )
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.thumbnailDisplayMode), [.fit, .fill])
+    }
+
+    func testPreviewSessionInjectsLocalizedThumbnailUnavailableText() async {
+        let settingsStore = FakeSettingsStore(snapshot: .defaultsWith(language: .simplifiedChinese))
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [makeWindow(id: 1)],
+            settingsStore: settingsStore
+        )
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(harness.display.lastModel?.thumbnailUnavailableText, "\u{65E0}\u{7F29}\u{7565}\u{56FE}")
     }
 
     func testPreviewSessionUsesConfiguredMaxCardCount() async {
@@ -97,6 +142,35 @@ final class PreviewSessionControllerTests: XCTestCase {
 
         XCTAssertEqual(harness.display.hideReasons, ["test"])
         XCTAssertEqual(harness.display.updateCount, 0)
+        XCTAssertNil(harness.display.lastModel?.cards.first?.thumbnail)
+        XCTAssertEqual(harness.display.lastModel?.cards.first?.isLoadingThumbnail, true)
+    }
+
+    func testStaleThumbnailFromPreviousGenerationDoesNotUpdateNextPanel() async {
+        let staleWindow = makeWindow(id: 1)
+        let currentWindow = makeWindow(id: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [staleWindow])
+        harness.thumbnailService.images[staleWindow.id] = makeImage()
+        harness.thumbnailService.suspend = true
+
+        let staleTask = Task {
+            await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        }
+        await harness.thumbnailService.waitUntilSuspended()
+
+        harness.queryService.windows = [currentWindow]
+        harness.thumbnailService.images = [:]
+        harness.thumbnailService.suspend = false
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.thumbnailService.resume()
+        await staleTask.value
+
+        XCTAssertEqual(harness.display.showCount, 2)
+        XCTAssertEqual(harness.display.updateCount, 1)
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [currentWindow.id])
+        XCTAssertNil(harness.display.lastModel?.cards.first?.thumbnail)
+        XCTAssertEqual(harness.display.lastModel?.cards.first?.isLoadingThumbnail, false)
     }
 
     func testSelectingCardActivatesWindowAndHidesPanel() async {
@@ -316,6 +390,16 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertTrue(harness.controller.isMouseInsidePanelTransitionRegion(gapCenterPoint))
         XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(CGPoint(x: 53, y: 700)))
     }
+
+    func testP1SettingsDefaultsRemainUnchanged() {
+        XCTAssertTrue(DockHoverPreviewSettings.defaults.isDockHoverPreviewEnabled)
+        XCTAssertEqual(DockHoverPreviewSettings.defaults.hoverDelayMilliseconds, 250)
+        XCTAssertEqual(DockHoverPreviewSettings.defaults.panelRetentionMode, .standard)
+        XCTAssertEqual(DockHoverPreviewSettings.defaults.maxCardCount, 8)
+        XCTAssertEqual(DockHoverPreviewSettings.defaults.excludedAppBundleIdentifiers, [])
+        XCTAssertEqual(DockHoverPreviewSettings.defaults.displayLanguage, .english)
+        XCTAssertFalse(SettingsKey.allCases.contains { $0.rawValue.contains("thumbnailDisplayMode") })
+    }
 }
 
 private final class FakePermissionService: PermissionService {
@@ -335,7 +419,7 @@ private final class FakePermissionService: PermissionService {
 }
 
 private final class FakeWindowQueryService: WindowQueryService, @unchecked Sendable {
-    let windows: [PreviewWindow]
+    var windows: [PreviewWindow]
     private(set) var requestedLimits: [Int] = []
 
     init(windows: [PreviewWindow]) {
@@ -539,13 +623,16 @@ private final class PreviewSessionHarness {
     }
 }
 
-private func makeWindow(id: CGWindowID) -> PreviewWindow {
+private func makeWindow(
+    id: CGWindowID,
+    frame: CGRect = CGRect(x: 100, y: 100, width: 800, height: 600)
+) -> PreviewWindow {
     PreviewWindow(
         id: PreviewWindowID(pid: NSRunningApplication.current.processIdentifier, windowID: id),
         cgWindowID: id,
         app: NSRunningApplication.current,
         title: "Window \(id)",
-        frame: CGRect(x: 100, y: 100, width: 800, height: 600),
+        frame: frame,
         scWindow: nil,
         axElement: nil,
         appIcon: NSImage(size: NSSize(width: 32, height: 32)),

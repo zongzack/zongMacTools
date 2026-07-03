@@ -2,7 +2,7 @@
 
 `zongMacTools` 当前主要包含一个 macOS Dock 悬停窗口预览工具原型：`DockHoverPreviewProbe`。它是一个菜单栏常驻应用，用 Swift、AppKit、SwiftUI 和 ScreenCaptureKit 实现类似 Windows 任务栏窗口预览的最小可用能力：鼠标悬停在 Dock 应用图标上时，显示该应用当前可见窗口的横向预览面板，点击卡片即可切换到对应窗口。
 
-项目目前处于 MVP/P0 验证完成、P1 基础设置完成阶段。核心 hover preview 路径已经可用；P1 新增菜单设置、持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称。P1 自动验证已通过，Finder/TCC/Login Items/真实菜单交互的人工复验已于 2026-07-02 由用户反馈完成。
+项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 UI polish 自动验证完成阶段。核心 hover preview 路径已经可用；P1 新增菜单设置、持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；P2 改善 preview panel 的缩略图显示、placeholder、动画和 Light / Dark 视觉 token。P2 人工视觉验证尚未运行，因此当前不声明 manual UI pass。
 
 ## 功能概览
 
@@ -10,6 +10,8 @@
 - 使用非激活的浮动 `NSPanel` 展示预览，不抢占当前应用焦点。
 - SwiftUI 卡片列表，默认最多显示 8 个窗口；P1 菜单可切换为 3、5、8、12。
 - 每张卡片包含应用图标、窗口标题、静态缩略图或占位图。
+- P2 缩略图默认保持 fill 视觉；窄窗口自动使用 fit，避免 Typora 等窄窗口被过度裁切。
+- P2 区分 loading 与 unavailable placeholder；缩略图不可用时显示本地化 `No thumbnail` / `无缩略图`。
 - 点击预览卡片后尝试激活对应窗口，并隐藏预览面板。
 - 鼠标快速离开 Dock 图标时取消过期预览，避免 stale panel 残留。
 - 鼠标从 Dock 图标移动到预览面板时保持面板显示。
@@ -18,17 +20,17 @@
 - Screen Recording 权限缺失时静默抑制预览 UI，不弹出重复干扰提示。
 - Dock 重启后可重新订阅 Dock Accessibility 事件。
 - 菜单栏提供权限状态、权限入口、P1 settings menu、Launch at Login 和 frontmost app 调试预览入口。
+- 预览面板 show / hide 使用轻量动画，并尊重系统 Reduce Motion；Light / Dark 下的边框、阴影、placeholder surface 使用集中 token。
 
 ## 当前状态
 
-MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`。
+MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 UI polish 自动验证状态：`complete`。P2 manual visual validation：`not run`。
 
 已验证内容：
 
-- `swift test` 通过。2026-07-02 Task 11 门禁记录为 98 个 XCTest、0 失败。
-- `swift build` 通过。
-- `Scripts/build_probe_app.sh` 可产出 `build/zongMacTools.app`，SwiftPM executable / target 仍为 `DockHoverPreviewProbe`。
-- `git diff --check` 通过。
+- `swift test`：2026-07-03 13:31:05 Asia/Shanghai，130 XCTest，0 failures，exit 0。
+- `swift build`：通过，exit 0。
+- `Scripts/build_probe_app.sh`：通过，exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature。
 - Accessibility 和 Screen Recording 授权后，日志确认 Dock 监听订阅成功。
 - VS Code、Chrome、Typora、IINA、WPS 的主流程由人工反馈为功能正常。
 - 点击激活、快速离开取消 stale preview、进入 panel 保持显示、离开隐藏、移动到相邻未启动 Dock app 时隐藏旧 panel、`Esc` 隐藏、`killall Dock` 恢复均由人工反馈为功能正常。
@@ -36,12 +38,13 @@ MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`。
 仍需继续验证的内容：
 
 - Multiple displays 因当前硬件不可用仍是 `blocked / not available`。
-- Typora 等窄窗口的缩略图内容会按真实窗口比例显示，看起来比容器窄；当前接受为 polish candidate，不作为 P1 阻塞问题。
+- P2 manual-only 视觉验证尚未运行，包括 bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied 和 quick stale cancellation。
 
 详细记录见：
 
 - `docs/verification/dock-hover-preview-probe-summary.md`
 - `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`
+- `docs/verification/dock-hover-preview-p2-ui-polish-manual-checklist.md`
 - `docs/architecture/dock-hover-preview-technical-design.md`
 - `docs/roadmap.md`
 
@@ -158,11 +161,11 @@ dock.subscribed pid=...
 
 ### 预览面板 UI
 
-- `PreviewPanelModels.swift`：预览面板 anchor、卡片 view model、面板 view model。
+- `PreviewPanelModels.swift`：预览面板 anchor、卡片 view model、面板 view model，以及 P2 缩略图 fit/fill 显示模式和 unavailable 文案。
 - `PreviewPanelLayoutEngine.swift`：根据 Dock item frame、鼠标位置和可见屏幕区域计算面板位置，支持 bottom/left/right/mouse fallback。
-- `PreviewPanelView.swift`：SwiftUI 横向预览卡片 UI。
-- `PreviewPanelController.swift`：拥有非激活 `NSPanel` 和 `NSHostingController`，负责 show/update/hide、Escape 监听和 panel 命中检测。
-- `PreviewSessionController.swift`：预览会话状态机，处理权限抑制、max cards、retention 参数、窗口查询、占位卡片展示、缩略图渐进更新、点击激活、stale async 取消和鼠标离开轮询。
+- `PreviewPanelView.swift`：SwiftUI 预览卡片 UI，包含 P2 thumbnail render plan、loading/unavailable placeholder、Light / Dark visual tokens。
+- `PreviewPanelController.swift`：拥有非激活 `NSPanel` 和 `NSHostingController`，负责 show/update/hide、Reduce Motion aware animation、Escape 监听和 panel 命中检测。
+- `PreviewSessionController.swift`：预览会话状态机，处理权限抑制、max cards、retention 参数、窗口查询、占位卡片展示、本地化 unavailable 文案、缩略图渐进更新、点击激活、stale async 取消和鼠标离开轮询。
 
 ## 测试
 
@@ -193,8 +196,11 @@ pkill -x DockHoverPreviewProbe
 - English / 简体中文静态文案。
 - 菜单栏设置项、excluded apps、Launch at Login fake service 和菜单刷新。
 - 预览面板布局引擎。
-- 预览 view model 的卡片数量限制、缩略图更新和可访问性标签。
-- 预览 session 的 Screen Recording 缺失抑制、无窗口隐藏、max cards、retention、缩略图更新、stale cancellation、点击激活、Dock 到 panel 的桥接保留和相邻 Dock item hover-lost 隐藏。
+- 预览 view model 的卡片数量限制、缩略图更新、fit/fill 模式、unavailable 状态和可访问性标签。
+- SwiftUI render plan 的 fill / fit 分支、loading spinner 和 unavailable 文案分支。
+- 预览 session 的 Screen Recording 缺失抑制、无窗口隐藏、max cards、retention、缩略图更新、本地化 unavailable 文案、stale cancellation、点击激活、Dock 到 panel 的桥接保留和相邻 Dock item hover-lost 隐藏。
+- 预览 panel controller 的 show/hide animation、Reduce Motion 降级、隐藏后命中测试和 update 不重复触发 show animation。
+- Light / Dark visual token 的边框、阴影、hover state 和 placeholder surface 基础约束。
 - 静态缩略图 cache、ScreenCaptureKit/CoreGraphics fallback 日志。
 - 窗口 AX 匹配诊断日志。
 - orchestrator frontmost preview 权限抑制。
@@ -275,9 +281,9 @@ pkill -x DockHoverPreviewProbe
 - 不提供关闭、最小化、全屏按钮。
 - P1 只提供菜单栏设置，不提供独立设置窗口、搜索或键盘切换器。
 - Launch at Login 依赖公开 `ServiceManagement`，真实状态以 `SMAppService.mainApp.status` 为准。
-- 不使用私有 API。
+- 只使用公开 API。
 - 多显示器场景仍需额外手动验证。
-- 窄窗口缩略图会保留真实窗口比例，可能看起来没有铺满缩略图区域；这属于后续 UI polish 议题。
+- P2 视觉 polish 的 manual-only 场景尚未人工复验。
 
 ## 设计边界
 
@@ -314,8 +320,8 @@ MVP 阶段坚持以下边界：
 
 优先级从高到低：
 
-1. 补跑环境变体验证：全屏 Space、Stage Manager、Dock 自动隐藏、左/右 Dock、多显示器。
-2. 做 UI polish：缩略图真实比例与铺满裁切策略、轻微显示/隐藏动画。
+1. 执行 P2 manual visual validation：bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied 和 quick stale cancellation。
+2. 继续补跑多显示器验证；当前硬件不可用时保持 `blocked / not available`。
 3. 评估是否需要持久设置页、应用过滤或更完整的窗口状态处理。
 
 完整后续清单见 `docs/roadmap.md`。

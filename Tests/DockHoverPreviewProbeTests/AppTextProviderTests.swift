@@ -8,6 +8,7 @@ final class AppTextProviderTests: XCTestCase {
         XCTAssertEqual(provider.string(.dockHoverPreviewStatusEnabled), "Dock Hover Preview: Enabled")
         XCTAssertEqual(provider.string(.enableDockHoverPreview), "Enable Dock Hover Preview")
         XCTAssertEqual(provider.string(.debugShowPreviewForFrontmostApp), "Debug: Show Preview For Frontmost App")
+        XCTAssertEqual(provider.string(.noThumbnail), "No thumbnail")
         XCTAssertEqual(provider.string(.excludeNamedApp, appName: "Google Chrome"), "Exclude Google Chrome")
         XCTAssertEqual(provider.string(.moreExcludedApps, count: 108), "108 more excluded apps")
         XCTAssertEqual(provider.moreExcludedApps(count: 1), "1 more excluded app")
@@ -23,6 +24,7 @@ final class AppTextProviderTests: XCTestCase {
         XCTAssertEqual(provider.excludeNamedApp("Google Chrome"), "\u{6392}\u{9664} Google Chrome")
         XCTAssertEqual(provider.includeNamedApp("Google Chrome"), "\u{6062}\u{590D} Google Chrome")
         XCTAssertEqual(provider.moreExcludedApps(count: 108), "\u{8FD8}\u{6709} 108 \u{4E2A}\u{5DF2}\u{6392}\u{9664} App")
+        XCTAssertEqual(provider.string(.noThumbnail), "\u{65E0}\u{7F29}\u{7565}\u{56FE}")
         XCTAssertEqual(provider.string(.quit), "\u{9000}\u{51FA}")
     }
 
