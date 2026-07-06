@@ -96,12 +96,16 @@
 
 目标：减少本地运行摩擦，形成可长期维护的 release 流程。
 
-- [ ] 使用更稳定的签名方式，减少每次构建后 TCC 重新授权。
-- [ ] 维护版本号和 release notes。
-- [ ] 增加诊断日志导出。
-- [ ] 增加 app 内 About / 状态信息。
-- [ ] 评估 Sparkle 自动更新或轻量本地更新流程。
-- [ ] 整理 release build 脚本。
+开发文档：`docs/plans/dock-hover-preview-p4-formal-app-development-plan.md`
+
+- [x] 使用可配置稳定签名身份，保留 ad-hoc fallback，并提示 TCC caveat。
+- [x] 维护版本号规则和 release notes。
+- [x] 增加诊断日志导出。
+- [x] 增加 app 内 About / 状态信息。
+- [x] 评估 Sparkle 自动更新或轻量本地更新流程；P4 默认采用轻量本地更新。
+- [x] 整理 release build 脚本。
+
+状态：2026-07-06 已完成实现和自动验证；最终自动验证和人工验收记录见 `docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md`。人工验收尚未执行，不写成通过。
 
 验收标准：
 

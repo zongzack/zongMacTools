@@ -15,6 +15,10 @@ final class AppTextProviderTests: XCTestCase {
         XCTAssertEqual(provider.string(.minimizeWindow), "Minimize Window")
         XCTAssertEqual(provider.string(.screenUnknown), "Screen: Unknown")
         XCTAssertEqual(provider.string(.currentEnumerableEnvironment), "Environment: Current enumerable windows")
+        XCTAssertEqual(provider.string(.aboutStatus), "About / Status")
+        XCTAssertEqual(provider.string(.copyStatus), "Copy Status")
+        XCTAssertEqual(provider.string(.exportDiagnostics), "Export Diagnostics...")
+        XCTAssertEqual(provider.string(.diagnosticExportFailed), "Diagnostics could not be saved.")
         XCTAssertEqual(provider.string(.excludeNamedApp, appName: "Google Chrome"), "Exclude Google Chrome")
         XCTAssertEqual(provider.string(.moreExcludedApps, count: 108), "108 more excluded apps")
         XCTAssertEqual(provider.moreExcludedApps(count: 1), "1 more excluded app")
@@ -37,6 +41,10 @@ final class AppTextProviderTests: XCTestCase {
         XCTAssertEqual(provider.string(.minimizeWindow), "\u{6700}\u{5C0F}\u{5316}\u{7A97}\u{53E3}")
         XCTAssertEqual(provider.string(.screenUnknown), "\u{5C4F}\u{5E55}\u{FF1A}\u{672A}\u{77E5}")
         XCTAssertEqual(provider.string(.currentEnumerableEnvironment), "\u{73AF}\u{5883}\u{FF1A}\u{5F53}\u{524D}\u{53EF}\u{679A}\u{4E3E}\u{7A97}\u{53E3}")
+        XCTAssertEqual(provider.string(.aboutStatus), "\u{5173}\u{4E8E} / \u{72B6}\u{6001}")
+        XCTAssertEqual(provider.string(.copyStatus), "\u{590D}\u{5236}\u{72B6}\u{6001}")
+        XCTAssertEqual(provider.string(.exportDiagnostics), "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}...")
+        XCTAssertEqual(provider.string(.diagnosticExportFailed), "\u{8BCA}\u{65AD}\u{6587}\u{4EF6}\u{672A}\u{80FD}\u{4FDD}\u{5B58}\u{3002}")
         XCTAssertEqual(provider.string(.quit), "\u{9000}\u{51FA}")
     }
 

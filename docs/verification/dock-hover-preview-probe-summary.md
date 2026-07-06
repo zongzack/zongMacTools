@@ -16,6 +16,8 @@ P2 界面打磨自动验证已完成，覆盖预览面板裁切填满/完整显�
 
 P3 窗口操作增强已完成实现和自动测试，覆盖右键菜单动作模型、公开接口窗口操作服务、关闭/最小化失败降级、菜单期间会话保留、旧会话动作保护和屏幕提示匹配。P3 人工验收尚未执行，不写成通过。
 
+P4 正式应用化已完成实现和自动验证，覆盖稳定签名配置、app bundle 验证、release packaging、版本与 release notes、About / Status、Copy Status、诊断导出和更新策略文档。P4 人工验收尚未执行，不写成通过；稳定签名证书、公证、多显示器等受限项按 `blocked / not available` 记录。
+
 ## 硬门槛结果
 
 | 验证项 | 结果 | 证据摘要 |
@@ -141,16 +143,46 @@ P3 人工验收：
 - 状态：未执行。
 - 清单：`docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`。
 
+## P4 自动验证结果
+
+状态：实现完成，自动验证通过，人工验收待执行。
+
+最终自动验证：
+
+- `swift test`：2026-07-06 Asia/Shanghai，180 XCTest，0 failures，exit 0。
+- `swift build`：2026-07-06，exit 0。
+- `Scripts/build_probe_app.sh`：2026-07-06，exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，ad-hoc fallback 签名并提示 TCC caveat。
+- `Scripts/verify_app_bundle.sh build/zongMacTools.app`：2026-07-06，exit 0。
+- `Scripts/package_release_app.sh`：2026-07-06，exit 0，输出 `dist/zongMacTools-0.1.0-1/`；未配置 `NOTARYTOOL_PROFILE` 时跳过公证。
+- `git diff --check`：2026-07-06，exit 0。
+- `rg -n "\b(CGS|SLS|AXUIElementSetMessagingTimeout|_AX)\b" Sources Tests`：2026-07-06，无匹配。
+
+覆盖范围：
+
+- `PackagingTests`：版本字段、bundle identity、build script 签名配置、verify script、release script 和 ignored `dist/`。
+- `AppMetadataTests`：版本、build、bundle id、bundle path、executable 和签名摘要解析。
+- `AppStatusSnapshotTests`：权限、Launch at Login、设置摘要、签名摘要和 Copy Status 不包含第三方 app/window 明细。
+- `MenuBarControllerTests` / `AppTextProviderTests`：About / Status、Export Diagnostics 菜单入口和中英文文案。
+- `DiagnosticExportServiceTests`：本地诊断导出、缺失 verify script fallback、导出失败日志降级和不记录用户选择的完整路径。
+- `DocumentationConsistencyTests`：README、changelog、更新策略和 P4 manual checklist 不提前宣称人工验收通过。
+
+P4 人工验收：
+
+- 状态：未执行。
+- 清单：`docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md`。
+
 ## 未实测 / 受限项
 
 - Multiple displays：2026-07-01 当前硬件环境仅检测到 1 个显示器 `Mi Monitor`，无法执行多显示器行为验证；结果记录为 `blocked / not available`，不写成 pass。
 - P3 真实 app 人工验收：尚未执行，不写成通过。
+- P4 稳定签名证书、notarization、公证后 Gatekeeper 行为和多显示器真实行为：当前未执行或环境不可用，不写成通过。
 
 ## 相关文档
 
 - 架构设计：[dock-hover-preview-technical-design.md](../architecture/dock-hover-preview-technical-design.md)
 - MVP UI 手动验收：[dock-hover-preview-mvp-ui-manual-checklist.md](dock-hover-preview-mvp-ui-manual-checklist.md)
 - P2 UI polish 手动验收：[dock-hover-preview-p2-ui-polish-manual-checklist.md](dock-hover-preview-p2-ui-polish-manual-checklist.md)
+- P4 正式应用化人工验收：[dock-hover-preview-p4-formal-app-manual-checklist.md](dock-hover-preview-p4-formal-app-manual-checklist.md)
 - Probe 原始证据：[dock-hover-preview-probe-checklist.md](dock-hover-preview-probe-checklist.md)
 - 环境变体验证计划：[dock-hover-preview-environment-variant-verification-plan.md](dock-hover-preview-environment-variant-verification-plan.md)
 - 后续路线：[roadmap.md](../roadmap.md)

@@ -1,6 +1,6 @@
 import ServiceManagement
 
-enum LaunchAtLoginStatus: Equatable {
+enum LaunchAtLoginStatus: Equatable, Sendable {
     case enabled
     case notRegistered
     case requiresApproval

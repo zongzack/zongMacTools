@@ -42,6 +42,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let launchAtLoginService: LaunchAtLoginService
     private let targetTracker: AppTargetTracker
     private let appNameResolver: AppNameResolving
+    private let aboutStatusPresenter: AboutStatusPresenting
+    private let diagnosticExportPresenter: DiagnosticExportPresenting
     private let logger: ProbeLogger
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
@@ -52,6 +54,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         launchAtLoginService: LaunchAtLoginService,
         targetTracker: AppTargetTracker,
         appNameResolver: AppNameResolving = WorkspaceAppNameResolver(),
+        aboutStatusPresenter: AboutStatusPresenting = NoopAboutStatusPresenter(),
+        diagnosticExportPresenter: DiagnosticExportPresenting = NoopDiagnosticExportPresenter(),
         logger: ProbeLogger
     ) {
         self.permissionService = permissionService
@@ -60,6 +64,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.launchAtLoginService = launchAtLoginService
         self.targetTracker = targetTracker
         self.appNameResolver = appNameResolver
+        self.aboutStatusPresenter = aboutStatusPresenter
+        self.diagnosticExportPresenter = diagnosticExportPresenter
         self.logger = logger
         super.init()
     }
@@ -113,6 +119,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         addExcludedAppsSection(to: menu, settings: settings, text: text)
         addLaunchAtLoginSection(to: menu, text: text)
 
+        menu.addItem(actionItem(text.string(.aboutStatus), #selector(showAboutStatus)))
+        menu.addItem(actionItem(text.string(.exportDiagnostics), #selector(exportDiagnostics)))
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(actionItem(text.string(.requestAccessibilityPrompt), #selector(requestAccessibilityPrompt)))
         menu.addItem(actionItem(text.string(.openAccessibilitySettings), #selector(openAccessibilitySettings)))
         menu.addItem(actionItem(text.string(.openScreenRecordingSettings), #selector(openScreenRecordingSettings)))
@@ -335,6 +344,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func showFrontmostAppProbe() {
         orchestrator.showFrontmostAppProbe()
+    }
+
+    @objc private func showAboutStatus() {
+        aboutStatusPresenter.showAboutStatus()
+    }
+
+    @objc private func exportDiagnostics() {
+        diagnosticExportPresenter.exportDiagnosticsFromMenu()
     }
 
     @objc private func setHoverDelay(_ sender: NSMenuItem) {

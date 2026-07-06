@@ -26,6 +26,32 @@ final class DocumentationConsistencyTests: XCTestCase {
         XCTAssertTrue(readme.contains("窗口操作"))
     }
 
+    func testReadmeDocumentsP4LocalInstallAndDiagnosticsWithoutAutoUpload() throws {
+        let readme = try contents(of: "README.md")
+
+        XCTAssertTrue(readme.contains("正式本地安装"))
+        XCTAssertTrue(readme.contains("导出诊断"))
+        XCTAssertTrue(readme.contains("Scripts/verify_app_bundle.sh build/zongMacTools.app"))
+        XCTAssertTrue(readme.contains("Scripts/package_release_app.sh"))
+        XCTAssertTrue(readme.contains("诊断文件只在用户主动触发后本地生成"))
+        XCTAssertFalse(readme.contains("Sparkle 自动更新已启用"))
+    }
+
+    func testP4ReleaseAndManualValidationDocsExistWithoutManualPassClaims() throws {
+        let changelog = try contents(of: "docs/releases/CHANGELOG.md")
+        let strategy = try contents(of: "docs/architecture/release-update-strategy.md")
+        let checklist = try contents(of: "docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md")
+
+        XCTAssertTrue(changelog.contains("Manual validation: not run"))
+        XCTAssertTrue(changelog.contains("Known limitations"))
+        XCTAssertTrue(strategy.contains("P4 不直接引入 Sparkle"))
+        XCTAssertTrue(strategy.contains("轻量本地更新"))
+        XCTAssertTrue(checklist.contains("not run"))
+        XCTAssertTrue(checklist.contains("blocked / not available"))
+        XCTAssertTrue(checklist.contains("Screen Recording"))
+        XCTAssertFalse(checklist.contains("P4 人工验收：通过"))
+    }
+
     func testVerificationDocsRecordAutomaticEvidenceWithoutManualPassClaims() throws {
         let checklist = try contents(of: "docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md")
         let summary = try contents(of: "docs/verification/dock-hover-preview-probe-summary.md")

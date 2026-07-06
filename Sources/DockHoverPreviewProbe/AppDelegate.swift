@@ -9,6 +9,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var previewSessionController: PreviewSessionController!
     private var menuBarController: MenuBarController!
     private var launchAtLoginService: LaunchAtLoginService!
+    private var appMetadataProvider: CachedAppMetadataProvider!
+    private var appStatusProvider: LiveAppStatusProvider!
+    private var aboutStatusWindowController: AboutStatusWindowController!
+    private var diagnosticExportService: DiagnosticExportService!
+    private var diagnosticExportPresenter: DiagnosticExportPresenter!
     private var orchestrator: ProbeOrchestrator!
 
     @MainActor func applicationDidFinishLaunching(_ notification: Notification) {
@@ -18,6 +23,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         targetTracker = AppTargetTracker(selfBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.zong.zongMacTools")
         targetTracker.startWorkspaceObservation()
         launchAtLoginService = SystemLaunchAtLoginService()
+        appMetadataProvider = CachedAppMetadataProvider()
+        appStatusProvider = LiveAppStatusProvider(
+            permissionService: permissionService,
+            launchAtLoginService: launchAtLoginService,
+            settingsStore: settingsStore,
+            metadataProvider: { [weak appMetadataProvider] in
+                appMetadataProvider?.currentMetadata() ?? AppMetadata()
+            }
+        )
+        aboutStatusWindowController = AboutStatusWindowController(statusProvider: appStatusProvider)
+        diagnosticExportService = DiagnosticExportService(
+            logger: logger
+        )
+        diagnosticExportPresenter = DiagnosticExportPresenter(
+            exportService: diagnosticExportService,
+            statusProvider: appStatusProvider
+        )
         previewPanelController = PreviewPanelController(logger: logger)
         let windowQueryService: WindowQueryService = ScreenCaptureWindowQueryService(logger: logger)
         let thumbnailService: ThumbnailService = StaticThumbnailService(logger: logger)
@@ -56,6 +78,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsStore: settingsStore,
             launchAtLoginService: launchAtLoginService,
             targetTracker: targetTracker,
+            aboutStatusPresenter: aboutStatusWindowController,
+            diagnosticExportPresenter: diagnosticExportPresenter,
             logger: logger
         )
         menuBarController.install()

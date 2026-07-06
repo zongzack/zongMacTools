@@ -34,6 +34,10 @@ enum LocalizedTextKey: String, CaseIterable {
     case minimizeWindow
     case screenUnknown
     case currentEnumerableEnvironment
+    case aboutStatus
+    case copyStatus
+    case exportDiagnostics
+    case diagnosticExportFailed
     case quit
 }
 
@@ -229,6 +233,14 @@ struct AppTextProvider: Equatable {
             "Screen: Unknown"
         case .currentEnumerableEnvironment:
             "Environment: Current enumerable windows"
+        case .aboutStatus:
+            "About / Status"
+        case .copyStatus:
+            "Copy Status"
+        case .exportDiagnostics:
+            "Export Diagnostics..."
+        case .diagnosticExportFailed:
+            "Diagnostics could not be saved."
         case .quit:
             "Quit"
         }
@@ -302,6 +314,14 @@ struct AppTextProvider: Equatable {
             "\u{5C4F}\u{5E55}\u{FF1A}\u{672A}\u{77E5}"
         case .currentEnumerableEnvironment:
             "\u{73AF}\u{5883}\u{FF1A}\u{5F53}\u{524D}\u{53EF}\u{679A}\u{4E3E}\u{7A97}\u{53E3}"
+        case .aboutStatus:
+            "\u{5173}\u{4E8E} / \u{72B6}\u{6001}"
+        case .copyStatus:
+            "\u{590D}\u{5236}\u{72B6}\u{6001}"
+        case .exportDiagnostics:
+            "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}..."
+        case .diagnosticExportFailed:
+            "\u{8BCA}\u{65AD}\u{6587}\u{4EF6}\u{672A}\u{80FD}\u{4FDD}\u{5B58}\u{3002}"
         case .quit:
             "\u{9000}\u{51FA}"
         }

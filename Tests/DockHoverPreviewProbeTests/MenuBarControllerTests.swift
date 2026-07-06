@@ -295,6 +295,34 @@ final class MenuBarControllerTests: XCTestCase {
         XCTAssertEqual(harness.orchestrator.debugPreviewCount, 1)
     }
 
+    func testAboutStatusAndExportDiagnosticsActionsCallInjectedServices() {
+        let aboutPresenter = FakeAboutStatusPresenter()
+        let diagnosticPresenter = FakeDiagnosticExportPresenter()
+        let harness = MenuHarness(
+            aboutStatusPresenter: aboutPresenter,
+            diagnosticExportPresenter: diagnosticPresenter
+        )
+        let menu = harness.makeMenu()
+
+        XCTAssertNotNil(menu.findItem(title: "About / Status"))
+        XCTAssertNotNil(menu.findItem(title: "Export Diagnostics..."))
+
+        menu.performItem(title: "About / Status")
+        menu.performItem(title: "Export Diagnostics...")
+
+        XCTAssertEqual(aboutPresenter.showCount, 1)
+        XCTAssertEqual(diagnosticPresenter.exportCount, 1)
+    }
+
+    func testSimplifiedChineseMenuLocalizesAboutAndDiagnosticsEntries() {
+        let harness = MenuHarness(settings: .defaultsWith(language: .simplifiedChinese))
+
+        let menu = harness.makeMenu()
+
+        XCTAssertNotNil(menu.findItem(title: "\u{5173}\u{4E8E} / \u{72B6}\u{6001}"))
+        XCTAssertNotNil(menu.findItem(title: "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}..."))
+    }
+
     func testLaunchAtLoginNotFoundDisablesToggleAndKeepsOpenSettingsEnabled() {
         let launchAtLoginService = FakeLaunchAtLoginService(status: .notFound)
         let harness = MenuHarness(launchAtLoginService: launchAtLoginService)
@@ -358,7 +386,9 @@ private final class MenuHarness {
     init(
         settings: DockHoverPreviewSettings = .defaults,
         launchAtLoginService: FakeLaunchAtLoginService = FakeLaunchAtLoginService(),
-        appNameResolver: FakeAppNameResolver = FakeAppNameResolver()
+        appNameResolver: FakeAppNameResolver = FakeAppNameResolver(),
+        aboutStatusPresenter: FakeAboutStatusPresenter = FakeAboutStatusPresenter(),
+        diagnosticExportPresenter: FakeDiagnosticExportPresenter = FakeDiagnosticExportPresenter()
     ) {
         _ = NSApplication.shared
         self.settingsStore = FakeSettingsStore(snapshot: settings)
@@ -371,6 +401,8 @@ private final class MenuHarness {
             launchAtLoginService: launchAtLoginService,
             targetTracker: targetTracker,
             appNameResolver: appNameResolver,
+            aboutStatusPresenter: aboutStatusPresenter,
+            diagnosticExportPresenter: diagnosticExportPresenter,
             logger: ProbeLogger()
         )
     }
@@ -441,6 +473,24 @@ private final class FakeMenuOrchestrator: MenuOrchestrating {
 
     func hidePreview(reason: String) {
         hideReasons.append(reason)
+    }
+}
+
+@MainActor
+private final class FakeAboutStatusPresenter: AboutStatusPresenting {
+    private(set) var showCount = 0
+
+    func showAboutStatus() {
+        showCount += 1
+    }
+}
+
+@MainActor
+private final class FakeDiagnosticExportPresenter: DiagnosticExportPresenting {
+    private(set) var exportCount = 0
+
+    func exportDiagnosticsFromMenu() {
+        exportCount += 1
     }
 }
 

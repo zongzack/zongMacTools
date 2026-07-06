@@ -2,7 +2,7 @@
 
 `zongMacTools` 当前主要包含一个 macOS Dock 悬停窗口预览工具原型：`DockHoverPreviewProbe`。它是一个菜单栏常驻应用，用 Swift、AppKit、SwiftUI 和 ScreenCaptureKit 实现类似 Windows 任务栏窗口预览的最小可用能力：鼠标悬停在 Dock 应用图标上时，显示该应用当前可见窗口的横向预览面板，点击卡片即可切换到对应窗口。
 
-项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 界面打磨实现、自动验证和人工验证完成、P3 窗口操作增强实现完成阶段。核心悬停预览路径已经可用；P1 新增菜单设置、持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；P2 改善预览面板的缩略图显示、占位状态、动画和浅色/深色视觉规则；P3 为预览卡片增加右键窗口操作菜单。P2 人工视觉验证已由用户反馈完成，结果正常；P3 人工验收尚未执行。
+项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 界面打磨实现、自动验证和人工验证完成、P3 窗口操作增强实现完成、P4 正式应用化开发阶段。核心悬停预览路径已经可用；P1 新增菜单设置、持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；P2 改善预览面板的缩略图显示、占位状态、动画和浅色/深色视觉规则；P3 为预览卡片增加右键窗口操作菜单；P4 增加稳定签名配置、About / Status、诊断导出和 release packaging 流程。P2 人工视觉验证已由用户反馈完成，结果正常；P3 和 P4 人工验收尚未执行。
 
 ## 功能概览
 
@@ -22,6 +22,7 @@
 - 屏幕录制权限缺失时静默抑制预览 UI，不弹出重复干扰提示。
 - Dock 重启后可重新订阅 Dock Accessibility 事件。
 - 菜单栏提供权限状态、权限入口、P1 settings menu、Launch at Login 和 frontmost app 调试预览入口。
+- 菜单栏提供 About / Status 和 Export Diagnostics，便于查看版本、build、bundle id、权限、登录项、签名和设置摘要，并主动导出本地诊断文件。
 - 预览面板显示/隐藏使用轻量动画，并尊重系统减少动态效果设置；浅色/深色外观下的边框、阴影、占位区域使用集中视觉规则。
 
 ## 当前状态
@@ -91,9 +92,26 @@ Scripts/build_probe_app.sh
 - 复制 `DockHoverPreviewProbe` 可执行文件和 `Info.plist`。
 - 从 `Assets/AppIcon/zong-mac-tools-logo.png` 生成 `zongMacTools.icns`。
 - 校验 `Info.plist`。
-- 使用 ad-hoc 签名重新签名 app。
+- 使用 `CODE_SIGN_IDENTITY` 指定的身份签名；未指定时使用 ad-hoc fallback。
+- 运行 `codesign --verify --deep --strict`。
 
-### 2. 构建并打开 app
+默认 ad-hoc 签名适合无证书本地开发，但每次重新签名都可能让系统辅助功能和屏幕录制权限需要重新添加。若本机有稳定证书，可使用：
+
+```bash
+CODE_SIGN_IDENTITY="Developer ID Application: Example" Scripts/build_probe_app.sh
+```
+
+不要把个人证书名称、Apple ID、team id、notary password 或 keychain profile 写入仓库。
+
+### 2. 验证 app bundle
+
+```bash
+Scripts/verify_app_bundle.sh build/zongMacTools.app
+```
+
+验证内容包括 Info.plist、executable、icon、bundle id、用户可见名称和签名摘要。ad-hoc 签名会通过验证，但脚本会提示 TCC caveat。
+
+### 3. 构建并打开 app
 
 ```bash
 Scripts/run_probe_app.sh
@@ -101,7 +119,7 @@ Scripts/run_probe_app.sh
 
 这个脚本会先调用 `Scripts/build_probe_app.sh`，然后用 `open` 启动打包后的 app。
 
-### 3. 手动授权权限
+### 4. 手动授权权限
 
 首次运行后，需要在系统设置中授权：
 
@@ -119,6 +137,18 @@ orchestrator.start accessibility=true screenRecording=true
 dock.subscribed pid=...
 ```
 
+## 正式本地安装
+
+生成本地 release artifact：
+
+```bash
+Scripts/package_release_app.sh
+```
+
+脚本默认使用 `CONFIGURATION=release`，调用 `Scripts/build_probe_app.sh` 和 `Scripts/verify_app_bundle.sh build/zongMacTools.app`，并把产物写入 ignored 的 `dist/zongMacTools-<version>-<build>/`。目录中包含 `zongMacTools-<version>-<build>.zip`、`SHA256SUMS.txt`、`release-metadata.txt` 和安装说明。
+
+轻量本地更新流程是：校验 checksum，把 `zongMacTools.app` 复制到 `/Applications` 或你的固定安装目录，然后按需重新确认系统辅助功能和屏幕录制权限。P4 不直接启用 Sparkle 自动更新；更新策略见 `docs/architecture/release-update-strategy.md`。
+
 ## 使用方式
 
 1. 启动 `zongMacTools.app`。
@@ -130,6 +160,8 @@ dock.subscribed pid=...
 7. 按 `Esc` 或移出 Dock 图标和预览面板区域，面板会隐藏。
 
 菜单栏中的 P1 设置项包括 Enable / Disable Dock Hover Preview、hover delay、panel retention、max cards、display language、Exclude / Include target app、Clear Excluded Apps 和 Launch at Login。菜单栏中的 `Debug: Show Preview For Frontmost App` 可以对当前前台应用触发同一套预览 UI 路径，适合调试窗口枚举和缩略图生成；该 debug 入口仍尊重 Screen Recording 权限和 excluded apps。
+
+菜单栏中的 `About / Status` 会显示版本、build、bundle id、bundle path、权限状态、Launch at Login 状态、签名状态和设置摘要，并提供 Copy Status。Copy Status 只包含本工具状态摘要，不包含第三方窗口标题或第三方 app 名称。
 
 ## 架构说明
 
@@ -143,6 +175,9 @@ dock.subscribed pid=...
 - `DockHoverPreviewSettings.swift` / `SettingsStore.swift`：定义 P1 设置模型并持久化到 `UserDefaults`。非法值会回退到安全默认值，不覆盖用户写入的原始值。
 - `AppTextProvider.swift`：提供 English / 简体中文静态菜单文案；app 名称、窗口标题、bundle id、系统权限名称不翻译。
 - `LaunchAtLoginService.swift`：用公开 `ServiceManagement` / `SMAppService.mainApp` 读写 Launch at Login 状态。
+- `AppMetadata.swift` / `AppStatusSnapshot.swift`：读取版本、build、bundle id、bundle path、签名摘要，并聚合权限、登录项和设置状态。
+- `AboutStatusWindowController.swift`：显示 About / Status 窗口并提供 Copy Status。
+- `DiagnosticExportService.swift`：在用户主动触发后导出本地诊断文本。
 - `AppTargetTracker.swift`：为 excluded apps 菜单选择当前 preview、最近 Dock hover 或最近非本 app 前台应用。
 
 ### 权限与日志
@@ -282,6 +317,19 @@ pkill -x DockHoverPreviewProbe
 - `thumbnail.cgFailed ...`
 - `thumbnail.failed ...`
 
+## 导出诊断
+
+菜单栏选择 `Export Diagnostics...` 后可保存本地诊断文本。诊断文件只在用户主动触发后本地生成，不自动上传，也不后台定时采集。
+
+诊断内容包括：
+
+- App 状态快照：版本、build、bundle id、bundle path、权限、Launch at Login、签名和设置摘要。
+- 最近 15 分钟本工具统一日志。
+- `codesign -dv --verbose=4` 签名摘要。
+- `Scripts/verify_app_bundle.sh` bundle 验证摘要。
+
+诊断文件不包含截图、缩略图图像、屏幕录制内容或用户文件内容。统一日志可能包含本机 app 名称、窗口标题、bundle id 和环境细节，因此只应在需要排障时由用户主动保存和分享。
+
 ## 已知限制
 
 - 只展示当前可见、可枚举、非最小化的普通应用窗口。
@@ -330,6 +378,7 @@ MVP 阶段坚持以下边界：
 
 1. 继续补跑多显示器验证；当前硬件不可用时保持 `blocked / not available`。
 2. 执行 P3 窗口操作增强人工验收，重点覆盖右键菜单、关闭/最小化失败降级、菜单期间会话保留和屏幕录制权限缺失。
-3. 继续评估是否需要持久设置页、应用过滤或更完整的窗口状态处理。
+3. 执行 P4 正式应用化人工验收，重点覆盖稳定签名、TCC、About / Status、诊断导出、release artifact、Launch at Login 和屏幕录制权限缺失静默抑制。
+4. 继续评估是否需要持久设置页、应用过滤或更完整的窗口状态处理。
 
 完整后续清单见 `docs/roadmap.md`。
