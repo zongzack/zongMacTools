@@ -217,7 +217,7 @@ final class MenuBarControllerTests: XCTestCase {
     func testExcludeTargetIsDisabledForSelfApp() {
         let harness = MenuHarness()
         harness.targetTracker.updateLatestNonSelfActiveApp(
-            AppTarget(bundleIdentifier: "com.zong.DockHoverPreviewProbe", displayName: "DockHoverPreviewProbe")
+            AppTarget(bundleIdentifier: "com.zong.zongMacTools", displayName: "zongMacTools")
         )
 
         let menu = harness.makeMenu()
@@ -352,7 +352,7 @@ private final class MenuHarness {
     let orchestrator = FakeMenuOrchestrator()
     let launchAtLoginService: FakeLaunchAtLoginService
     let appNameResolver: FakeAppNameResolver
-    let targetTracker = AppTargetTracker(selfBundleIdentifier: "com.zong.DockHoverPreviewProbe")
+    let targetTracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
     let controller: MenuBarController
 
     init(

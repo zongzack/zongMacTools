@@ -7,9 +7,11 @@ final class PreviewSessionController {
     private let windowQueryService: WindowQueryService
     private let thumbnailService: ThumbnailService
     private let activationService: ActivationService
+    private let windowOperationService: WindowOperationService
     private let panelDisplay: PreviewPanelDisplaying
     private let settingsStore: DockHoverPreviewSettingsStore
     private let targetTracker: AppTargetTracker
+    private let screenProvider: @MainActor () -> [WindowEnvironmentDescriptor.Screen]
     private let logger: ProbeLogger
 
     private var generation = 0
@@ -19,24 +21,29 @@ final class PreviewSessionController {
     private var currentDockItemFrame: CGRect?
     private var currentRetentionParameters = PanelRetentionMode.standard.parameters
     private var settingsObserverToken: UUID?
+    private var contextMenuDepth = 0
 
     init(
         permissionService: PermissionService,
         windowQueryService: WindowQueryService,
         thumbnailService: ThumbnailService,
         activationService: ActivationService,
+        windowOperationService: WindowOperationService,
         panelDisplay: PreviewPanelDisplaying,
         settingsStore: DockHoverPreviewSettingsStore,
         targetTracker: AppTargetTracker,
+        screenProvider: @MainActor @escaping () -> [WindowEnvironmentDescriptor.Screen] = WindowEnvironmentDescriptor.currentScreens,
         logger: ProbeLogger
     ) {
         self.permissionService = permissionService
         self.windowQueryService = windowQueryService
         self.thumbnailService = thumbnailService
         self.activationService = activationService
+        self.windowOperationService = windowOperationService
         self.panelDisplay = panelDisplay
         self.settingsStore = settingsStore
         self.targetTracker = targetTracker
+        self.screenProvider = screenProvider
         self.logger = logger
     }
 
@@ -49,6 +56,7 @@ final class PreviewSessionController {
         }
 
         generation += 1
+        contextMenuDepth = 0
         let sessionGeneration = generation
         let settings = settingsStore.snapshot
         currentRetentionParameters = settings.panelRetentionParameters
@@ -62,6 +70,7 @@ final class PreviewSessionController {
 
         let appName = app.localizedName ?? app.bundleIdentifier ?? "Unknown App"
         let textProvider = AppTextProvider(language: settings.displayLanguage)
+        let screens = screenProvider()
         targetTracker.updateCurrentPreviewApp(AppTarget(app: app))
         let cards = windows.map { window in
             PreviewCardViewModel(
@@ -71,7 +80,15 @@ final class PreviewSessionController {
                 appIcon: window.appIcon,
                 thumbnail: nil,
                 isLoadingThumbnail: true,
-                sourceFrame: window.frame
+                sourceFrame: window.frame,
+                operationMenu: operationMenu(
+                    for: window,
+                    environmentDescription: WindowEnvironmentDescriptor.description(
+                        for: window.frame,
+                        screens: screens,
+                        textProvider: textProvider
+                    )
+                )
             )
         }
         currentWindowsByID = Dictionary(uniqueKeysWithValues: windows.map { ($0.id, $0) })
@@ -79,12 +96,13 @@ final class PreviewSessionController {
             appName: appName,
             cards: cards,
             maxCardCount: settings.maxCardCount,
-            thumbnailUnavailableText: textProvider.string(.noThumbnail)
+            thumbnailUnavailableText: textProvider.string(.noThumbnail),
+            operationMenuText: PreviewWindowOperationMenuText(textProvider: textProvider)
         )
         if let currentModel {
-            panelDisplay.show(model: currentModel, anchor: anchor) { [weak self] id in
+            panelDisplay.show(model: currentModel, anchor: anchor) { [weak self] action in
                 Task { @MainActor in
-                    await self?.activate(windowID: id)
+                    await self?.handle(action, expectedGeneration: sessionGeneration)
                 }
             }
         }
@@ -130,6 +148,7 @@ final class PreviewSessionController {
         currentDockItemFrame = nil
         currentModel = nil
         currentWindowsByID = [:]
+        contextMenuDepth = 0
         targetTracker.updateCurrentPreviewApp(nil)
         panelDisplay.hide(reason: reason)
     }
@@ -139,6 +158,9 @@ final class PreviewSessionController {
     }
 
     func isMouseInsidePreviewRegion(_ point: CGPoint) -> Bool {
+        if contextMenuDepth > 0 {
+            return true
+        }
         if panelDisplay.isMouseInsidePanel(point) {
             return true
         }
@@ -163,6 +185,9 @@ final class PreviewSessionController {
     }
 
     func isMouseInsidePanelTransitionRegion(_ point: CGPoint) -> Bool {
+        if contextMenuDepth > 0 {
+            return true
+        }
         if panelDisplay.isMouseInsidePanel(point) {
             return true
         }
@@ -171,6 +196,10 @@ final class PreviewSessionController {
             return false
         }
         let retentionParameters = currentRetentionParameters
+        let dockEdgeTolerance = min(CGFloat(4), retentionParameters.dockItemTolerance)
+        if GeometryHelpers.contains(point, in: dockFrame, tolerance: dockEdgeTolerance) {
+            return true
+        }
         if GeometryHelpers.contains(point, in: panelFrame, tolerance: retentionParameters.panelEdgeTolerance) {
             return true
         }
@@ -189,6 +218,63 @@ final class PreviewSessionController {
         }
         _ = activationService.activate(window: window)
         hide(reason: "activated")
+    }
+
+    private func handle(_ action: PreviewPanelAction, expectedGeneration: Int) async {
+        guard isCurrent(expectedGeneration) else {
+            logger.warning("preview.session.staleAction generation=\(expectedGeneration) current=\(generation)")
+            return
+        }
+
+        switch action {
+        case let .primarySelect(id):
+            await activate(windowID: id)
+        case let .windowOperation(id, operation):
+            await performWindowOperation(operation, windowID: id)
+        case let .contextMenuBegan(id):
+            contextMenuDepth += 1
+            logger.info("preview.panel.contextMenuBegan id=\(id.windowID)")
+        case let .contextMenuEnded(id):
+            contextMenuDepth = max(0, contextMenuDepth - 1)
+            logger.info("preview.panel.contextMenuEnded id=\(id.windowID)")
+        }
+    }
+
+    private func operationMenu(
+        for window: PreviewWindow,
+        environmentDescription: String
+    ) -> PreviewWindowOperationMenuModel {
+        PreviewWindowOperationMenuModel(
+            activate: windowOperationService.availability(for: .activate, window: window),
+            hideApplication: windowOperationService.availability(for: .hideApplication, window: window),
+            closeWindow: windowOperationService.availability(for: .closeWindow, window: window),
+            minimizeWindow: windowOperationService.availability(for: .minimizeWindow, window: window),
+            environmentDescription: environmentDescription
+        )
+    }
+
+    private func performWindowOperation(
+        _ operation: PreviewWindowOperation,
+        windowID: PreviewWindowID
+    ) async {
+        guard operation != .activate else {
+            await activate(windowID: windowID)
+            return
+        }
+
+        guard let window = currentWindowsByID[windowID] else {
+            logger.warning("windowOperation.missingWindow id=\(windowID.windowID)")
+            return
+        }
+
+        let result = windowOperationService.perform(operation, on: window)
+        if result.requestSucceeded {
+            hide(reason: "windowOperation.\(operation.rawValue)")
+        } else {
+            logger.warning(
+                "windowOperation.result operation=\(operation.rawValue) id=\(windowID.windowID) requestSucceeded=false reason=\(result.failure?.reason.rawValue ?? "none") stage=\(result.failure?.stage.rawValue ?? "none") axCode=\(result.failure?.axErrorCode.map(String.init) ?? "none")"
+            )
+        }
     }
 
     private func isCurrent(_ expectedGeneration: Int) -> Bool {

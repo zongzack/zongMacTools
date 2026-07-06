@@ -1,12 +1,12 @@
-# Dock Hover Preview P2 UI Polish Manual Checklist
+# Dock 悬停窗口预览 P2 界面打磨人工验收清单
 
 日期：2026-07-02
 
-最近更新：2026-07-02
+最近更新：2026-07-03
 
 ## 状态
 
-P2 UI polish 自动验证已完成；人工视觉验证尚未运行。本文只记录真实执行结果，未执行项保持 `not run`，不声明 manual UI pass。
+P2 界面打磨自动验证已完成；人工视觉验证已于 2026-07-03 由用户反馈完成，结果正常。本文只记录真实执行结果，不虚构额外日志或截图。
 
 ## 自动验证记录
 
@@ -19,35 +19,35 @@ P2 UI polish 自动验证已完成；人工视觉验证尚未运行。本文只�
 
 ## 自动验证覆盖
 
-- fit/fill render plan：`.fill` 与 `.fit` 进入不同渲染分支。
-- 窄窗口策略：默认 fill 下，窄窗口使用 fit，宽窗口保持 fill。
-- loading/unavailable placeholder：thumbnail nil 更新后停止 loading，并进入 unavailable 分支。
+- 完整显示/裁切填满渲染计划：`.fill` 与 `.fit` 进入不同渲染分支。
+- 窄窗口策略：默认裁切填满下，窄窗口使用完整显示，宽窗口保持裁切填满。
+- 加载中/不可用占位状态：thumbnail nil 更新后停止加载，并进入不可用分支。
 - 本地化 unavailable 文案：English 使用 `No thumbnail`，简体中文使用 `无缩略图`。
-- show/hide animation：show 与 hide 走 animation path；update 不重复触发 show animation。
-- Reduce Motion：打开时 show/hide 走降级路径。
-- Light / Dark visual token：panel border、shadow、placeholder surface、hover state 有基础约束。
-- Screen Recording denied 自动路径：保持不 show panel。
+- 显示/隐藏动画：显示与隐藏走动画路径；更新内容不重复触发显示动画。
+- 减少动态效果：打开时显示/隐藏走降级路径。
+- 浅色/深色视觉规则：面板边框、阴影、占位区域、悬停状态有基础约束。
+- 屏幕录制权限缺失自动路径：保持不显示预览面板。
 
-## Manual-Only Checklist
+## 人工验收清单
 
 | 项目 | 检查内容 | 结果 | 记录 |
 | --- | --- | --- | --- |
-| [ ] Bottom Dock | 普通底部 Dock 下 hover 多个 app，观察 panel 位置、fit/fill、loading/unavailable、show/hide animation 和 quick stale cancellation。 | not run |  |
-| [ ] Left / Right Dock | 左侧和右侧 Dock 下 hover 多窗口 app，观察 side Dock 纵向卡片、panel 不越界、Dock-to-panel 保留和离开隐藏。 | not run |  |
-| [ ] Dock Auto-Hide | 开启 Dock auto-hide 后 hover、离开、再次 hover，观察 reveal edge 与 stale cancellation。 | not run |  |
-| [ ] Stage Manager | 开启 Stage Manager 后 hover 有窗口 app，观察 AX fallback placeholder、panel 位置、点击激活和离开隐藏。 | not run |  |
-| [ ] Light / Dark | 分别切换 Light 和 Dark，观察 panel material、border、shadow、title、hover state、loading 和 unavailable placeholder。 | not run |  |
-| [ ] Reduce Motion | 分别开启和关闭 Reduce Motion，观察 show/hide 动画降级、隐藏时命中区域和 stale hide。 | not run |  |
-| [ ] Typora Narrow Window | 使用 Typora 或同类窄窗口，观察 thumbnail 使用 fit、容器尺寸稳定、标题不遮挡缩略图。 | not run |  |
-| [ ] Multi-Window App | 使用 VS Code / WPS 等多窗口 app，观察多卡片列表、横向/纵向滚动、标题截断和点击激活。 | not run |  |
-| [ ] Screen Recording Denied | 撤销 Screen Recording 后 hover Dock app，观察 preview UI 静默抑制，不显示 loading、placeholder 或弹窗。 | not run |  |
-| [ ] Quick Stale | 快速 hover 后离开、横移到相邻未启动 Dock app、hide 动画未完成时重新 hover，观察旧 panel 不残留。 | not run |  |
+| [x] 底部程序坞 | 普通底部程序坞下悬停多个 app，观察面板位置、裁切填满/完整显示、加载中/不可用状态、显示/隐藏动画和快速悬停失效取消。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] 左/右程序坞 | 左侧和右侧程序坞下悬停多窗口 app，观察侧边程序坞纵向卡片、面板不越界、程序坞到面板保留和离开隐藏。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] 程序坞自动隐藏 | 开启程序坞自动隐藏后悬停、离开、再次悬停，观察唤出边缘与悬停失效取消。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] 台前调度 | 开启台前调度后悬停有窗口 app，观察辅助信息回退占位、面板位置、点击激活和离开隐藏。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] 浅色/深色外观 | 分别切换浅色和深色外观，观察面板材质、边框、阴影、标题、悬停状态、加载中和不可用占位状态。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] 减少动态效果 | 分别开启和关闭减少动态效果，观察显示/隐藏动画降级、隐藏时命中区域和旧隐藏动画不会影响新面板。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] Typora 窄窗口 | 使用 Typora 或同类窄窗口，观察缩略图使用完整显示、容器尺寸稳定、标题不遮挡缩略图。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] 多窗口应用 | 使用 VS Code / WPS 等多窗口 app，观察多卡片列表、横向/纵向滚动、标题截断和点击激活。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] 屏幕录制权限缺失 | 撤销屏幕录制权限后悬停程序坞 app，观察预览 UI 静默抑制，不显示加载中、占位状态或弹窗。 | 通过 | 2026-07-03 用户反馈正常。 |
+| [x] 快速悬停失效取消 | 快速悬停后离开、横移到相邻未启动程序坞 app、隐藏动画未完成时重新悬停，观察旧面板不残留。 | 通过 | 2026-07-03 用户反馈正常。 |
 
 ## 受限项
 
-- Multiple displays：当前硬件环境不可用，验证状态沿用 `blocked / not available`。
+- 多显示器：当前硬件环境不可用，验证状态沿用 `blocked / not available`。
 
 ## 记录边界
 
 - 本清单不复制、翻译或机械改写外部项目源码、文件结构、helper、注释或私有 API wrapper。
-- 未人工执行的项目保持 `not run`。
+- 人工验收结果来自 2026-07-03 用户反馈；本清单不虚构额外日志或截图。

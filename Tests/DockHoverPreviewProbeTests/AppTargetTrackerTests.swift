@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class AppTargetTrackerTests: XCTestCase {
     func testPrefersCurrentPreviewAppOverHoveredAndActiveApp() {
-        let tracker = AppTargetTracker(selfBundleIdentifier: "com.zong.DockHoverPreviewProbe")
+        let tracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
         tracker.updateLatestNonSelfActiveApp(AppTarget(bundleIdentifier: "com.apple.TextEdit", displayName: "TextEdit"))
         tracker.updateLatestHoveredDockApp(AppTarget(bundleIdentifier: "com.google.Chrome", displayName: "Google Chrome"))
         tracker.updateCurrentPreviewApp(AppTarget(bundleIdentifier: "com.microsoft.VSCode", displayName: "Code"))
@@ -14,8 +14,8 @@ final class AppTargetTrackerTests: XCTestCase {
     }
 
     func testIgnoresSelfAndMissingBundleIdentifier() {
-        let tracker = AppTargetTracker(selfBundleIdentifier: "com.zong.DockHoverPreviewProbe")
-        tracker.updateLatestNonSelfActiveApp(AppTarget(bundleIdentifier: "com.zong.DockHoverPreviewProbe", displayName: "zongMacTools"))
+        let tracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
+        tracker.updateLatestNonSelfActiveApp(AppTarget(bundleIdentifier: "com.zong.zongMacTools", displayName: "zongMacTools"))
         tracker.updateLatestHoveredDockApp(AppTarget(bundleIdentifier: "", displayName: "Unknown"))
 
         XCTAssertNil(tracker.exclusionTarget)

@@ -33,4 +33,24 @@ final class ProbeModelsTests: XCTestCase {
         XCTAssertTrue(result.raiseSucceeded)
         XCTAssertFalse(result.appActivateRequestSucceeded)
     }
+
+    func testWindowOperationResultCapturesFailureEvidence() {
+        let id = PreviewWindowID(pid: 10, windowID: 42)
+        let failure = WindowOperationFailure(
+            reason: .actionFailed,
+            stage: .pressButton,
+            axErrorCode: 5
+        )
+        let result = WindowOperationResult(
+            operation: .closeWindow,
+            windowID: id,
+            requestSucceeded: false,
+            failure: failure
+        )
+
+        XCTAssertEqual(result.operation, .closeWindow)
+        XCTAssertEqual(result.windowID, id)
+        XCTAssertFalse(result.requestSucceeded)
+        XCTAssertEqual(result.failure, failure)
+    }
 }

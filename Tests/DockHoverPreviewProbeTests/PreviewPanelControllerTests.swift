@@ -21,7 +21,7 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(), anchor: makeAnchor(), onSelect: { _ in })
+        controller.show(model: makeModel(), anchor: makeAnchor(), onAction: { _ in })
         controller.hide(reason: "test")
 
         let calls = animator.animationCalls
@@ -42,7 +42,7 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(), anchor: makeAnchor(), onSelect: { _ in })
+        controller.show(model: makeModel(), anchor: makeAnchor(), onAction: { _ in })
         controller.hide(reason: "test")
 
         let calls = animator.animationCalls
@@ -63,7 +63,7 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(appName: "Initial", windowIDs: [1]), anchor: anchor, onSelect: { _ in })
+        controller.show(model: makeModel(appName: "Initial", windowIDs: [1]), anchor: anchor, onAction: { _ in })
         controller.update(model: makeModel(appName: "Updated", windowIDs: [1, 2, 3]))
 
         XCTAssertEqual(animator.animationCalls.filter { $0.kind == .show }.count, 1)
@@ -90,7 +90,7 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(), anchor: makeAnchor(), onSelect: { _ in })
+        controller.show(model: makeModel(), anchor: makeAnchor(), onAction: { _ in })
         let visibleFrame = try XCTUnwrap(controller.panelFrame())
 
         controller.hide(reason: "mouseLeftPreviewRegion")
@@ -110,16 +110,16 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        var selectedIDs: [PreviewWindowID] = []
+        var actions: [PreviewPanelAction] = []
         controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200)) {
-            selectedIDs.append($0)
+            actions.append($0)
         }
         controller.hide(reason: "transition")
         XCTAssertNil(controller.panelFrame())
         XCTAssertEqual(animator.pendingHideCompletionCount, 1)
 
         controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700)) {
-            selectedIDs.append($0)
+            actions.append($0)
         }
         let frameAfterSecondShow = try XCTUnwrap(controller.panelFrame())
         let panel = try XCTUnwrap(animator.latestPanel)
@@ -135,9 +135,37 @@ final class PreviewPanelControllerTests: XCTestCase {
         XCTAssertEqual(hostedView.model.appName, "Second")
         let latestID = try XCTUnwrap(hostedView.model.cards.first?.id)
 
-        hostedView.onSelect(latestID)
+        hostedView.onAction(.primarySelect(latestID))
 
-        XCTAssertEqual(selectedIDs, [latestID])
+        XCTAssertEqual(actions, [.primarySelect(latestID)])
+    }
+
+    func testOldRenderedViewKeepsOriginalActionHandlerAfterNewShow() throws {
+        let animator = RecordingPanelAnimationController()
+        let controller = PreviewPanelController(
+            logger: ProbeLogger(),
+            motionPreferences: FakeMotionPreferenceProvider(shouldReduceMotion: false),
+            animator: animator
+        )
+        defer { animator.orderOutTrackedPanels() }
+
+        var firstActions: [PreviewPanelAction] = []
+        var secondActions: [PreviewPanelAction] = []
+        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200)) {
+            firstActions.append($0)
+        }
+        let firstHostedView = try XCTUnwrap(animator.hostedView)
+        let firstID = try XCTUnwrap(firstHostedView.model.cards.first?.id)
+
+        controller.hide(reason: "transition")
+        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700)) {
+            secondActions.append($0)
+        }
+
+        firstHostedView.onAction(.windowOperation(firstID, .closeWindow))
+
+        XCTAssertEqual(firstActions, [.windowOperation(firstID, .closeWindow)])
+        XCTAssertEqual(secondActions, [])
     }
 
     func testStaleHideCompletionDoesNotResetCurrentPanelPresentationState() throws {
@@ -149,9 +177,9 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200)) { _ in }
+        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200), onAction: { _ in })
         controller.hide(reason: "transition")
-        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700)) { _ in }
+        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700), onAction: { _ in })
 
         let panel = try XCTUnwrap(animator.latestPanel)
         panel.alphaValue = 0.37

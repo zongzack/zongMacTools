@@ -2,7 +2,7 @@
 
 `zongMacTools` 当前主要包含一个 macOS Dock 悬停窗口预览工具原型：`DockHoverPreviewProbe`。它是一个菜单栏常驻应用，用 Swift、AppKit、SwiftUI 和 ScreenCaptureKit 实现类似 Windows 任务栏窗口预览的最小可用能力：鼠标悬停在 Dock 应用图标上时，显示该应用当前可见窗口的横向预览面板，点击卡片即可切换到对应窗口。
 
-项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 UI polish 自动验证完成阶段。核心 hover preview 路径已经可用；P1 新增菜单设置、持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；P2 改善 preview panel 的缩略图显示、placeholder、动画和 Light / Dark 视觉 token。P2 人工视觉验证尚未运行，因此当前不声明 manual UI pass。
+项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 界面打磨实现、自动验证和人工验证完成、P3 窗口操作增强实现完成阶段。核心悬停预览路径已经可用；P1 新增菜单设置、持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；P2 改善预览面板的缩略图显示、占位状态、动画和浅色/深色视觉规则；P3 为预览卡片增加右键窗口操作菜单。P2 人工视觉验证已由用户反馈完成，结果正常；P3 人工验收尚未执行。
 
 ## 功能概览
 
@@ -10,35 +10,40 @@
 - 使用非激活的浮动 `NSPanel` 展示预览，不抢占当前应用焦点。
 - SwiftUI 卡片列表，默认最多显示 8 个窗口；P1 菜单可切换为 3、5、8、12。
 - 每张卡片包含应用图标、窗口标题、静态缩略图或占位图。
-- P2 缩略图默认保持 fill 视觉；窄窗口自动使用 fit，避免 Typora 等窄窗口被过度裁切。
-- P2 区分 loading 与 unavailable placeholder；缩略图不可用时显示本地化 `No thumbnail` / `无缩略图`。
+- P2 缩略图默认裁切填满；窄窗口自动完整显示，避免 Typora 等窄窗口被过度裁切。
+- P2 区分加载中与不可用占位状态；缩略图不可用时显示本地化 `No thumbnail` / `无缩略图`。
 - 点击预览卡片后尝试激活对应窗口，并隐藏预览面板。
+- 右键预览卡片可打开窗口操作菜单：激活窗口、隐藏应用、关闭窗口、最小化窗口，并显示保守的屏幕提示。
+- P3 窗口操作只使用公开接口；关闭和最小化依赖公开辅助功能按钮或属性，失败时安静降级并记录日志。
 - 鼠标快速离开 Dock 图标时取消过期预览，避免 stale panel 残留。
 - 鼠标从 Dock 图标移动到预览面板时保持面板显示。
 - 鼠标离开 Dock 图标和预览面板后自动隐藏。
 - 按 `Esc` 可隐藏预览面板。
-- Screen Recording 权限缺失时静默抑制预览 UI，不弹出重复干扰提示。
+- 屏幕录制权限缺失时静默抑制预览 UI，不弹出重复干扰提示。
 - Dock 重启后可重新订阅 Dock Accessibility 事件。
 - 菜单栏提供权限状态、权限入口、P1 settings menu、Launch at Login 和 frontmost app 调试预览入口。
-- 预览面板 show / hide 使用轻量动画，并尊重系统 Reduce Motion；Light / Dark 下的边框、阴影、placeholder surface 使用集中 token。
+- 预览面板显示/隐藏使用轻量动画，并尊重系统减少动态效果设置；浅色/深色外观下的边框、阴影、占位区域使用集中视觉规则。
 
 ## 当前状态
 
-MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 UI polish 自动验证状态：`complete`。P2 manual visual validation：`not run`。
+MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 界面打磨自动验证状态：`complete`。P2 人工视觉验证状态：`complete`，2026-07-03 用户反馈正常。P3 窗口操作增强状态：实现完成，自动验证通过，人工验收待执行。
 
 已验证内容：
 
 - `swift test`：2026-07-03 13:31:05 Asia/Shanghai，130 XCTest，0 failures，exit 0。
+- P3 `swift test`：2026-07-06 CST，164 XCTest，0 failures，exit 0。
 - `swift build`：通过，exit 0。
 - `Scripts/build_probe_app.sh`：通过，exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature。
-- Accessibility 和 Screen Recording 授权后，日志确认 Dock 监听订阅成功。
+- 系统辅助功能与屏幕录制授权后，日志确认 Dock 监听订阅成功。
 - VS Code、Chrome、Typora、IINA、WPS 的主流程由人工反馈为功能正常。
 - 点击激活、快速离开取消 stale preview、进入 panel 保持显示、离开隐藏、移动到相邻未启动 Dock app 时隐藏旧 panel、`Esc` 隐藏、`killall Dock` 恢复均由人工反馈为功能正常。
+- P2 人工视觉验证已由用户反馈完成，覆盖底部程序坞、左右程序坞、程序坞自动隐藏、台前调度、浅色/深色外观、减少动态效果、Typora 窄窗口、多窗口应用、屏幕录制权限缺失和快速悬停失效取消，结果正常。
+- P3 自动测试覆盖窗口操作模型与文案、公开辅助功能窗口操作服务、右键菜单模型、菜单期间会话保留、操作成功/失败路由、旧会话动作保护和屏幕提示匹配；`swift build`、`Scripts/build_probe_app.sh` 和 `git diff --check` 均通过。
 
 仍需继续验证的内容：
 
 - Multiple displays 因当前硬件不可用仍是 `blocked / not available`。
-- P2 manual-only 视觉验证尚未运行，包括 bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied 和 quick stale cancellation。
+- P3 真实 app 人工验收尚未执行，详见 `docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`。
 
 详细记录见：
 
@@ -157,6 +162,8 @@ dock.subscribed pid=...
 - `WindowQueryService.swift`：使用 ScreenCaptureKit 枚举当前可见窗口，并结合 AX 窗口做匹配；按当前 max cards 设置限制查询数量。
 - `ThumbnailService.swift`：优先用 ScreenCaptureKit 生成静态缩略图，必要时使用 CoreGraphics fallback。
 - `ActivationService.swift`：通过 AX raise 和 `NSRunningApplication.activate` 尝试激活选中的窗口。
+- `WindowOperationService.swift`：通过公开接口执行 P3 窗口操作；激活复用 `ActivationService`，隐藏应用使用 `NSRunningApplication.hide()`，关闭/最小化只使用公开辅助功能按钮或可设置属性。
+- `WindowEnvironmentDescriptor.swift`：按窗口与屏幕交集面积生成保守屏幕提示，不承诺真实空间归属。
 - `ProbeModels.swift`：窗口 ID、窗口模型、权限状态、缩略图 cache key、激活结果等共享模型。
 
 ### 预览面板 UI
@@ -199,6 +206,8 @@ pkill -x DockHoverPreviewProbe
 - 预览 view model 的卡片数量限制、缩略图更新、fit/fill 模式、unavailable 状态和可访问性标签。
 - SwiftUI render plan 的 fill / fit 分支、loading spinner 和 unavailable 文案分支。
 - 预览 session 的 Screen Recording 缺失抑制、无窗口隐藏、max cards、retention、缩略图更新、本地化 unavailable 文案、stale cancellation、点击激活、Dock 到 panel 的桥接保留和相邻 Dock item hover-lost 隐藏。
+- P3 窗口操作服务的关闭、最小化、隐藏应用、激活委托、失败阶段与 AX code 记录。
+- P3 右键菜单模型、禁用项不触发动作、菜单跟踪期间保留会话、旧会话动作不影响新会话、屏幕提示匹配。
 - 预览 panel controller 的 show/hide animation、Reduce Motion 降级、隐藏后命中测试和 update 不重复触发 show animation。
 - Light / Dark visual token 的边框、阴影、hover state 和 placeholder surface 基础约束。
 - 静态缩略图 cache、ScreenCaptureKit/CoreGraphics fallback 日志。
@@ -222,7 +231,7 @@ Scripts/build_probe_app.sh
 Scripts/run_probe_app.sh
 
 # 查看 probe 日志
-/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.DockHoverPreviewProbe"'
+/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.zongMacTools"'
 
 # 退出正在运行的 probe app
 pkill -x DockHoverPreviewProbe
@@ -235,7 +244,7 @@ pkill -x DockHoverPreviewProbe
 先确认权限日志：
 
 ```bash
-/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.DockHoverPreviewProbe"'
+/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.zongMacTools"'
 ```
 
 重点查找：
@@ -276,14 +285,13 @@ pkill -x DockHoverPreviewProbe
 ## 已知限制
 
 - 只展示当前可见、可枚举、非最小化的普通应用窗口。
-- 不支持最小化窗口、其他 Space 中的窗口或全屏 Space 自动切换。
+- 不展示或恢复已最小化窗口，不展示其他 Space 中的窗口，也不做全屏 Space 自动切换。
 - 不提供实时视频缩略图，当前是静态截图。
-- 不提供关闭、最小化、全屏按钮。
+- 不提供卡片内关闭、最小化或全屏按钮；P3 右键菜单只发出公开接口窗口操作请求。
 - P1 只提供菜单栏设置，不提供独立设置窗口、搜索或键盘切换器。
 - Launch at Login 依赖公开 `ServiceManagement`，真实状态以 `SMAppService.mainApp.status` 为准。
 - 只使用公开 API。
 - 多显示器场景仍需额外手动验证。
-- P2 视觉 polish 的 manual-only 场景尚未人工复验。
 
 ## 设计边界
 
@@ -320,8 +328,8 @@ MVP 阶段坚持以下边界：
 
 优先级从高到低：
 
-1. 执行 P2 manual visual validation：bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied 和 quick stale cancellation。
-2. 继续补跑多显示器验证；当前硬件不可用时保持 `blocked / not available`。
-3. 评估是否需要持久设置页、应用过滤或更完整的窗口状态处理。
+1. 继续补跑多显示器验证；当前硬件不可用时保持 `blocked / not available`。
+2. 执行 P3 窗口操作增强人工验收，重点覆盖右键菜单、关闭/最小化失败降级、菜单期间会话保留和屏幕录制权限缺失。
+3. 继续评估是否需要持久设置页、应用过滤或更完整的窗口状态处理。
 
 完整后续清单见 `docs/roadmap.md`。

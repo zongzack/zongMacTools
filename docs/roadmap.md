@@ -7,7 +7,7 @@
 - 先稳定，再扩功能。
 - 不使用私有 API，除非后续单独评估并明确接受风险。
 - 不复制 DockDoor GPLv3 源码，只参考交互和 API 策略。
-- Screen Recording 缺失时继续静默抑制 preview UI。
+- 屏幕录制权限缺失时继续静默抑制预览 UI。
 - stale hover cancellation 始终是一等状态。
 - 每个新功能都要有自动测试或明确的人工验证记录。
 
@@ -59,28 +59,32 @@
 
 - [x] 缩略图显示模式：保持比例 / 裁切填满。
 - [x] 改善窄窗口缩略图展示。
-- [x] 增加轻量 show / hide 动画，并尊重 Reduce Motion。
+- [x] 增加轻量显示/隐藏动画，并尊重减少动态效果设置。
 - [x] 优化 loading 和 placeholder 状态。
 - [x] 优化多窗口标题截断和卡片宽度。
-- [x] 复查 Light / Dark 下的材质、边框和阴影。
+- [x] 复查浅色/深色外观下的材质、边框和阴影。
 
-状态：2026-07-03 已完成实现和自动验证；P2 manual visual validation 尚未运行。
+状态：2026-07-03 已完成实现、自动验证和人工视觉验证；人工验证由用户反馈正常。
 
 验收标准：
 
 - UI 不遮挡文字或缩略图。
 - 卡片尺寸稳定，缩略图加载不造成布局跳动。
-- Light / Dark 外观都可读。
+- 浅色/深色外观都可读。
 
 ## P3：窗口操作增强
 
 目标：在 preview 基础上增加少量高价值窗口操作。
 
-- [ ] 卡片右键菜单：Activate。
-- [ ] 卡片右键菜单：Hide App。
-- [ ] 评估并实现 Close Window。
-- [ ] 评估并实现 Minimize Window。
-- [ ] 显示窗口所在屏幕或当前可交互环境提示。
+开发文档：`docs/plans/dock-hover-preview-p3-window-actions-development-plan.md`。
+
+- [x] 卡片右键菜单：Activate。
+- [x] 卡片右键菜单：Hide App。
+- [x] 评估并实现 Close Window。
+- [x] 评估并实现 Minimize Window。
+- [x] 显示窗口所在屏幕或当前可交互环境提示。
+
+状态：2026-07-06 已完成实现和自动验证；人工验收待执行，清单见 `docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`。
 
 验收标准：
 

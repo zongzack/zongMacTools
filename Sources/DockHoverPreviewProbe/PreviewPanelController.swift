@@ -5,7 +5,7 @@ import SwiftUI
 protocol PreviewPanelDisplaying: AnyObject {
     var onRequestHide: ((String) -> Void)? { get set }
 
-    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onSelect: @escaping (PreviewWindowID) -> Void)
+    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onAction: @escaping (PreviewPanelAction) -> Void)
     func update(model: PreviewPanelViewModel)
     func hide(reason: String)
     func isMouseInsidePanel(_ point: CGPoint) -> Bool
@@ -50,7 +50,7 @@ final class PreviewPanelController: PreviewPanelDisplaying {
     private let animator: PanelAnimationControlling
     private var panel: NSPanel?
     private var hostingController: NSHostingController<PreviewPanelView>?
-    private var currentOnSelect: ((PreviewWindowID) -> Void)?
+    private var currentOnAction: ((PreviewPanelAction) -> Void)?
     private var currentAnchor: PreviewPanelAnchor?
     private var logicalPanelFrame: CGRect?
     private var presentationGeneration = 0
@@ -66,12 +66,12 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         self.animator = animator
     }
 
-    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onSelect: @escaping (PreviewWindowID) -> Void) {
-        currentOnSelect = onSelect
+    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onAction: @escaping (PreviewPanelAction) -> Void) {
+        currentOnAction = onAction
         currentAnchor = anchor
 
         let panel = ensurePanel()
-        let frame = render(model: model, anchor: anchor, in: panel)
+        let frame = render(model: model, anchor: anchor, in: panel, onAction: onAction)
         logicalPanelFrame = frame
         presentationGeneration += 1
         let generation = presentationGeneration
@@ -95,8 +95,8 @@ final class PreviewPanelController: PreviewPanelDisplaying {
     }
 
     func update(model: PreviewPanelViewModel) {
-        guard let currentAnchor, let panel else { return }
-        let frame = render(model: model, anchor: currentAnchor, in: panel)
+        guard let currentAnchor, let panel, let currentOnAction else { return }
+        let frame = render(model: model, anchor: currentAnchor, in: panel, onAction: currentOnAction)
         logicalPanelFrame = frame
         logger.info("preview.panel.update app=\(model.appName) count=\(model.cards.count)")
     }
@@ -105,7 +105,7 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         guard let panel else { return }
         logicalPanelFrame = nil
         currentAnchor = nil
-        currentOnSelect = nil
+        currentOnAction = nil
         presentationGeneration += 1
         let generation = presentationGeneration
         let mode = animationMode()
@@ -137,11 +137,14 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         logicalPanelFrame
     }
 
-    private func render(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, in panel: NSPanel) -> CGRect {
+    private func render(
+        model: PreviewPanelViewModel,
+        anchor: PreviewPanelAnchor,
+        in panel: NSPanel,
+        onAction: @escaping (PreviewPanelAction) -> Void
+    ) -> CGRect {
         let layout = PreviewPanelLayoutEngine.panelLayout(for: anchor)
-        let view = PreviewPanelView(model: model, layout: layout) { [weak self] id in
-            self?.currentOnSelect?(id)
-        }
+        let view = PreviewPanelView(model: model, layout: layout, onAction: onAction)
 
         if let hostingController {
             hostingController.rootView = view

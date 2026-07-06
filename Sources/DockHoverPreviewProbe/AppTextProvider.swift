@@ -28,6 +28,12 @@ enum LocalizedTextKey: String, CaseIterable {
     case refreshPermissions
     case debugShowPreviewForFrontmostApp
     case noThumbnail
+    case activateWindow
+    case hideApplication
+    case closeWindow
+    case minimizeWindow
+    case screenUnknown
+    case currentEnumerableEnvironment
     case quit
 }
 
@@ -140,6 +146,15 @@ struct AppTextProvider: Equatable {
         bundleIdentifier
     }
 
+    func screenDescription(_ screenName: String) -> String {
+        switch language {
+        case .english:
+            "Screen: \(screenName)"
+        case .simplifiedChinese:
+            "\u{5C4F}\u{5E55}\u{FF1A}\(screenName)"
+        }
+    }
+
     private func permissionStatus(granted: Bool) -> String {
         granted
             ? "\u{5DF2}\u{6388}\u{6743}"
@@ -202,6 +217,18 @@ struct AppTextProvider: Equatable {
             "Debug: Show Preview For Frontmost App"
         case .noThumbnail:
             "No thumbnail"
+        case .activateWindow:
+            "Activate Window"
+        case .hideApplication:
+            "Hide App"
+        case .closeWindow:
+            "Close Window"
+        case .minimizeWindow:
+            "Minimize Window"
+        case .screenUnknown:
+            "Screen: Unknown"
+        case .currentEnumerableEnvironment:
+            "Environment: Current enumerable windows"
         case .quit:
             "Quit"
         }
@@ -263,6 +290,18 @@ struct AppTextProvider: Equatable {
             "\u{8C03}\u{8BD5}\u{FF1A}\u{9884}\u{89C8}\u{5F53}\u{524D}\u{524D}\u{53F0} App"
         case .noThumbnail:
             "\u{65E0}\u{7F29}\u{7565}\u{56FE}"
+        case .activateWindow:
+            "\u{6FC0}\u{6D3B}\u{7A97}\u{53E3}"
+        case .hideApplication:
+            "\u{9690}\u{85CF}\u{5E94}\u{7528}"
+        case .closeWindow:
+            "\u{5173}\u{95ED}\u{7A97}\u{53E3}"
+        case .minimizeWindow:
+            "\u{6700}\u{5C0F}\u{5316}\u{7A97}\u{53E3}"
+        case .screenUnknown:
+            "\u{5C4F}\u{5E55}\u{FF1A}\u{672A}\u{77E5}"
+        case .currentEnumerableEnvironment:
+            "\u{73AF}\u{5883}\u{FF1A}\u{5F53}\u{524D}\u{53EF}\u{679A}\u{4E3E}\u{7A97}\u{53E3}"
         case .quit:
             "\u{9000}\u{51FA}"
         }

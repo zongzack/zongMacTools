@@ -15,18 +15,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logger = ProbeLogger()
         permissionService = SystemPermissionService(logger: logger)
         settingsStore = UserDefaultsSettingsStore(logger: logger)
-        targetTracker = AppTargetTracker(selfBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.zong.DockHoverPreviewProbe")
+        targetTracker = AppTargetTracker(selfBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.zong.zongMacTools")
         targetTracker.startWorkspaceObservation()
         launchAtLoginService = SystemLaunchAtLoginService()
         previewPanelController = PreviewPanelController(logger: logger)
         let windowQueryService: WindowQueryService = ScreenCaptureWindowQueryService(logger: logger)
         let thumbnailService: ThumbnailService = StaticThumbnailService(logger: logger)
         let activationService: ActivationService = AXActivationService(logger: logger)
+        let windowOperationService: WindowOperationService = AXWindowOperationService(
+            activationService: activationService,
+            logger: logger
+        )
         previewSessionController = PreviewSessionController(
             permissionService: permissionService,
             windowQueryService: windowQueryService,
             thumbnailService: thumbnailService,
             activationService: activationService,
+            windowOperationService: windowOperationService,
             panelDisplay: previewPanelController,
             settingsStore: settingsStore,
             targetTracker: targetTracker,
@@ -55,7 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         menuBarController.install()
         orchestrator.start()
-        logger.info("app.launched bundleIdentifier=com.zong.DockHoverPreviewProbe")
+        logger.info("app.launched bundleIdentifier=\(Bundle.main.bundleIdentifier ?? "com.zong.zongMacTools")")
     }
 
     @MainActor func applicationWillTerminate(_ notification: Notification) {

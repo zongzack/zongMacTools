@@ -4,6 +4,39 @@ import XCTest
 @testable import DockHoverPreviewProbe
 
 final class PreviewPanelViewModelTests: XCTestCase {
+    func testWindowOperationsUseStableMenuOrderAndRawValues() {
+        XCTAssertEqual(PreviewWindowOperation.allCases, [.activate, .hideApplication, .closeWindow, .minimizeWindow])
+        XCTAssertEqual(PreviewWindowOperation.activate.rawValue, "activate")
+        XCTAssertEqual(PreviewWindowOperation.hideApplication.rawValue, "hideApplication")
+        XCTAssertEqual(PreviewWindowOperation.closeWindow.rawValue, "closeWindow")
+        XCTAssertEqual(PreviewWindowOperation.minimizeWindow.rawValue, "minimizeWindow")
+    }
+
+    func testCardCarriesWindowOperationMenuModel() {
+        let menu = PreviewWindowOperationMenuModel(
+            activate: WindowOperationAvailability(operation: .activate, isEnabled: true, disabledReason: nil),
+            hideApplication: WindowOperationAvailability(operation: .hideApplication, isEnabled: true, disabledReason: nil),
+            closeWindow: WindowOperationAvailability(operation: .closeWindow, isEnabled: false, disabledReason: "No close button"),
+            minimizeWindow: WindowOperationAvailability(operation: .minimizeWindow, isEnabled: true, disabledReason: nil),
+            environmentDescription: "Screen: Built-in Display"
+        )
+        let card = PreviewCardViewModel(
+            id: PreviewWindowID(pid: 100, windowID: 1),
+            title: "Project",
+            appName: "Code",
+            appIcon: NSImage(size: NSSize(width: 16, height: 16)),
+            thumbnail: nil,
+            isLoadingThumbnail: true,
+            operationMenu: menu
+        )
+
+        XCTAssertEqual(card.operationMenu, menu)
+        XCTAssertEqual(card.operationMenu.availability(for: .activate)?.isEnabled, true)
+        XCTAssertEqual(card.operationMenu.availability(for: .closeWindow)?.isEnabled, false)
+        XCTAssertEqual(card.operationMenu.availability(for: .closeWindow)?.disabledReason, "No close button")
+        XCTAssertEqual(card.operationMenu.environmentDescription, "Screen: Built-in Display")
+    }
+
     func testPanelViewModelCapsCardsAtEight() {
         let cards = (1...10).map { makeCard(id: CGWindowID($0), title: "Window \($0)") }
 

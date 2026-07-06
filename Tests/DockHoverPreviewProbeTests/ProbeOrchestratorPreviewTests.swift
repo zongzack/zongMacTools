@@ -237,13 +237,29 @@ private final class OrchestratorFakeActivationService: ActivationService {
 }
 
 @MainActor
+private final class OrchestratorFakeWindowOperationService: WindowOperationService {
+    func availability(for operation: PreviewWindowOperation, window: PreviewWindow) -> WindowOperationAvailability {
+        .enabled(operation)
+    }
+
+    func perform(_ operation: PreviewWindowOperation, on window: PreviewWindow) -> WindowOperationResult {
+        WindowOperationResult(
+            operation: operation,
+            windowID: window.id,
+            requestSucceeded: true,
+            failure: nil
+        )
+    }
+}
+
+@MainActor
 private final class OrchestratorFakePreviewDisplay: PreviewPanelDisplaying {
     var onRequestHide: ((String) -> Void)?
 
     var showCount = 0
     var hideReasons: [String] = []
 
-    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onSelect: @escaping (PreviewWindowID) -> Void) {
+    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onAction: @escaping (PreviewPanelAction) -> Void) {
         showCount += 1
     }
 
@@ -320,7 +336,7 @@ private final class ProbeOrchestratorPreviewHarness {
         self.settingsStore = settingsStore
         self.scheduler = scheduler
         self.frontmostProvider = OrchestratorFakeFrontmostApplicationProvider(app: frontmostApp)
-        self.targetTracker = targetTracker ?? AppTargetTracker(selfBundleIdentifier: "com.zong.DockHoverPreviewProbe")
+        self.targetTracker = targetTracker ?? AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
         permissionService = OrchestratorFakePermissionService(
             accessibilityGranted: accessibilityGranted,
             screenRecordingGranted: screenRecordingGranted
@@ -330,6 +346,7 @@ private final class ProbeOrchestratorPreviewHarness {
             windowQueryService: OrchestratorFakeWindowQueryService(),
             thumbnailService: OrchestratorFakeThumbnailService(),
             activationService: OrchestratorFakeActivationService(),
+            windowOperationService: OrchestratorFakeWindowOperationService(),
             panelDisplay: display,
             settingsStore: settingsStore,
             targetTracker: self.targetTracker,

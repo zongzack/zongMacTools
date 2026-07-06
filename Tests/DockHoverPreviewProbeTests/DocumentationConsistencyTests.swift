@@ -21,7 +21,9 @@ final class DocumentationConsistencyTests: XCTestCase {
         XCTAssertTrue(readme.contains("P1"))
         XCTAssertTrue(readme.contains("Launch at Login"))
         XCTAssertTrue(readme.contains("ServiceManagement"))
-        XCTAssertTrue(readme.contains("Screen Recording 权限缺失时静默抑制预览 UI"))
+        XCTAssertTrue(readme.contains("屏幕录制权限缺失时静默抑制预览 UI"))
+        XCTAssertTrue(readme.contains("P3"))
+        XCTAssertTrue(readme.contains("窗口操作"))
     }
 
     func testVerificationDocsRecordAutomaticEvidenceWithoutManualPassClaims() throws {
@@ -44,6 +46,7 @@ final class DocumentationConsistencyTests: XCTestCase {
             "docs/architecture/dock-hover-preview-technical-design.md",
             "docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md",
             "docs/verification/dock-hover-preview-probe-summary.md",
+            "docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md",
             "docs/verification/dock-hover-preview-environment-variant-verification-plan.md",
             "docs/plans/dock-hover-preview-p1-settings-design.md"
         ]

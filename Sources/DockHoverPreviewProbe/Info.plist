@@ -7,7 +7,7 @@
     <key>CFBundleExecutable</key>
     <string>DockHoverPreviewProbe</string>
     <key>CFBundleIdentifier</key>
-    <string>com.zong.DockHoverPreviewProbe</string>
+    <string>com.zong.zongMacTools</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

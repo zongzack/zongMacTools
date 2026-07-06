@@ -1,9 +1,10 @@
+import AppKit
 import SwiftUI
 
 struct PreviewPanelView: View {
     let model: PreviewPanelViewModel
     let layout: PreviewPanelLayout
-    let onSelect: (PreviewWindowID) -> Void
+    let onAction: (PreviewPanelAction) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -40,9 +41,12 @@ struct PreviewPanelView: View {
         ScrollView(.horizontal, showsIndicators: model.cards.count > PreviewPanelMetrics.maxVisibleHorizontalCards) {
             HStack(spacing: PreviewPanelMetrics.cardSpacing) {
                 ForEach(model.cards) { card in
-                    PreviewCardView(card: card, thumbnailUnavailableText: model.thumbnailUnavailableText) {
-                        onSelect(card.id)
-                    }
+                    PreviewCardView(
+                        card: card,
+                        thumbnailUnavailableText: model.thumbnailUnavailableText,
+                        operationMenuText: model.operationMenuText,
+                        onAction: onAction
+                    )
                 }
             }
             .padding(PreviewPanelMetrics.panelPadding)
@@ -53,9 +57,12 @@ struct PreviewPanelView: View {
         ScrollView(.vertical, showsIndicators: model.cards.count > PreviewPanelMetrics.maxVisibleVerticalCards) {
             VStack(spacing: PreviewPanelMetrics.cardSpacing) {
                 ForEach(model.cards) { card in
-                    PreviewCardView(card: card, thumbnailUnavailableText: model.thumbnailUnavailableText) {
-                        onSelect(card.id)
-                    }
+                    PreviewCardView(
+                        card: card,
+                        thumbnailUnavailableText: model.thumbnailUnavailableText,
+                        operationMenuText: model.operationMenuText,
+                        onAction: onAction
+                    )
                 }
             }
             .padding(PreviewPanelMetrics.panelPadding)
@@ -66,13 +73,16 @@ struct PreviewPanelView: View {
 struct PreviewCardView: View {
     let card: PreviewCardViewModel
     let thumbnailUnavailableText: String
-    let onSelect: () -> Void
+    let operationMenuText: PreviewWindowOperationMenuText
+    let onAction: (PreviewPanelAction) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: onSelect) {
+        Button {
+            onAction(.primarySelect(card.id))
+        } label: {
             VStack(alignment: .leading, spacing: PreviewPanelMetrics.cardContentSpacing) {
                 thumbnailView
 
@@ -104,6 +114,13 @@ struct PreviewCardView: View {
         .onHover { isHovered = $0 }
         .accessibilityLabel(card.accessibilityLabel)
         .help(card.title)
+        .overlay {
+            PreviewCardContextMenuBridge(
+                card: card,
+                menuText: operationMenuText,
+                onAction: onAction
+            )
+        }
     }
 
     private var style: PreviewPanelVisualStyle.Tokens {
@@ -166,6 +183,144 @@ struct PreviewCardView: View {
     private var cardBackground: some View {
         RoundedRectangle(cornerRadius: PreviewPanelMetrics.cardCornerRadius, style: .continuous)
             .fill(Color.primary.opacity(isHovered ? style.cardHoverBackgroundOpacity : style.cardBackgroundOpacity))
+    }
+}
+
+enum PreviewWindowOperationMenuItemKind: Equatable {
+    case operation(PreviewWindowOperation)
+    case separator
+    case information
+}
+
+struct PreviewWindowOperationMenuItem: Equatable {
+    let kind: PreviewWindowOperationMenuItemKind
+    let title: String
+    let isEnabled: Bool
+}
+
+enum PreviewWindowOperationMenuPlan {
+    static func items(
+        for card: PreviewCardViewModel,
+        text: PreviewWindowOperationMenuText
+    ) -> [PreviewWindowOperationMenuItem] {
+        PreviewWindowOperation.allCases.map { operation in
+            let availability = card.operationMenu.availability(for: operation)
+            return PreviewWindowOperationMenuItem(
+                kind: .operation(operation),
+                title: text.title(for: operation),
+                isEnabled: availability?.isEnabled == true
+            )
+        } + [
+            PreviewWindowOperationMenuItem(kind: .separator, title: "", isEnabled: false),
+            PreviewWindowOperationMenuItem(
+                kind: .information,
+                title: card.operationMenu.environmentDescription,
+                isEnabled: false
+            )
+        ]
+    }
+}
+
+enum PreviewWindowOperationMenuActionDispatcher {
+    static func dispatch(
+        _ operation: PreviewWindowOperation,
+        for card: PreviewCardViewModel,
+        onAction: (PreviewPanelAction) -> Void
+    ) {
+        guard card.operationMenu.availability(for: operation)?.isEnabled == true else {
+            return
+        }
+        onAction(.windowOperation(card.id, operation))
+    }
+}
+
+private struct PreviewCardContextMenuBridge: NSViewRepresentable {
+    let card: PreviewCardViewModel
+    let menuText: PreviewWindowOperationMenuText
+    let onAction: (PreviewPanelAction) -> Void
+
+    func makeNSView(context: Context) -> PreviewCardContextMenuView {
+        PreviewCardContextMenuView(card: card, menuText: menuText, onAction: onAction)
+    }
+
+    func updateNSView(_ nsView: PreviewCardContextMenuView, context: Context) {
+        nsView.card = card
+        nsView.menuText = menuText
+        nsView.onAction = onAction
+    }
+}
+
+private final class PreviewCardContextMenuView: NSView {
+    var card: PreviewCardViewModel
+    var menuText: PreviewWindowOperationMenuText
+    var onAction: (PreviewPanelAction) -> Void
+
+    init(
+        card: PreviewCardViewModel,
+        menuText: PreviewWindowOperationMenuText,
+        onAction: @escaping (PreviewPanelAction) -> Void
+    ) {
+        self.card = card
+        self.menuText = menuText
+        self.onAction = onAction
+        super.init(frame: .zero)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard let event = window?.currentEvent ?? NSApp.currentEvent,
+              event.type == .rightMouseDown else {
+            return nil
+        }
+        return super.hitTest(point)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        onAction(.contextMenuBegan(card.id))
+        NSMenu.popUpContextMenu(makeMenu(), with: event, for: self)
+        onAction(.contextMenuEnded(card.id))
+    }
+
+    private func makeMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        for item in PreviewWindowOperationMenuPlan.items(for: card, text: menuText) {
+            switch item.kind {
+            case let .operation(operation):
+                let menuItem = NSMenuItem(
+                    title: item.title,
+                    action: #selector(selectOperation(_:)),
+                    keyEquivalent: ""
+                )
+                menuItem.target = self
+                menuItem.representedObject = operation.rawValue
+                menuItem.isEnabled = item.isEnabled
+                menu.addItem(menuItem)
+            case .separator:
+                menu.addItem(.separator())
+            case .information:
+                let menuItem = NSMenuItem(title: item.title, action: nil, keyEquivalent: "")
+                menuItem.isEnabled = false
+                menu.addItem(menuItem)
+            }
+        }
+
+        return menu
+    }
+
+    @objc private func selectOperation(_ sender: NSMenuItem) {
+        guard
+            let rawValue = sender.representedObject as? String,
+            let operation = PreviewWindowOperation(rawValue: rawValue)
+        else {
+            return
+        }
+        PreviewWindowOperationMenuActionDispatcher.dispatch(operation, for: card, onAction: onAction)
     }
 }
 

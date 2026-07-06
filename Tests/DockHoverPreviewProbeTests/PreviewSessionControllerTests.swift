@@ -178,10 +178,183 @@ final class PreviewSessionControllerTests: XCTestCase {
         let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
 
         await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
-        await harness.controller.activate(windowID: window.id)
+        harness.display.actionHandler?(.primarySelect(window.id))
+        await Task.yield()
 
         XCTAssertEqual(harness.activationService.activatedIDs, [window.id])
         XCTAssertEqual(harness.display.hideReasons, ["activated"])
+    }
+
+    func testPreviewSessionInjectsWindowOperationAvailabilityIntoCards() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        harness.windowOperationService.availabilities[.closeWindow] = .disabled(.closeWindow, reason: "Missing close button")
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.first?.operationMenu.activate.isEnabled, true)
+        XCTAssertEqual(harness.display.lastModel?.cards.first?.operationMenu.closeWindow.isEnabled, false)
+        XCTAssertEqual(harness.display.lastModel?.cards.first?.operationMenu.closeWindow.disabledReason, "Missing close button")
+    }
+
+    func testPreviewSessionInjectsScreenEnvironmentDescriptionIntoCards() async {
+        let window = makeWindow(id: 1, frame: CGRect(x: 100, y: 100, width: 800, height: 600))
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            screens: [
+                WindowEnvironmentDescriptor.Screen(
+                    frame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                    localizedName: "Built-in Display"
+                )
+            ]
+        )
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.first?.operationMenu.environmentDescription, "Screen: Built-in Display")
+    }
+
+    func testWindowOperationActivateReusesActivationPath() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.display.actionHandler?(.windowOperation(window.id, .activate))
+        await Task.yield()
+
+        XCTAssertEqual(harness.activationService.activatedIDs, [window.id])
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [])
+        XCTAssertEqual(harness.display.hideReasons, ["activated"])
+    }
+
+    func testSuccessfulWindowOperationRoutesThroughServiceAndHidesPanel() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.display.actionHandler?(.windowOperation(window.id, .hideApplication))
+        await Task.yield()
+
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [.hideApplication])
+        XCTAssertEqual(harness.display.hideReasons, ["windowOperation.hideApplication"])
+    }
+
+    func testFailedWindowOperationDoesNotHidePanel() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        harness.windowOperationService.results[.closeWindow] = WindowOperationResult(
+            operation: .closeWindow,
+            windowID: window.id,
+            requestSucceeded: false,
+            failure: WindowOperationFailure(reason: .missingButton, stage: .copyAttribute, axErrorCode: nil)
+        )
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.display.actionHandler?(.windowOperation(window.id, .closeWindow))
+        await Task.yield()
+
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [.closeWindow])
+        XCTAssertEqual(harness.display.hideReasons, [])
+        XCTAssertTrue(harness.logger.snapshot().contains { $0.contains("windowOperation.result") && $0.contains("requestSucceeded=false") })
+    }
+
+    func testContextMenuTrackingKeepsPreviewRegionActiveUntilMenuEnds() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        let outsidePoint = CGPoint(x: -100, y: -100)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(outsidePoint))
+
+        harness.display.actionHandler?(.contextMenuBegan(window.id))
+        await Task.yield()
+
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(outsidePoint))
+
+        harness.display.actionHandler?(.windowOperation(window.id, .minimizeWindow))
+        await Task.yield()
+
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [.minimizeWindow])
+
+        harness.display.actionHandler?(.contextMenuEnded(window.id))
+        await Task.yield()
+
+        XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(outsidePoint))
+    }
+
+    func testContextMenuTrackingKeepsPanelTransitionRegionActiveUntilMenuEnds() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        let outsidePoint = CGPoint(x: -100, y: -100)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        XCTAssertFalse(harness.controller.isMouseInsidePanelTransitionRegion(outsidePoint))
+
+        harness.display.actionHandler?(.contextMenuBegan(window.id))
+        await Task.yield()
+
+        XCTAssertTrue(harness.controller.isMouseInsidePanelTransitionRegion(outsidePoint))
+
+        harness.display.actionHandler?(.contextMenuEnded(window.id))
+        await Task.yield()
+
+        XCTAssertFalse(harness.controller.isMouseInsidePanelTransitionRegion(outsidePoint))
+    }
+
+    func testNewPreviewSessionClearsStaleContextMenuTracking() async {
+        let firstWindow = makeWindow(id: 1)
+        let secondWindow = makeWindow(id: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [firstWindow])
+        let outsidePoint = CGPoint(x: -100, y: -100)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.display.actionHandler?(.contextMenuBegan(firstWindow.id))
+        await Task.yield()
+        XCTAssertTrue(harness.controller.isMouseInsidePreviewRegion(outsidePoint))
+
+        harness.queryService.windows = [secondWindow]
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertFalse(harness.controller.isMouseInsidePreviewRegion(outsidePoint))
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [secondWindow.id])
+    }
+
+    func testStaleMenuActionAfterHideDoesNotAffectNewSession() async {
+        let staleWindow = makeWindow(id: 1)
+        let currentWindow = makeWindow(id: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [staleWindow])
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.controller.hide(reason: "test")
+
+        harness.queryService.windows = [currentWindow]
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.display.actionHandler?(.windowOperation(staleWindow.id, .closeWindow))
+        await Task.yield()
+
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [])
+        XCTAssertTrue(harness.logger.snapshot().contains { $0.contains("windowOperation.missingWindow") && $0.contains("id=1") })
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [currentWindow.id])
+    }
+
+    func testStaleActionClosureAfterNewSessionWithSameWindowIDIsIgnored() async {
+        let firstWindow = makeWindow(id: 1)
+        let secondWindow = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [firstWindow])
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        let staleActionHandler = harness.display.actionHandler
+        harness.controller.hide(reason: "test")
+
+        harness.queryService.windows = [secondWindow]
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        staleActionHandler?(.windowOperation(firstWindow.id, .closeWindow))
+        await Task.yield()
+
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [])
+        XCTAssertTrue(harness.logger.snapshot().contains { $0.contains("preview.session.staleAction") })
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [secondWindow.id])
     }
 
     func testMouseInsidePanelDelegatesToDisplay() {
@@ -325,6 +498,26 @@ final class PreviewSessionControllerTests: XCTestCase {
         await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
 
         XCTAssertTrue(harness.controller.isMouseInsidePanelTransitionRegion(CGPoint(x: 726, y: 53)))
+    }
+
+    func testMouseJustOutsideCurrentDockIconEdgeIsInsidePanelTransitionRegion() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            settingsStore: FakeSettingsStore(snapshot: .defaultsWith(retention: .tight)),
+            anchor: PreviewPanelAnchor(
+                dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
+                mouseLocation: CGPoint(x: 726, y: 24),
+                screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                visibleFrame: CGRect(x: 0, y: 50, width: 1512, height: 900)
+            )
+        )
+        harness.display.panelFrameResult = CGRect(x: 600, y: 58, width: 256, height: 196)
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertTrue(harness.controller.isMouseInsidePanelTransitionRegion(CGPoint(x: 700, y: 51)))
     }
 
     func testMouseInsideDockToleranceBesideIconIsOutsidePanelTransitionRegion() async {
@@ -547,12 +740,12 @@ private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
     var checkedPoints: [CGPoint] = []
     var isMouseInsidePanelResult = false
     var panelFrameResult: CGRect?
-    var selectHandler: ((PreviewWindowID) -> Void)?
+    var actionHandler: ((PreviewPanelAction) -> Void)?
 
-    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onSelect: @escaping (PreviewWindowID) -> Void) {
+    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onAction: @escaping (PreviewPanelAction) -> Void) {
         showCount += 1
         lastModel = model
-        selectHandler = onSelect
+        actionHandler = onAction
     }
 
     func update(model: PreviewPanelViewModel) {
@@ -575,12 +768,34 @@ private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
 }
 
 @MainActor
+private final class FakeWindowOperationService: WindowOperationService {
+    var availabilities: [PreviewWindowOperation: WindowOperationAvailability] = [:]
+    var results: [PreviewWindowOperation: WindowOperationResult] = [:]
+    private(set) var performedOperations: [PreviewWindowOperation] = []
+
+    func availability(for operation: PreviewWindowOperation, window: PreviewWindow) -> WindowOperationAvailability {
+        availabilities[operation] ?? .enabled(operation)
+    }
+
+    func perform(_ operation: PreviewWindowOperation, on window: PreviewWindow) -> WindowOperationResult {
+        performedOperations.append(operation)
+        return results[operation] ?? WindowOperationResult(
+            operation: operation,
+            windowID: window.id,
+            requestSucceeded: true,
+            failure: nil
+        )
+    }
+}
+
+@MainActor
 private final class PreviewSessionHarness {
     let app: NSRunningApplication
     let permissionService: FakePermissionService
     let queryService: FakeWindowQueryService
     let thumbnailService = FakeThumbnailService()
     let activationService = FakeActivationService()
+    let windowOperationService = FakeWindowOperationService()
     let display = FakePreviewPanelDisplay()
     let logger = ProbeLogger()
     let settingsStore: FakeSettingsStore
@@ -594,6 +809,7 @@ private final class PreviewSessionHarness {
         settingsStore: FakeSettingsStore = FakeSettingsStore(),
         targetTracker: AppTargetTracker? = nil,
         app: NSRunningApplication = .current,
+        screens: [WindowEnvironmentDescriptor.Screen] = [],
         anchor: PreviewPanelAnchor = PreviewPanelAnchor(
             dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
             mouseLocation: CGPoint(x: 726, y: 24),
@@ -604,7 +820,7 @@ private final class PreviewSessionHarness {
         self.app = app
         self.anchor = anchor
         self.settingsStore = settingsStore
-        self.targetTracker = targetTracker ?? AppTargetTracker(selfBundleIdentifier: "com.zong.DockHoverPreviewProbe")
+        self.targetTracker = targetTracker ?? AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
         permissionService = FakePermissionService(
             accessibilityGranted: true,
             screenRecordingGranted: screenRecordingGranted
@@ -615,9 +831,11 @@ private final class PreviewSessionHarness {
             windowQueryService: queryService,
             thumbnailService: thumbnailService,
             activationService: activationService,
+            windowOperationService: windowOperationService,
             panelDisplay: display,
             settingsStore: settingsStore,
             targetTracker: self.targetTracker,
+            screenProvider: { screens },
             logger: logger
         )
     }

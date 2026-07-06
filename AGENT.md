@@ -1,6 +1,6 @@
 # Agent Guide
 
-本项目是一个 macOS/Swift 菜单栏工具原型：`DockHoverPreviewProbe`。它通过 Dock 悬停显示窗口预览，并使用 AppKit、SwiftUI、ScreenCaptureKit 和 Accessibility 实现窗口查询、缩略图和点击激活。
+本项目是一个 macOS/Swift 菜单栏工具原型：`DockHoverPreviewProbe`。它通过 Dock 悬停显示窗口预览，并使用 AppKit、SwiftUI、ScreenCaptureKit 和系统辅助功能实现窗口查询、缩略图和点击激活。
 
 ## 开始前必读
 
@@ -25,12 +25,12 @@ git status --short --branch
 
 优先验证：
 
-1. Full-screen Space
-2. Dock auto-hide
-3. Dock on left
-4. Dock on right
-5. Stage Manager
-6. Multiple displays
+1. 全屏空间
+2. 程序坞自动隐藏
+3. 左侧程序坞
+4. 右侧程序坞
+5. 台前调度
+6. 多显示器
 
 一次只处理一个环境场景。发现 bug 时先记录复现步骤和日志，再补最小回归测试并小范围修复。
 
@@ -39,10 +39,23 @@ git status --short --branch
 - 不使用私有 API。
 - 不复制、翻译或机械改写 DockDoor GPLv3 源码。
 - 不扩大 MVP 范围。
-- Screen Recording 缺失时继续静默抑制 preview UI。
-- stale hover cancellation 是一等状态。
+- 屏幕录制权限缺失时继续静默抑制预览 UI。
+- 悬停失效取消是一等状态。
 - 不要覆盖或 revert 用户已有未提交改动。
 - 不要 stage `.build/`、`build/`、`.DS_Store` 等生成物。
+
+## 中文表达偏好
+
+面向用户说明验证步骤、验收清单或操作指引时，尽量使用中文术语，不要夹杂 `panel material`、`Accessibility`、`Reduce Motion` 这类英文表达。推荐写法：
+
+- 预览面板、面板材质、边框、阴影。
+- 系统辅助功能、屏幕录制权限。
+- 减少动态效果。
+- 浅色外观 / 深色外观。
+- 台前调度。
+- 悬停失效取消、旧预览面板残留、缩略图不可用。
+
+只有文件名、命令、日志事件名、代码符号、框架名、系统设置中的原始英文专有名词需要精确引用时，才保留英文。
 
 ## 常用命令
 
@@ -56,7 +69,7 @@ git diff --check
 查看日志：
 
 ```bash
-/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.DockHoverPreviewProbe"'
+/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.zongMacTools"'
 ```
 
 退出 app：

@@ -58,3 +58,35 @@ struct ActivationProbeResult: Sendable {
     let raiseSucceeded: Bool
     let appActivateRequestSucceeded: Bool
 }
+
+struct WindowOperationResult: Equatable, Sendable {
+    let operation: PreviewWindowOperation
+    let windowID: PreviewWindowID
+    let requestSucceeded: Bool
+    let failure: WindowOperationFailure?
+}
+
+struct WindowOperationFailure: Equatable, Sendable {
+    let reason: WindowOperationFailureReason
+    let stage: WindowOperationFailureStage
+    let axErrorCode: Int32?
+}
+
+enum WindowOperationFailureReason: String, Sendable {
+    case missingWindow
+    case missingAccessibilityElement
+    case missingButton
+    case actionFailed
+    case attributeNotSettable
+    case applicationRejected
+}
+
+enum WindowOperationFailureStage: String, Sendable {
+    case lookupWindow
+    case copyAttribute
+    case pressButton
+    case checkSettable
+    case setAttribute
+    case hideApplication
+    case activateApplication
+}

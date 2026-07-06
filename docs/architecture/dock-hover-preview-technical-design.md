@@ -2,7 +2,7 @@
 
 日期：2026-06-25
 
-最近更新：2026-07-02
+最近更新：2026-07-03
 
 ## 目标
 
@@ -14,7 +14,7 @@
 - 每张卡片包含应用图标、窗口标题、静态缩略图或占位图。
 - 点击卡片后尝试激活对应窗口，并隐藏面板。
 
-当前状态是 MVP/P0 UI `pass with note`，P1 基础设置实现、自动验证和人工验证均已完成；P2 UI polish 自动验证已完成，人工视觉验证尚未运行。普通底部 Dock、全屏 Space、Dock auto-hide、左右 Dock 和 Stage Manager 已完成 P0 验证；多显示器因当前硬件不可用仍为 `blocked / not available`。
+当前状态是 MVP/P0 UI `pass with note`，P1 基础设置实现、自动验证和人工验证均已完成；P2 界面打磨实现、自动验证和人工视觉验证均已完成，人工验证由用户在 2026-07-03 反馈正常；P3 窗口操作增强已完成实现和自动测试，人工验收待执行。普通底部 Dock、全屏 Space、Dock auto-hide、左右 Dock 和 Stage Manager 已完成 P0 验证；多显示器因当前硬件不可用仍为 `blocked / not available`。
 
 ## 范围
 
@@ -34,13 +34,15 @@ MVP 范围内：
 - P2 UI polish 仅扩展 preview panel 的 ViewModel、SwiftUI 渲染、视觉 token 和 panel 动画；不新增 settings key，不修改 P1 默认值。
 - P2 缩略图默认使用 fill；窄窗口按窗口比例自动使用 fit，缩略图容器尺寸保持稳定。
 - P2 区分 loading 与 unavailable placeholder；thumbnail unavailable 文案由当前 display language 提供，English 为 `No thumbnail`，简体中文为 `无缩略图`。
-- P2 show / hide 动画由 panel controller 处理，并读取系统 Reduce Motion；Reduce Motion 打开时走无 scale/offset 的降级路径。
-- P2 Light / Dark 使用集中 visual token 表达 panel/card 边框、阴影、hover state 和 placeholder surface。
+- P2 显示/隐藏动画由 panel controller 处理，并读取系统减少动态效果设置；减少动态效果打开时走无 scale/offset 的降级路径。
+- P2 浅色/深色外观使用集中视觉规则表达 panel/card 边框、阴影、hover state 和 placeholder surface。
+- P3 增加预览卡片右键窗口操作菜单，支持激活窗口、隐藏应用、关闭窗口、最小化窗口和保守屏幕提示。
+- P3 窗口操作只使用公开接口；关闭/最小化依赖公开辅助功能按钮或 `kAXMinimizedAttribute`，失败时安静降级并记录日志。
 
 MVP 范围外：
 
 - 实时缩略图。
-- 最小化窗口、其他 Space 窗口、全屏 Space 自动切换。
+- 恢复最小化窗口、其他 Space 窗口、全屏 Space 自动切换。
 - 精确遮挡检测。
 - 卡片上的关闭/最小化/全屏按钮。
 - 搜索、键盘切换器、Cmd+Tab 替代、独立设置窗口、Dock 锁定等扩展功能。
@@ -134,6 +136,16 @@ MVP 范围外：
 - 不依赖 `.activateIgnoringOtherApps`，它在现代 macOS 上已不可靠且废弃。
 - 激活路径只使用 AX raise 和 `NSRunningApplication.activate(options: [])`。
 
+### 窗口操作
+
+- `WindowOperationService.swift`：P3 窗口操作服务，隔离激活、隐藏应用、关闭窗口和最小化窗口的能力判断与执行。
+- 激活窗口：委托 `ActivationService`，不复制激活逻辑。
+- 隐藏应用：调用公开 `NSRunningApplication.hide()`。
+- 关闭窗口：读取公开 `kAXCloseButtonAttribute` 并对按钮执行 `kAXPressAction`；按钮缺失或动作失败时记录失败阶段和 AX code。
+- 最小化窗口：优先读取公开 `kAXMinimizeButtonAttribute` 并执行 `kAXPressAction`；按钮不可用但 `kAXMinimizedAttribute` 可设置时设置为 `true`。
+- `availability` 只做只读探测，不 press、不 set；菜单项根据窗口级可用性启用或禁用。
+- `WindowEnvironmentDescriptor.swift`：按窗口 frame 与屏幕 frame 最大交集生成“屏幕：...”提示；无法匹配时显示“屏幕：未知”，不承诺真实空间归属。
+
 ### 预览面板 UI
 
 - `PreviewPanelModels.swift`：anchor、卡片 view model、panel view model。P2 增加 `ThumbnailDisplayMode`，默认 `.fill`，当窗口 frame aspect ratio `< 1.2` 时使用 `.fit`；`updateThumbnail(nil, for:)` 会让对应卡片停止 loading 并进入 unavailable 语义。
@@ -188,7 +200,6 @@ Dock 恢复：
 - 不做精确遮挡检测。
 - 某些 app 的 AX raise 可能只能退化为 app-level activation。
 - 每次 ad-hoc 重新签名 app 后，macOS TCC 可能需要重新授权，系统权限列表显示名称应为 `zongMacTools`。
-- P2 窄窗口 fit、Light / Dark token、Reduce Motion 和 show/hide animation 的视觉效果仍需人工复验。
 - Launch at Login 自动测试覆盖服务构造和 fake-driven menu tests；真实状态已通过签名后的 `build/zongMacTools.app` 和系统 Login Items 人工验证。
 
 ## 验收标准
@@ -213,8 +224,11 @@ MVP/P1/P2 当前验收标准：
 - P2 自动验证已完成：`swift test` 在 2026-07-03 13:31:05 Asia/Shanghai 记录 130 XCTest、0 failures、exit 0；`swift build` exit 0；`Scripts/build_probe_app.sh` exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature。
 - P2 不改变 P1 defaults，也不新增 settings key。
 - P2 ViewModel 和 UI 层覆盖 thumbnail `.fill` / `.fit`、窄窗口 fit、loading/unavailable placeholder、本地化 `No thumbnail` / `无缩略图`、show/hide animation、Reduce Motion 降级以及 Light / Dark visual token。
+- P2 人工视觉验证已完成：底部程序坞、左右程序坞、程序坞自动隐藏、台前调度、浅色/深色外观、减少动态效果、Typora 窄窗口、多窗口应用、屏幕录制权限缺失和快速悬停失效取消均由用户反馈正常。
+- P3 自动测试覆盖：窗口操作服务公开接口路径、失败降级和日志结果；右键菜单模型、禁用项、动作回调；菜单跟踪期间会话保留；旧会话动作保护；屏幕提示匹配。
+- P3 自动验证已完成：`swift test` 在 2026-07-06 CST 记录 164 XCTest、0 failures、exit 0；`swift build` exit 0；`Scripts/build_probe_app.sh` exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature；`git diff --check` exit 0。
 
 待补验收：
 
 - Multiple displays。
-- P2 manual visual validation：bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied、quick stale cancellation。
+- P3 人工验收。

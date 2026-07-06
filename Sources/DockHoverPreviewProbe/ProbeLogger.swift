@@ -3,7 +3,7 @@ import OSLog
 
 final class ProbeLogger: @unchecked Sendable {
     private let lock = NSLock()
-    private let systemLogger = Logger(subsystem: "com.zong.DockHoverPreviewProbe", category: "probe")
+    private let systemLogger = Logger(subsystem: "com.zong.zongMacTools", category: "probe")
     private var entries: [String] = []
 
     func info(_ message: String) {

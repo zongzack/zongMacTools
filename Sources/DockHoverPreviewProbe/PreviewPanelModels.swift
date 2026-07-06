@@ -17,6 +17,123 @@ enum ThumbnailDisplayMode: String, CaseIterable, Sendable {
     case fit
 }
 
+enum PreviewWindowOperation: String, CaseIterable, Sendable {
+    case activate
+    case hideApplication
+    case closeWindow
+    case minimizeWindow
+}
+
+enum PreviewPanelAction: Equatable, Sendable {
+    case primarySelect(PreviewWindowID)
+    case windowOperation(PreviewWindowID, PreviewWindowOperation)
+    case contextMenuBegan(PreviewWindowID)
+    case contextMenuEnded(PreviewWindowID)
+}
+
+struct WindowOperationAvailability: Equatable, Sendable {
+    let operation: PreviewWindowOperation
+    let isEnabled: Bool
+    let disabledReason: String?
+    let disabledStage: WindowOperationFailureStage?
+    let disabledAXErrorCode: Int32?
+
+    init(
+        operation: PreviewWindowOperation,
+        isEnabled: Bool,
+        disabledReason: String?,
+        disabledStage: WindowOperationFailureStage? = nil,
+        disabledAXErrorCode: Int32? = nil
+    ) {
+        self.operation = operation
+        self.isEnabled = isEnabled
+        self.disabledReason = disabledReason
+        self.disabledStage = disabledStage
+        self.disabledAXErrorCode = disabledAXErrorCode
+    }
+
+    static func enabled(_ operation: PreviewWindowOperation) -> WindowOperationAvailability {
+        WindowOperationAvailability(operation: operation, isEnabled: true, disabledReason: nil)
+    }
+
+    static func disabled(
+        _ operation: PreviewWindowOperation,
+        reason: String,
+        stage: WindowOperationFailureStage? = nil,
+        axErrorCode: Int32? = nil
+    ) -> WindowOperationAvailability {
+        WindowOperationAvailability(
+            operation: operation,
+            isEnabled: false,
+            disabledReason: reason,
+            disabledStage: stage,
+            disabledAXErrorCode: axErrorCode
+        )
+    }
+}
+
+struct PreviewWindowOperationMenuModel: Equatable, Sendable {
+    let activate: WindowOperationAvailability
+    let hideApplication: WindowOperationAvailability
+    let closeWindow: WindowOperationAvailability
+    let minimizeWindow: WindowOperationAvailability
+    let environmentDescription: String
+
+    static func allEnabled(environmentDescription: String = "") -> PreviewWindowOperationMenuModel {
+        PreviewWindowOperationMenuModel(
+            activate: .enabled(.activate),
+            hideApplication: .enabled(.hideApplication),
+            closeWindow: .enabled(.closeWindow),
+            minimizeWindow: .enabled(.minimizeWindow),
+            environmentDescription: environmentDescription
+        )
+    }
+
+    func availability(for operation: PreviewWindowOperation) -> WindowOperationAvailability? {
+        switch operation {
+        case .activate:
+            activate
+        case .hideApplication:
+            hideApplication
+        case .closeWindow:
+            closeWindow
+        case .minimizeWindow:
+            minimizeWindow
+        }
+    }
+}
+
+struct PreviewWindowOperationMenuText: Equatable, Sendable {
+    let activateWindow: String
+    let hideApplication: String
+    let closeWindow: String
+    let minimizeWindow: String
+
+    static let english = PreviewWindowOperationMenuText(
+        textProvider: AppTextProvider(language: .english)
+    )
+
+    init(textProvider: AppTextProvider) {
+        activateWindow = textProvider.string(.activateWindow)
+        hideApplication = textProvider.string(.hideApplication)
+        closeWindow = textProvider.string(.closeWindow)
+        minimizeWindow = textProvider.string(.minimizeWindow)
+    }
+
+    func title(for operation: PreviewWindowOperation) -> String {
+        switch operation {
+        case .activate:
+            activateWindow
+        case .hideApplication:
+            hideApplication
+        case .closeWindow:
+            closeWindow
+        case .minimizeWindow:
+            minimizeWindow
+        }
+    }
+}
+
 struct PreviewPanelAnchor: Equatable {
     let dockItemFrame: CGRect?
     let mouseLocation: CGPoint
@@ -32,6 +149,7 @@ struct PreviewCardViewModel: Identifiable {
     var thumbnail: CGImage?
     var isLoadingThumbnail: Bool
     let thumbnailDisplayMode: ThumbnailDisplayMode
+    let operationMenu: PreviewWindowOperationMenuModel
 
     var accessibilityLabel: String { "\(appName), \(title)" }
     var effectiveThumbnailDisplayMode: ThumbnailDisplayMode { thumbnailDisplayMode }
@@ -43,7 +161,8 @@ struct PreviewCardViewModel: Identifiable {
         appIcon: NSImage,
         thumbnail: CGImage?,
         isLoadingThumbnail: Bool,
-        sourceFrame: CGRect? = nil
+        sourceFrame: CGRect? = nil,
+        operationMenu: PreviewWindowOperationMenuModel = .allEnabled()
     ) {
         self.id = id
         self.title = title
@@ -52,6 +171,7 @@ struct PreviewCardViewModel: Identifiable {
         self.thumbnail = thumbnail
         self.isLoadingThumbnail = isLoadingThumbnail
         thumbnailDisplayMode = Self.thumbnailDisplayMode(for: sourceFrame)
+        self.operationMenu = operationMenu
     }
 
     private static func thumbnailDisplayMode(for sourceFrame: CGRect?) -> ThumbnailDisplayMode {
@@ -66,16 +186,19 @@ struct PreviewCardViewModel: Identifiable {
 struct PreviewPanelViewModel {
     let appName: String
     let thumbnailUnavailableText: String
+    let operationMenuText: PreviewWindowOperationMenuText
     private(set) var cards: [PreviewCardViewModel]
 
     init(
         appName: String,
         cards: [PreviewCardViewModel],
         maxCardCount: Int,
-        thumbnailUnavailableText: String = ""
+        thumbnailUnavailableText: String = "",
+        operationMenuText: PreviewWindowOperationMenuText = .english
     ) {
         self.appName = appName
         self.thumbnailUnavailableText = thumbnailUnavailableText
+        self.operationMenuText = operationMenuText
         self.cards = Array(cards.prefix(max(maxCardCount, 0)))
     }
 

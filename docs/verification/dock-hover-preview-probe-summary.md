@@ -2,7 +2,7 @@
 
 日期：2026-06-26
 
-最近更新：2026-07-02
+最近更新：2026-07-03
 
 ## 总结
 
@@ -12,7 +12,9 @@ MVP UI / P0 环境变体结论：`pass with note`。当前可执行环境已完�
 
 P1 settings implementation 自动验证已通过，P1 manual validation 已于 2026-07-02 由用户反馈完成。已验证范围包括 settings 持久化和非法值回退、hover delay、enabled/disabled、retention、max cards、excluded apps、display language、Launch at Login fake/system service wrapper、AppDelegate wiring、`zongMacTools.app` 打包、icon 生成，以及 Finder/TCC/Login Items/真实菜单交互人工复验。
 
-P2 UI polish 自动验证已完成，覆盖 preview panel fit/fill 显示模式、窄窗口 fit、loading/unavailable placeholder、本地化 `No thumbnail` / `无缩略图`、show/hide animation、Reduce Motion 降级以及 Light / Dark visual token。P2 manual visual validation 尚未运行；bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied 和 quick stale cancellation 均保持 `not run`。
+P2 界面打磨自动验证已完成，覆盖预览面板裁切填满/完整显示模式、窄窗口完整显示、加载中/不可用占位状态、本地化 `No thumbnail` / `无缩略图`、显示/隐藏动画、减少动态效果降级以及浅色/深色视觉规则。P2 人工视觉验证已于 2026-07-03 由用户反馈完成；底部程序坞、左右程序坞、程序坞自动隐藏、台前调度、浅色/深色外观、减少动态效果、Typora 窄窗口、多窗口应用、屏幕录制权限缺失和快速悬停失效取消均反馈正常。
+
+P3 窗口操作增强已完成实现和自动测试，覆盖右键菜单动作模型、公开接口窗口操作服务、关闭/最小化失败降级、菜单期间会话保留、旧会话动作保护和屏幕提示匹配。P3 人工验收尚未执行，不写成通过。
 
 ## 硬门槛结果
 
@@ -98,14 +100,51 @@ P1 manual validation 已完成：
 - `PreviewPanelVisualStyleTests`：Light / Dark visual token 的 panel border、shadow、placeholder surface 和 hover state 基础约束。
 - `AppTextProviderTests`：English `No thumbnail` 与简体中文 `无缩略图`。
 
-P2 manual visual validation：
+P2 人工视觉验证：
 
-- 状态：`not run`。
-- 未运行项：bottom Dock、left/right Dock、auto-hide、Stage Manager、Light / Dark、Reduce Motion、Typora 窄窗口、多窗口 app、Screen Recording denied、quick stale cancellation。
+- 状态：已完成，2026-07-03 用户反馈正常。
+- 通过项：底部程序坞、左右程序坞、程序坞自动隐藏、台前调度、浅色/深色外观、减少动态效果、Typora 窄窗口、多窗口应用、屏幕录制权限缺失、快速悬停失效取消。
+
+## P3 自动验证结果
+
+状态：实现完成，自动验证通过，人工验收待执行。
+
+最终自动验证：
+
+- `swift test`：2026-07-06 CST，164 XCTest，0 failures，exit 0。
+- `swift build`：2026-07-06，exit 0。
+- `Scripts/build_probe_app.sh`：2026-07-06，exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature。
+- `git diff --check`：2026-07-06，exit 0。
+
+已通过的 targeted checks：
+
+- `swift test --filter AppTextProviderTests`
+- `swift test --filter PreviewPanelViewModelTests`
+- `swift test --filter WindowOperationServiceTests`
+- `swift test --filter ProbeModelsTests`
+- `swift test --filter PreviewPanelControllerTests`
+- `swift test --filter PreviewPanelViewRenderingTests`
+- `swift test --filter PreviewSessionControllerTests`
+- `swift test --filter WindowEnvironmentDescriptorTests`
+- `swift build`
+- `git diff --check`
+
+覆盖范围：
+
+- 右键菜单四个操作项、禁用项不触发执行动作、菜单只读屏幕提示。
+- 公开接口窗口操作服务：激活委托、隐藏应用、关闭按钮、最小化按钮、最小化属性 fallback、失败阶段和 AX code。
+- 会话层动作路由：主点击保持激活并隐藏；窗口操作成功后隐藏；失败时记录日志且不弹窗；菜单跟踪期间不因离开轮询或 Dock 悬停丢失路由丢失窗口上下文；旧会话动作不影响新会话。
+- 屏幕/环境提示：单屏、多屏最大交集、无匹配未知屏幕、简体中文前缀。
+
+P3 人工验收：
+
+- 状态：未执行。
+- 清单：`docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`。
 
 ## 未实测 / 受限项
 
 - Multiple displays：2026-07-01 当前硬件环境仅检测到 1 个显示器 `Mi Monitor`，无法执行多显示器行为验证；结果记录为 `blocked / not available`，不写成 pass。
+- P3 真实 app 人工验收：尚未执行，不写成通过。
 
 ## 相关文档
 

@@ -6,7 +6,9 @@ final class PackagingTests: XCTestCase {
         let plist = try infoPlist()
 
         XCTAssertEqual(plist["CFBundleExecutable"] as? String, "DockHoverPreviewProbe")
-        XCTAssertEqual(plist["CFBundleIdentifier"] as? String, "com.zong.DockHoverPreviewProbe")
+        let bundleIdentifier = try XCTUnwrap(plist["CFBundleIdentifier"] as? String)
+        XCTAssertEqual(bundleIdentifier, "com.zong.zongMacTools")
+        XCTAssertFalse(bundleIdentifier.contains("DockHoverPreviewProbe"))
         XCTAssertEqual(plist["CFBundleName"] as? String, "zongMacTools")
         XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "zongMacTools")
         XCTAssertEqual(plist["CFBundleIconFile"] as? String, "zongMacTools")
@@ -25,6 +27,15 @@ final class PackagingTests: XCTestCase {
         XCTAssertTrue(source.contains("cp \"$ICON_SOURCE\" \"$RESOURCES_DIR/zong-mac-tools-logo.png\""))
         XCTAssertTrue(source.contains("cp \"$EXECUTABLE_PATH\" \"$MACOS_DIR/$EXECUTABLE_NAME\""))
         XCTAssertTrue(source.contains("echo \"$APP_DIR\""))
+    }
+
+    func testRuntimeDiagnosticsUseZongMacToolsIdentity() throws {
+        let appDelegateSource = try sourceFile("AppDelegate.swift")
+        let loggerSource = try sourceFile("ProbeLogger.swift")
+
+        XCTAssertTrue(appDelegateSource.contains("Bundle.main.bundleIdentifier ?? \"com.zong.zongMacTools\""))
+        XCTAssertFalse(appDelegateSource.contains("bundleIdentifier=com.zong.DockHoverPreviewProbe"))
+        XCTAssertTrue(loggerSource.contains("Logger(subsystem: \"com.zong.zongMacTools\", category: \"probe\")"))
     }
 
     func testRunScriptOpensBuildScriptOutput() throws {
@@ -51,6 +62,14 @@ final class PackagingTests: XCTestCase {
     private func scriptSource(_ name: String) throws -> String {
         let url = packageRoot()
             .appendingPathComponent("Scripts")
+            .appendingPathComponent(name)
+        return try String(contentsOf: url, encoding: .utf8)
+    }
+
+    private func sourceFile(_ name: String) throws -> String {
+        let url = packageRoot()
+            .appendingPathComponent("Sources")
+            .appendingPathComponent("DockHoverPreviewProbe")
             .appendingPathComponent(name)
         return try String(contentsOf: url, encoding: .utf8)
     }

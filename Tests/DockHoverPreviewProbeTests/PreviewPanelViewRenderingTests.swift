@@ -62,19 +62,78 @@ final class PreviewPanelViewRenderingTests: XCTestCase {
         XCTAssertTrue(source.contains("PreviewPanelMetrics.titleTextWidth"))
     }
 
+    func testOperationMenuPlanIncludesFourOperationsAndEnvironmentHint() {
+        let card = makeCard(operationMenu: PreviewWindowOperationMenuModel(
+            activate: .enabled(.activate),
+            hideApplication: .enabled(.hideApplication),
+            closeWindow: .disabled(.closeWindow, reason: "Missing close button"),
+            minimizeWindow: .enabled(.minimizeWindow),
+            environmentDescription: "Screen: Built-in Display"
+        ))
+        let text = PreviewWindowOperationMenuText(textProvider: AppTextProvider(language: .english))
+
+        let items = PreviewWindowOperationMenuPlan.items(for: card, text: text)
+
+        XCTAssertEqual(items.map(\.kind), [
+            .operation(.activate),
+            .operation(.hideApplication),
+            .operation(.closeWindow),
+            .operation(.minimizeWindow),
+            .separator,
+            .information
+        ])
+        XCTAssertEqual(items.map(\.title), [
+            "Activate Window",
+            "Hide App",
+            "Close Window",
+            "Minimize Window",
+            "",
+            "Screen: Built-in Display"
+        ])
+        XCTAssertEqual(items[2].isEnabled, false)
+        XCTAssertEqual(items[5].isEnabled, false)
+    }
+
+    func testDisabledOperationMenuItemDoesNotDispatchAction() {
+        let id = PreviewWindowID(pid: 100, windowID: 1)
+        let card = makeCard(
+            id: id,
+            operationMenu: PreviewWindowOperationMenuModel(
+                activate: .enabled(.activate),
+                hideApplication: .enabled(.hideApplication),
+                closeWindow: .disabled(.closeWindow, reason: "Missing close button"),
+                minimizeWindow: .enabled(.minimizeWindow),
+                environmentDescription: "Screen: Built-in Display"
+            )
+        )
+        var actions: [PreviewPanelAction] = []
+
+        PreviewWindowOperationMenuActionDispatcher.dispatch(.closeWindow, for: card) {
+            actions.append($0)
+        }
+        PreviewWindowOperationMenuActionDispatcher.dispatch(.minimizeWindow, for: card) {
+            actions.append($0)
+        }
+
+        XCTAssertEqual(actions, [.windowOperation(id, .minimizeWindow)])
+    }
+
     private func makeCard(
+        id: PreviewWindowID = PreviewWindowID(pid: 100, windowID: 1),
         sourceFrame: CGRect = CGRect(x: 0, y: 0, width: 1600, height: 900),
         thumbnail: CGImage? = nil,
-        isLoadingThumbnail: Bool = true
+        isLoadingThumbnail: Bool = true,
+        operationMenu: PreviewWindowOperationMenuModel = .allEnabled()
     ) -> PreviewCardViewModel {
         PreviewCardViewModel(
-            id: PreviewWindowID(pid: 100, windowID: 1),
+            id: id,
             title: "Project",
             appName: "Code",
             appIcon: NSImage(size: NSSize(width: 16, height: 16)),
             thumbnail: thumbnail,
             isLoadingThumbnail: isLoadingThumbnail,
-            sourceFrame: sourceFrame
+            sourceFrame: sourceFrame,
+            operationMenu: operationMenu
         )
     }
 
