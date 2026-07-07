@@ -130,6 +130,40 @@ final class ProbeOrchestratorPreviewTests: XCTestCase {
         XCTAssertEqual(harness.display.hideReasons, ["settingsDisabled"])
     }
 
+    func testSettingsObserverDoesNotHideAgainWhenSettingsStayDisabled() {
+        let settingsStore = OrchestratorFakeSettingsStore(snapshot: .defaultsWith(enabled: false))
+        let harness = ProbeOrchestratorPreviewHarness(
+            accessibilityGranted: false,
+            screenRecordingGranted: true,
+            settingsStore: settingsStore
+        )
+
+        harness.orchestrator.start()
+        settingsStore.replaceSnapshot(.defaultsWith(enabled: false, hoverDelayMilliseconds: 400))
+
+        XCTAssertEqual(harness.display.hideReasons, [])
+    }
+
+    func testChangingHoverDelayCancelsPendingHoverWithoutHidingPreview() {
+        let settingsStore = OrchestratorFakeSettingsStore()
+        let harness = ProbeOrchestratorPreviewHarness(
+            accessibilityGranted: false,
+            screenRecordingGranted: true,
+            settingsStore: settingsStore
+        )
+
+        harness.orchestrator.start()
+        harness.orchestrator.schedulePreviewAfterDelayForTesting(
+            app: NSRunningApplication.current,
+            bundleIdentifier: "com.example.delayChange",
+            dockItemFrame: CGRect(x: 10, y: 10, width: 32, height: 32)
+        )
+        settingsStore.replaceSnapshot(.defaultsWith(hoverDelayMilliseconds: 400))
+
+        XCTAssertEqual(harness.scheduler.tokens.last?.isCancelled, true)
+        XCTAssertEqual(harness.display.hideReasons, [])
+    }
+
     func testAddingPendingAppToExclusionsCancelsPendingHoverAndHidesPreview() {
         let bundleIdentifier = "com.example.excluded"
         let settingsStore = OrchestratorFakeSettingsStore()
@@ -149,6 +183,41 @@ final class ProbeOrchestratorPreviewTests: XCTestCase {
 
         XCTAssertEqual(harness.scheduler.tokens.last?.isCancelled, true)
         XCTAssertEqual(harness.display.hideReasons, ["appExcluded"])
+    }
+
+    func testAddingCurrentPreviewAppToExclusionsHidesPreview() {
+        let bundleIdentifier = "com.example.preview"
+        let targetTracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
+        targetTracker.updateCurrentPreviewApp(AppTarget(bundleIdentifier: bundleIdentifier, displayName: "Preview App"))
+        let settingsStore = OrchestratorFakeSettingsStore()
+        let harness = ProbeOrchestratorPreviewHarness(
+            accessibilityGranted: false,
+            screenRecordingGranted: true,
+            settingsStore: settingsStore,
+            targetTracker: targetTracker
+        )
+
+        harness.orchestrator.start()
+        settingsStore.replaceSnapshot(.defaultsWith(excludedApps: [bundleIdentifier]))
+
+        XCTAssertEqual(harness.display.hideReasons, ["appExcluded"])
+    }
+
+    func testAddingUnrelatedExclusionDoesNotHideCurrentPreview() {
+        let targetTracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
+        targetTracker.updateCurrentPreviewApp(AppTarget(bundleIdentifier: "com.example.preview", displayName: "Preview App"))
+        let settingsStore = OrchestratorFakeSettingsStore()
+        let harness = ProbeOrchestratorPreviewHarness(
+            accessibilityGranted: false,
+            screenRecordingGranted: true,
+            settingsStore: settingsStore,
+            targetTracker: targetTracker
+        )
+
+        harness.orchestrator.start()
+        settingsStore.replaceSnapshot(.defaultsWith(excludedApps: ["com.example.unrelated"]))
+
+        XCTAssertEqual(harness.display.hideReasons, [])
     }
 
     func testDelayedValidationRechecksDisabledSettingBeforeShowingPreview() {

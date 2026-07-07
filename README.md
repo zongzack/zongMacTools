@@ -2,7 +2,7 @@
 
 `zongMacTools` 当前主要包含一个 macOS Dock 悬停窗口预览工具原型：`DockHoverPreviewProbe`。它是一个菜单栏常驻应用，用 Swift、AppKit、SwiftUI 和 ScreenCaptureKit 实现类似 Windows 任务栏窗口预览的最小可用能力：鼠标悬停在 Dock 应用图标上时，显示该应用当前可见窗口的横向预览面板，点击卡片即可切换到对应窗口。
 
-项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 界面打磨实现、自动验证和人工验证完成、P3 窗口操作增强实现完成、P4 正式应用化开发阶段。核心悬停预览路径已经可用；P1 新增菜单设置、持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；P2 改善预览面板的缩略图显示、占位状态、动画和浅色/深色视觉规则；P3 为预览卡片增加右键窗口操作菜单；P4 增加稳定签名配置、About / Status、诊断导出和 release packaging 流程。P2 人工视觉验证已由用户反馈完成，结果正常；P3 和 P4 人工验收尚未执行。
+项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 界面打磨实现、自动验证和人工验证完成、P3 窗口操作增强实现完成、P4 正式应用化开发阶段。核心悬停预览路径已经可用；P1 新增设置持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；当前设置入口已迁移为“极简菜单 + 独立设置窗口”；P2 改善预览面板的缩略图显示、占位状态、动画和浅色/深色视觉规则；P3 为预览卡片增加右键窗口操作菜单；P4 增加稳定签名配置、关于与状态、诊断导出和 release packaging 流程。P2 人工视觉验证已由用户反馈完成，结果正常；P3 和 P4 人工验收尚未执行。
 
 ## 功能概览
 
@@ -21,8 +21,10 @@
 - 按 `Esc` 可隐藏预览面板。
 - 屏幕录制权限缺失时静默抑制预览 UI，不弹出重复干扰提示。
 - Dock 重启后可重新订阅 Dock Accessibility 事件。
-- 菜单栏提供权限状态、权限入口、P1 settings menu、Launch at Login 和 frontmost app 调试预览入口。
-- 菜单栏提供 About / Status 和 Export Diagnostics，便于查看版本、build、bundle id、权限、登录项、签名和设置摘要，并主动导出本地诊断文件。
+- 菜单栏提供极简入口：打开设置、启用/停用 Dock 窗口速览、关于与状态、导出诊断和退出。
+- 独立设置窗口提供通用、Dock 窗口速览、权限与状态、关于与状态页面，并保留右键扩展的禁用占位。
+- Dock 窗口速览设置页承载 P1 设置能力：启停、悬停延迟、面板保留手感、最大卡片数、排除当前可排除 App 和排除列表管理。
+- 菜单栏和设置窗口都可主动导出本地诊断文件，便于查看版本、build、bundle id、权限、登录项、签名和设置摘要。
 - 预览面板显示/隐藏使用轻量动画，并尊重系统减少动态效果设置；浅色/深色外观下的边框、阴影、占位区域使用集中视觉规则。
 
 ## 当前状态
@@ -33,6 +35,7 @@ MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 �
 
 - `swift test`：2026-07-03 13:31:05 Asia/Shanghai，130 XCTest，0 failures，exit 0。
 - P3 `swift test`：2026-07-06 CST，164 XCTest，0 failures，exit 0。
+- 多工具设置窗口复验 `swift test`：2026-07-07 Asia/Shanghai，192 XCTest，0 failures，exit 0。
 - `swift build`：通过，exit 0。
 - `Scripts/build_probe_app.sh`：通过，exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature。
 - 系统辅助功能与屏幕录制授权后，日志确认 Dock 监听订阅成功。
@@ -159,9 +162,11 @@ Scripts/package_release_app.sh
 6. 点击某个窗口卡片，应用会尝试切换到对应窗口，随后隐藏预览面板。
 7. 按 `Esc` 或移出 Dock 图标和预览面板区域，面板会隐藏。
 
-菜单栏中的 P1 设置项包括 Enable / Disable Dock Hover Preview、hover delay、panel retention、max cards、display language、Exclude / Include target app、Clear Excluded Apps 和 Launch at Login。菜单栏中的 `Debug: Show Preview For Frontmost App` 可以对当前前台应用触发同一套预览 UI 路径，适合调试窗口枚举和缩略图生成；该 debug 入口仍尊重 Screen Recording 权限和 excluded apps。
+菜单栏中的 `Open Settings...` 会打开独立设置窗口，并默认进入 Dock 窗口速览页。菜单栏只保留启用/停用 Dock 窗口速览、关于与状态、导出诊断和退出等快捷操作。
 
-菜单栏中的 `About / Status` 会显示版本、build、bundle id、bundle path、权限状态、Launch at Login 状态、签名状态和设置摘要，并提供 Copy Status。Copy Status 只包含本工具状态摘要，不包含第三方窗口标题或第三方 app 名称。
+设置窗口左侧分为应用、工具和支持。通用页提供显示语言和开机启动；Dock 窗口速览页提供总开关、悬停延迟、面板保留手感、最大卡片数和排除规则；权限与状态页提供权限状态、系统设置入口、刷新和导出诊断；关于与状态页显示版本、build、bundle id、权限、登录项、签名和设置摘要。悬停延迟、面板保留手感和最大卡片数使用离散预设滑杆，只写入既有合法设置值。
+
+菜单栏和设置窗口中的 `About & Status` / `关于与状态` 会打开设置窗口内的关于与状态页，显示版本、build、bundle id、bundle path、权限状态、Launch at Login 状态、签名状态和设置摘要，并提供 Copy Status。Copy Status 只包含本工具状态摘要，不包含第三方窗口标题或第三方 app 名称。
 
 ## 架构说明
 
@@ -171,12 +176,13 @@ Scripts/package_release_app.sh
 
 - `ProbeApp.swift`：SwiftPM executable 入口。
 - `AppDelegate.swift`：初始化日志、权限服务、设置存储、target tracker、Launch at Login、Dock 监听、窗口查询、缩略图、激活服务、预览面板和菜单栏。
-- `MenuBarController.swift`：创建菜单栏 template logo 状态项，展示权限状态、P1 设置、Launch at Login 和调试入口。
+- `MenuBarController.swift`：创建菜单栏 template logo 状态项，展示极简菜单并打开设置窗口。
+- `SettingsWindowController.swift` / `SettingsRootView.swift` / `SettingsViewModel.swift`：承载独立设置窗口、SwiftUI sidebar/detail 页面和设置写入 intent。
 - `DockHoverPreviewSettings.swift` / `SettingsStore.swift`：定义 P1 设置模型并持久化到 `UserDefaults`。非法值会回退到安全默认值，不覆盖用户写入的原始值。
 - `AppTextProvider.swift`：提供 English / 简体中文静态菜单文案；app 名称、窗口标题、bundle id、系统权限名称不翻译。
 - `LaunchAtLoginService.swift`：用公开 `ServiceManagement` / `SMAppService.mainApp` 读写 Launch at Login 状态。
 - `AppMetadata.swift` / `AppStatusSnapshot.swift`：读取版本、build、bundle id、bundle path、签名摘要，并聚合权限、登录项和设置状态。
-- `AboutStatusWindowController.swift`：显示 About / Status 窗口并提供 Copy Status。
+- `SettingsRootView.swift` 的关于与状态页：显示 About / Status 信息并提供 Copy Status。
 - `DiagnosticExportService.swift`：在用户主动触发后导出本地诊断文本。
 - `AppTargetTracker.swift`：为 excluded apps 菜单选择当前 preview、最近 Dock hover 或最近非本 app 前台应用。
 
@@ -236,7 +242,7 @@ pkill -x DockHoverPreviewProbe
 - 几何与坐标转换。
 - P1 settings 默认值、非法值回退、`UserDefaults` 持久化和 observer 通知。
 - English / 简体中文静态文案。
-- 菜单栏设置项、excluded apps、Launch at Login fake service 和菜单刷新。
+- 极简菜单迁移、设置窗口 controller、设置 view model、excluded apps、Launch at Login fake service 和菜单刷新。
 - 预览面板布局引擎。
 - 预览 view model 的卡片数量限制、缩略图更新、fit/fill 模式、unavailable 状态和可访问性标签。
 - SwiftUI render plan 的 fill / fit 分支、loading spinner 和 unavailable 文案分支。
@@ -336,7 +342,7 @@ pkill -x DockHoverPreviewProbe
 - 不展示或恢复已最小化窗口，不展示其他 Space 中的窗口，也不做全屏 Space 自动切换。
 - 不提供实时视频缩略图，当前是静态截图。
 - 不提供卡片内关闭、最小化或全屏按钮；P3 右键菜单只发出公开接口窗口操作请求。
-- P1 只提供菜单栏设置，不提供独立设置窗口、搜索或键盘切换器。
+- 不提供搜索窗口或键盘切换器。
 - Launch at Login 依赖公开 `ServiceManagement`，真实状态以 `SMAppService.mainApp.status` 为准。
 - 只使用公开 API。
 - 多显示器场景仍需额外手动验证。
@@ -378,7 +384,7 @@ MVP 阶段坚持以下边界：
 
 1. 继续补跑多显示器验证；当前硬件不可用时保持 `blocked / not available`。
 2. 执行 P3 窗口操作增强人工验收，重点覆盖右键菜单、关闭/最小化失败降级、菜单期间会话保留和屏幕录制权限缺失。
-3. 执行 P4 正式应用化人工验收，重点覆盖稳定签名、TCC、About / Status、诊断导出、release artifact、Launch at Login 和屏幕录制权限缺失静默抑制。
+3. 执行 P4 正式应用化人工验收，重点覆盖稳定签名、TCC、关于与状态、诊断导出、release artifact、Launch at Login 和屏幕录制权限缺失静默抑制。
 4. 继续评估是否需要持久设置页、应用过滤或更完整的窗口状态处理。
 
 完整后续清单见 `docs/roadmap.md`。

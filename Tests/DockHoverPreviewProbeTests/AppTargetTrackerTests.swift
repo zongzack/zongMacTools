@@ -13,12 +13,38 @@ final class AppTargetTrackerTests: XCTestCase {
         XCTAssertEqual(tracker.exclusionTarget?.bundleIdentifier, "com.microsoft.VSCode")
     }
 
+    func testCurrentPreviewAccessorsExposeOnlyCurrentPreviewApp() {
+        let tracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
+        tracker.updateLatestHoveredDockApp(AppTarget(bundleIdentifier: "com.google.Chrome", displayName: "Google Chrome"))
+        tracker.updateCurrentPreviewApp(AppTarget(bundleIdentifier: "com.microsoft.VSCode", displayName: "Code"))
+
+        XCTAssertEqual(tracker.currentPreviewTarget?.bundleIdentifier, "com.microsoft.VSCode")
+        XCTAssertEqual(tracker.currentPreviewBundleIdentifier, "com.microsoft.VSCode")
+
+        tracker.updateCurrentPreviewApp(nil)
+
+        XCTAssertNil(tracker.currentPreviewTarget)
+        XCTAssertNil(tracker.currentPreviewBundleIdentifier)
+        XCTAssertEqual(tracker.exclusionTarget?.bundleIdentifier, "com.google.Chrome")
+    }
+
     func testIgnoresSelfAndMissingBundleIdentifier() {
         let tracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
         tracker.updateLatestNonSelfActiveApp(AppTarget(bundleIdentifier: "com.zong.zongMacTools", displayName: "zongMacTools"))
         tracker.updateLatestHoveredDockApp(AppTarget(bundleIdentifier: "", displayName: "Unknown"))
 
         XCTAssertNil(tracker.exclusionTarget)
+    }
+
+    func testLatestNonSelfActiveAppIgnoresInvalidUpdatesWithoutClearingPreviousTarget() {
+        let tracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
+        tracker.updateLatestNonSelfActiveApp(AppTarget(bundleIdentifier: "com.apple.TextEdit", displayName: "TextEdit"))
+
+        tracker.updateLatestNonSelfActiveApp(AppTarget(bundleIdentifier: "com.zong.zongMacTools", displayName: "zongMacTools"))
+        tracker.updateLatestNonSelfActiveApp(AppTarget(bundleIdentifier: "", displayName: "Unknown"))
+        tracker.updateLatestNonSelfActiveApp(nil)
+
+        XCTAssertEqual(tracker.exclusionTarget?.bundleIdentifier, "com.apple.TextEdit")
     }
 
     func testWorkspaceObservationStartIsIdempotent() async throws {

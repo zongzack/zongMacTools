@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 @testable import DockHoverPreviewProbe
@@ -108,14 +109,59 @@ final class DiagnosticExportServiceTests: XCTestCase {
     func testMenuExportUsesChosenFileURLAndFailurePathStaysQuiet() throws {
         let source = try sourceFile("DiagnosticExportService.swift")
 
+        XCTAssertTrue(source.contains("func exportDiagnostics()"))
+        XCTAssertFalse(source.contains("func exportDiagnosticsFromMenu()"))
         XCTAssertTrue(source.contains("exportForMenu(snapshot: snapshot, toFile: url)"))
         XCTAssertFalse(source.contains("url.deletingLastPathComponent()"))
         XCTAssertFalse(source.contains("NSAlert"))
         XCTAssertFalse(source.contains("showFailureAlert"))
     }
 
-    private func makeSnapshot() -> AppStatusSnapshot {
-        AppStatusSnapshot(
+    func testPresenterConfiguresSavePanelForSimplifiedChineseDisplayLanguage() {
+        let panel = FakeDiagnosticSavePanel()
+        let presenter = DiagnosticExportPresenter(
+            exportService: DiagnosticExportService(logger: ProbeLogger()),
+            statusProvider: FakeDiagnosticStatusProvider(snapshot: makeSnapshot(language: .simplifiedChinese)),
+            savePanelFactory: { panel }
+        )
+
+        presenter.exportDiagnostics()
+
+        XCTAssertEqual(panel.title, "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}")
+        XCTAssertEqual(panel.message, "\u{9009}\u{62E9}\u{4FDD}\u{5B58} zongMacTools \u{8BCA}\u{65AD}\u{6587}\u{4EF6}\u{7684}\u{4F4D}\u{7F6E}\u{3002}")
+        XCTAssertEqual(panel.prompt, "\u{4FDD}\u{5B58}")
+        XCTAssertEqual(panel.nameFieldLabel, "\u{5B58}\u{50A8}\u{4E3A}\u{FF1A}")
+        XCTAssertEqual(panel.nameFieldStringValue, "zongMacTools-diagnostics.txt")
+        XCTAssertTrue(panel.canCreateDirectories)
+        XCTAssertFalse(panel.showsTagField)
+        XCTAssertTrue(panel.didBegin)
+    }
+
+    func testPresenterConfiguresSavePanelForEnglishDisplayLanguage() {
+        let panel = FakeDiagnosticSavePanel()
+        let presenter = DiagnosticExportPresenter(
+            exportService: DiagnosticExportService(logger: ProbeLogger()),
+            statusProvider: FakeDiagnosticStatusProvider(snapshot: makeSnapshot(language: .english)),
+            savePanelFactory: { panel }
+        )
+
+        presenter.exportDiagnostics()
+
+        XCTAssertEqual(panel.title, "Export Diagnostics")
+        XCTAssertEqual(panel.message, "Choose where to save the zongMacTools diagnostics file.")
+        XCTAssertEqual(panel.prompt, "Save")
+        XCTAssertEqual(panel.nameFieldLabel, "Save As:")
+        XCTAssertEqual(panel.nameFieldStringValue, "zongMacTools-diagnostics.txt")
+        XCTAssertTrue(panel.canCreateDirectories)
+        XCTAssertFalse(panel.showsTagField)
+        XCTAssertTrue(panel.didBegin)
+    }
+
+    private func makeSnapshot(language: DisplayLanguage = .english) -> AppStatusSnapshot {
+        var settings = DockHoverPreviewSettings.defaults
+        settings.displayLanguage = language
+
+        return AppStatusSnapshot(
             metadata: AppMetadata(
                 infoDictionary: [
                     "CFBundleDisplayName": "zongMacTools",
@@ -129,7 +175,7 @@ final class DiagnosticExportServiceTests: XCTestCase {
             ),
             permissionState: PermissionState(accessibilityGranted: true, screenRecordingGranted: true),
             launchAtLoginStatus: .enabled,
-            settings: .defaults,
+            settings: settings,
             generatedAt: Date(timeIntervalSince1970: 0)
         )
     }
@@ -170,5 +216,35 @@ private struct FakeDiagnosticCommandRunner: DiagnosticCommandRunning {
 
     func run(_ executableURL: URL, arguments: [String]) -> DiagnosticCommandResult {
         DiagnosticCommandResult(exitCode: 0, output: outputs[executableURL.path] ?? "")
+    }
+}
+
+@MainActor
+private final class FakeDiagnosticStatusProvider: AppStatusProviding {
+    private let storedSnapshot: AppStatusSnapshot
+
+    init(snapshot: AppStatusSnapshot) {
+        self.storedSnapshot = snapshot
+    }
+
+    func snapshot() -> AppStatusSnapshot {
+        storedSnapshot
+    }
+}
+
+@MainActor
+private final class FakeDiagnosticSavePanel: DiagnosticSavePanelProviding {
+    var canCreateDirectories = false
+    var nameFieldStringValue = ""
+    var title: String?
+    var message: String?
+    var prompt: String?
+    var nameFieldLabel: String?
+    var showsTagField = true
+    var url: URL?
+    private(set) var didBegin = false
+
+    func begin(completionHandler handler: @escaping (NSApplication.ModalResponse) -> Void) {
+        didBegin = true
     }
 }

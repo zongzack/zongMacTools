@@ -1,6 +1,23 @@
 import Foundation
 
 enum LocalizedTextKey: String, CaseIterable {
+    case dockWindowQuickLook
+    case dockWindowQuickLookDescription
+    case openSettings
+    case general
+    case settingsSectionApplications
+    case settingsSectionTools
+    case settingsSectionSupport
+    case permissionsAndStatus
+    case performanceAndFeel
+    case exclusionRules
+    case excludeCurrentApp
+    case includeCurrentApp
+    case noExcludableApp
+    case noExcludedApps
+    case clearAll
+    case contextMenuExtension
+    case notDeveloped
     case dockHoverPreviewStatusEnabled
     case dockHoverPreviewStatusDisabled
     case enableDockHoverPreview
@@ -36,8 +53,14 @@ enum LocalizedTextKey: String, CaseIterable {
     case currentEnumerableEnvironment
     case aboutStatus
     case copyStatus
+    case settingsWindowTitle
+    case removeExcludedAppHelp
     case exportDiagnostics
     case diagnosticExportFailed
+    case diagnosticSavePanelTitle
+    case diagnosticSavePanelMessage
+    case diagnosticSavePanelPrompt
+    case diagnosticSavePanelNameFieldLabel
     case quit
 }
 
@@ -167,14 +190,48 @@ struct AppTextProvider: Equatable {
 
     private func englishText(for key: LocalizedTextKey) -> String {
         switch key {
+        case .dockWindowQuickLook:
+            "Dock Window Quick Look"
+        case .dockWindowQuickLookDescription:
+            "Hover over Dock app icons to quickly view that app's window cards."
+        case .openSettings:
+            "Open Settings..."
+        case .general:
+            "General"
+        case .settingsSectionApplications:
+            "Application"
+        case .settingsSectionTools:
+            "Tools"
+        case .settingsSectionSupport:
+            "Support"
+        case .permissionsAndStatus:
+            "Permissions & Status"
+        case .performanceAndFeel:
+            "Performance & Feel"
+        case .exclusionRules:
+            "Exclusion Rules"
+        case .excludeCurrentApp:
+            "Exclude Current App"
+        case .includeCurrentApp:
+            "Include Current App"
+        case .noExcludableApp:
+            "No excludable app"
+        case .noExcludedApps:
+            "No excluded apps"
+        case .clearAll:
+            "Clear All"
+        case .contextMenuExtension:
+            "Right-click Extension"
+        case .notDeveloped:
+            "Not Developed"
         case .dockHoverPreviewStatusEnabled:
-            "Dock Hover Preview: Enabled"
+            "Dock Window Quick Look: Enabled"
         case .dockHoverPreviewStatusDisabled:
-            "Dock Hover Preview: Disabled"
+            "Dock Window Quick Look: Disabled"
         case .enableDockHoverPreview:
-            "Enable Dock Hover Preview"
+            "Enable Dock Window Quick Look"
         case .disableDockHoverPreview:
-            "Disable Dock Hover Preview"
+            "Disable Dock Window Quick Look"
         case .hoverDelay:
             "Hover Delay"
         case .panelRetention:
@@ -234,13 +291,25 @@ struct AppTextProvider: Equatable {
         case .currentEnumerableEnvironment:
             "Environment: Current enumerable windows"
         case .aboutStatus:
-            "About / Status"
+            "About & Status"
         case .copyStatus:
             "Copy Status"
+        case .settingsWindowTitle:
+            "zongMacTools Settings"
+        case .removeExcludedAppHelp:
+            "Remove excluded app"
         case .exportDiagnostics:
             "Export Diagnostics..."
         case .diagnosticExportFailed:
             "Diagnostics could not be saved."
+        case .diagnosticSavePanelTitle:
+            "Export Diagnostics"
+        case .diagnosticSavePanelMessage:
+            "Choose where to save the zongMacTools diagnostics file."
+        case .diagnosticSavePanelPrompt:
+            "Save"
+        case .diagnosticSavePanelNameFieldLabel:
+            "Save As:"
         case .quit:
             "Quit"
         }
@@ -248,14 +317,48 @@ struct AppTextProvider: Equatable {
 
     private func simplifiedChineseText(for key: LocalizedTextKey) -> String {
         switch key {
+        case .dockWindowQuickLook:
+            "Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}"
+        case .dockWindowQuickLookDescription:
+            "\u{60AC}\u{505C}\u{5728} Dock \u{5E94}\u{7528}\u{56FE}\u{6807}\u{4E0A}\u{65F6}\u{FF0C}\u{5FEB}\u{901F}\u{67E5}\u{770B}\u{8BE5}\u{5E94}\u{7528}\u{7684}\u{7A97}\u{53E3}\u{5361}\u{7247}\u{3002}"
+        case .openSettings:
+            "\u{6253}\u{5F00}\u{8BBE}\u{7F6E}..."
+        case .general:
+            "\u{901A}\u{7528}"
+        case .settingsSectionApplications:
+            "\u{5E94}\u{7528}"
+        case .settingsSectionTools:
+            "\u{5DE5}\u{5177}"
+        case .settingsSectionSupport:
+            "\u{652F}\u{6301}"
+        case .permissionsAndStatus:
+            "\u{6743}\u{9650}\u{4E0E}\u{72B6}\u{6001}"
+        case .performanceAndFeel:
+            "\u{6027}\u{80FD}\u{4E0E}\u{624B}\u{611F}"
+        case .exclusionRules:
+            "\u{6392}\u{9664}\u{89C4}\u{5219}"
+        case .excludeCurrentApp:
+            "\u{6392}\u{9664}\u{5F53}\u{524D}\u{53EF}\u{6392}\u{9664} App"
+        case .includeCurrentApp:
+            "\u{6062}\u{590D}\u{5F53}\u{524D}\u{53EF}\u{6392}\u{9664} App"
+        case .noExcludableApp:
+            "\u{6CA1}\u{6709}\u{53EF}\u{6392}\u{9664}\u{7684} App"
+        case .noExcludedApps:
+            "\u{5F53}\u{524D}\u{6CA1}\u{6709}\u{6392}\u{9664}\u{9879}"
+        case .clearAll:
+            "\u{6E05}\u{7A7A}\u{5168}\u{90E8}"
+        case .contextMenuExtension:
+            "\u{53F3}\u{952E}\u{6269}\u{5C55}"
+        case .notDeveloped:
+            "\u{672A}\u{5F00}\u{53D1}"
         case .dockHoverPreviewStatusEnabled:
-            "Dock \u{60AC}\u{505C}\u{9884}\u{89C8}\u{FF1A}\u{5DF2}\u{542F}\u{7528}"
+            "Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}\u{FF1A}\u{5DF2}\u{542F}\u{7528}"
         case .dockHoverPreviewStatusDisabled:
-            "Dock \u{60AC}\u{505C}\u{9884}\u{89C8}\u{FF1A}\u{5DF2}\u{505C}\u{7528}"
+            "Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}\u{FF1A}\u{5DF2}\u{505C}\u{7528}"
         case .enableDockHoverPreview:
-            "\u{542F}\u{7528} Dock \u{60AC}\u{505C}\u{9884}\u{89C8}"
+            "\u{542F}\u{7528} Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}"
         case .disableDockHoverPreview:
-            "\u{505C}\u{7528} Dock \u{60AC}\u{505C}\u{9884}\u{89C8}"
+            "\u{505C}\u{7528} Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}"
         case .hoverDelay:
             "\u{60AC}\u{505C}\u{5EF6}\u{8FDF}"
         case .panelRetention:
@@ -315,13 +418,25 @@ struct AppTextProvider: Equatable {
         case .currentEnumerableEnvironment:
             "\u{73AF}\u{5883}\u{FF1A}\u{5F53}\u{524D}\u{53EF}\u{679A}\u{4E3E}\u{7A97}\u{53E3}"
         case .aboutStatus:
-            "\u{5173}\u{4E8E} / \u{72B6}\u{6001}"
+            "\u{5173}\u{4E8E}\u{4E0E}\u{72B6}\u{6001}"
         case .copyStatus:
             "\u{590D}\u{5236}\u{72B6}\u{6001}"
+        case .settingsWindowTitle:
+            "zongMacTools \u{8BBE}\u{7F6E}"
+        case .removeExcludedAppHelp:
+            "\u{79FB}\u{9664}\u{6392}\u{9664}\u{9879}"
         case .exportDiagnostics:
             "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}..."
         case .diagnosticExportFailed:
             "\u{8BCA}\u{65AD}\u{6587}\u{4EF6}\u{672A}\u{80FD}\u{4FDD}\u{5B58}\u{3002}"
+        case .diagnosticSavePanelTitle:
+            "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}"
+        case .diagnosticSavePanelMessage:
+            "\u{9009}\u{62E9}\u{4FDD}\u{5B58} zongMacTools \u{8BCA}\u{65AD}\u{6587}\u{4EF6}\u{7684}\u{4F4D}\u{7F6E}\u{3002}"
+        case .diagnosticSavePanelPrompt:
+            "\u{4FDD}\u{5B58}"
+        case .diagnosticSavePanelNameFieldLabel:
+            "\u{5B58}\u{50A8}\u{4E3A}\u{FF1A}"
         case .quit:
             "\u{9000}\u{51FA}"
         }

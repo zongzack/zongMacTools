@@ -93,316 +93,161 @@ final class MenuBarControllerTests: XCTestCase {
         XCTAssertGreaterThan(visibleAlphas.filter { $0 > 245 }.count, 220)
     }
 
-    func testMenuChecksCurrentSettingsChoices() {
-        let harness = MenuHarness(
-            settings: .defaultsWith(
-                hoverDelayMilliseconds: 400,
-                maxCardCount: 12,
-                retention: .forgiving,
-                language: .simplifiedChinese
+    func testMinimalMenuContainsOnlyPrimaryActionsWhenEnabled() {
+        let harness = MenuHarness()
+
+        let menu = harness.makeMenu()
+
+        XCTAssertEqual(
+            menu.visibleTitles(),
+            [
+                "zongMacTools",
+                "Dock Window Quick Look: Enabled",
+                "Open Settings...",
+                "Disable Dock Window Quick Look",
+                "About & Status",
+                "Export Diagnostics...",
+                "Quit"
+            ]
+        )
+    }
+
+    func testMinimalMenuShowsEnableActionWhenDockWindowQuickLookIsDisabled() {
+        let harness = MenuHarness(settings: .defaultsWith(enabled: false))
+
+        let menu = harness.makeMenu()
+
+        XCTAssertNotNil(menu.findItem(title: "Dock Window Quick Look: Disabled"))
+        XCTAssertNotNil(menu.findItem(title: "Enable Dock Window Quick Look"))
+        XCTAssertNil(menu.findItem(title: "Disable Dock Window Quick Look"))
+    }
+
+    func testMinimalMenuDoesNotContainLegacySettingsOrDebugEntries() {
+        let harness = MenuHarness()
+
+        let menu = harness.makeMenu()
+
+        XCTAssertTrue(menu.items.allSatisfy { $0.submenu == nil })
+        XCTAssertNil(menu.findItem(title: "Hover Delay"))
+        XCTAssertNil(menu.findItem(title: "Panel Retention"))
+        XCTAssertNil(menu.findItem(title: "Max Cards"))
+        XCTAssertNil(menu.findItem(title: "Language"))
+        XCTAssertNil(menu.findItem(title: "Excluded Apps"))
+        XCTAssertNil(menu.findItem(title: "Launch at Login: Not Registered"))
+        XCTAssertNil(menu.findItem(title: "Request Accessibility Prompt"))
+        XCTAssertNil(menu.findItem(title: "Open Accessibility Settings"))
+        XCTAssertNil(menu.findItem(title: "Open Screen Recording Settings"))
+        XCTAssertNil(menu.findItem(title: "Debug: Show Preview For Frontmost App"))
+    }
+
+    func testControllerDoesNotExposeLegacySettingsSelectors() {
+        let harness = MenuHarness()
+
+        [
+            "setHoverDelay:",
+            "setPanelRetention:",
+            "setMaxCards:",
+            "setLanguage:",
+            "excludeTargetApp:",
+            "includeTargetApp:",
+            "removeExcludedApp:",
+            "clearExcludedApps",
+            "enableLaunchAtLogin",
+            "disableLaunchAtLogin",
+            "openLoginItemsSettings",
+            "requestAccessibilityPrompt",
+            "openAccessibilitySettings",
+            "openScreenRecordingSettings",
+            "refreshPermissions",
+            "showFrontmostAppProbe"
+        ].forEach { selectorName in
+            XCTAssertFalse(
+                harness.controller.responds(to: NSSelectorFromString(selectorName)),
+                "\(selectorName) should not remain reachable from the minimal menu controller"
             )
-        )
+        }
+    }
 
+    func testOpenSettingsActionShowsDockWindowQuickLookSettingsPage() {
+        let settingsWindowPresenter = FakeSettingsWindowPresenter()
+        let harness = MenuHarness(settingsWindowPresenter: settingsWindowPresenter)
         let menu = harness.makeMenu()
 
-        XCTAssertNotNil(menu.findItem(title: "400 ms", state: .on))
-        XCTAssertNotNil(menu.findItem(title: "\u{5BBD}\u{677E}", state: .on))
-        XCTAssertNotNil(menu.findItem(title: "12", state: .on))
-        XCTAssertNotNil(menu.findItem(title: "\u{7B80}\u{4F53}\u{4E2D}\u{6587}", state: .on))
+        menu.performItem(title: "Open Settings...")
+
+        XCTAssertEqual(settingsWindowPresenter.selectedPages, [.dockWindowQuickLook])
     }
 
-    func testSimplifiedChineseMenuLocalizesStaticPermissionAndRetentionLabels() {
-        let harness = MenuHarness(settings: .defaultsWith(language: .simplifiedChinese))
-
-        let menu = harness.makeMenu(
-            permissionState: PermissionState(accessibilityGranted: true, screenRecordingGranted: false)
-        )
-
-        XCTAssertNotNil(menu.findItem(title: "\u{8F85}\u{52A9}\u{529F}\u{80FD}\u{FF1A}\u{5DF2}\u{6388}\u{6743}"))
-        XCTAssertNotNil(menu.findItem(title: "\u{5C4F}\u{5E55}\u{5F55}\u{5236}\u{FF1A}\u{7F3A}\u{5931}"))
-        XCTAssertNotNil(menu.findItem(title: "\u{7D27}\u{51D1}"))
-        XCTAssertNotNil(menu.findItem(title: "\u{6807}\u{51C6}", state: .on))
-        XCTAssertNotNil(menu.findItem(title: "\u{5BBD}\u{677E}"))
-    }
-
-    func testExcludedAppListDisplaysResolvedAppNameWithBundleIdentifier() {
-        let appNameResolver = FakeAppNameResolver(displayNames: ["com.example.Editor": "Example Editor"])
-        let harness = MenuHarness(
-            settings: .defaultsWith(excludedApps: ["com.example.Editor"]),
-            appNameResolver: appNameResolver
-        )
-
-        let menu = harness.makeMenu()
-
-        XCTAssertNotNil(menu.findItem(title: "Example Editor (com.example.Editor)"))
-    }
-
-    func testExcludedAppTargetTitleIsExplicit() {
-        let harness = MenuHarness()
-        harness.targetTracker.updateLatestNonSelfActiveApp(
-            AppTarget(bundleIdentifier: "com.google.Chrome", displayName: "Google Chrome")
-        )
-
-        let menu = harness.makeMenu()
-
-        XCTAssertNotNil(menu.findItem(title: "Exclude Google Chrome"))
-    }
-
-    func testLongExcludedListIsSummarized() {
-        let excludedApps = Set((0..<30).map { String(format: "com.example.App%02d", $0) })
-        let harness = MenuHarness(settings: .defaultsWith(excludedApps: excludedApps))
-
-        let menu = harness.makeMenu()
-
-        XCTAssertNotNil(menu.findItem(containing: "more excluded apps"))
-    }
-
-    func testDisableActionWritesSettingCancelsPendingAndHidesPreview() {
-        let harness = MenuHarness()
-        let menu = harness.makeMenu()
-
-        menu.performItem(title: "Disable Dock Hover Preview")
-
-        XCTAssertFalse(harness.settingsStore.snapshot.isDockHoverPreviewEnabled)
-        XCTAssertEqual(harness.orchestrator.cancelReasons, ["settingsDisabled"])
-        XCTAssertEqual(harness.orchestrator.hideReasons, ["settingsDisabled"])
-    }
-
-    func testExcludeTargetActionWritesSettingCancelsPendingAndHidesPreview() {
-        let harness = MenuHarness()
-        harness.targetTracker.updateLatestNonSelfActiveApp(
-            AppTarget(bundleIdentifier: "com.google.Chrome", displayName: "Google Chrome")
-        )
-        let menu = harness.makeMenu()
-
-        menu.performItem(title: "Exclude Google Chrome")
-
-        XCTAssertTrue(harness.settingsStore.snapshot.excludedAppBundleIdentifiers.contains("com.google.Chrome"))
-        XCTAssertEqual(harness.orchestrator.cancelReasons, ["appExcluded"])
-        XCTAssertEqual(harness.orchestrator.hideReasons, ["appExcluded"])
-    }
-
-    func testExcludeActionUsesTargetRepresentedByMenuItem() {
-        let harness = MenuHarness()
-        harness.targetTracker.updateLatestNonSelfActiveApp(
-            AppTarget(bundleIdentifier: "com.google.Chrome", displayName: "Google Chrome")
-        )
-        let menu = harness.makeMenu()
-        harness.targetTracker.updateCurrentPreviewApp(
-            AppTarget(bundleIdentifier: "com.apple.TextEdit", displayName: "TextEdit")
-        )
-
-        menu.performItem(title: "Exclude Google Chrome")
-
-        XCTAssertTrue(harness.settingsStore.snapshot.excludedAppBundleIdentifiers.contains("com.google.Chrome"))
-        XCTAssertFalse(harness.settingsStore.snapshot.excludedAppBundleIdentifiers.contains("com.apple.TextEdit"))
-    }
-
-    func testIncludeActionUsesTargetRepresentedByMenuItem() {
-        let harness = MenuHarness(settings: .defaultsWith(excludedApps: ["com.google.Chrome", "com.apple.TextEdit"]))
-        harness.targetTracker.updateLatestNonSelfActiveApp(
-            AppTarget(bundleIdentifier: "com.google.Chrome", displayName: "Google Chrome")
-        )
-        let menu = harness.makeMenu()
-        harness.targetTracker.updateCurrentPreviewApp(
-            AppTarget(bundleIdentifier: "com.apple.TextEdit", displayName: "TextEdit")
-        )
-
-        menu.performItem(title: "Include Google Chrome")
-
-        XCTAssertFalse(harness.settingsStore.snapshot.excludedAppBundleIdentifiers.contains("com.google.Chrome"))
-        XCTAssertTrue(harness.settingsStore.snapshot.excludedAppBundleIdentifiers.contains("com.apple.TextEdit"))
-    }
-
-    func testExcludeTargetIsDisabledForSelfApp() {
-        let harness = MenuHarness()
-        harness.targetTracker.updateLatestNonSelfActiveApp(
-            AppTarget(bundleIdentifier: "com.zong.zongMacTools", displayName: "zongMacTools")
-        )
-
-        let menu = harness.makeMenu()
-
-        let item = menu.findItem(title: "Exclude App")
-        XCTAssertNotNil(item)
-        XCTAssertFalse(item?.isEnabled ?? true)
-    }
-
-    func testMenuOpeningRebuildsWithLatestExcludedTarget() {
+    func testToggleDockWindowQuickLookOnlyWritesSettingsAndRebuildsMenu() {
         let harness = MenuHarness()
         harness.controller.install()
 
-        harness.targetTracker.updateLatestNonSelfActiveApp(
-            AppTarget(bundleIdentifier: "com.google.Chrome", displayName: "Google Chrome")
-        )
-        harness.controller.menuWillOpen(harness.installedMenu)
+        harness.installedMenu.performItem(title: "Disable Dock Window Quick Look")
+        XCTAssertFalse(harness.settingsStore.snapshot.isDockHoverPreviewEnabled)
+        XCTAssertNotNil(harness.installedMenu.findItem(title: "Enable Dock Window Quick Look"))
 
-        XCTAssertNotNil(harness.installedMenu.findItem(title: "Exclude Google Chrome"))
+        harness.installedMenu.performItem(title: "Enable Dock Window Quick Look")
+        XCTAssertTrue(harness.settingsStore.snapshot.isDockHoverPreviewEnabled)
+        XCTAssertNotNil(harness.installedMenu.findItem(title: "Disable Dock Window Quick Look"))
     }
 
-    func testSettingsActionsWriteValuesAndCancelDelayChanges() {
-        let harness = MenuHarness()
-        var menu = harness.makeMenu()
-
-        menu.performItem(title: "400 ms")
-        XCTAssertEqual(harness.settingsStore.snapshot.hoverDelayMilliseconds, 400)
-        XCTAssertEqual(harness.orchestrator.cancelReasons, ["settingsChanged"])
-
-        menu = harness.makeMenu()
-        menu.performItem(title: "Forgiving")
-        XCTAssertEqual(harness.settingsStore.snapshot.panelRetentionMode, .forgiving)
-
-        menu = harness.makeMenu()
-        menu.performItem(title: "12")
-        XCTAssertEqual(harness.settingsStore.snapshot.maxCardCount, 12)
-
-        menu = harness.makeMenu()
-        menu.performItem(title: "\u{7B80}\u{4F53}\u{4E2D}\u{6587}")
-        XCTAssertEqual(harness.settingsStore.snapshot.displayLanguage, .simplifiedChinese)
-    }
-
-    func testExcludedAppListActionsRemoveAndClearEntries() {
-        let harness = MenuHarness(settings: .defaultsWith(excludedApps: ["com.example.One", "com.example.Two"]))
-        var menu = harness.makeMenu()
-
-        menu.performItem(title: "com.example.One")
-        XCTAssertFalse(harness.settingsStore.snapshot.excludedAppBundleIdentifiers.contains("com.example.One"))
-        XCTAssertTrue(harness.settingsStore.snapshot.excludedAppBundleIdentifiers.contains("com.example.Two"))
-
-        menu = harness.makeMenu()
-        menu.performItem(title: "Clear Excluded Apps")
-        XCTAssertEqual(harness.settingsStore.snapshot.excludedAppBundleIdentifiers, [])
-    }
-
-    func testLaunchAndDebugActionsCallServices() {
-        let launchAtLoginService = FakeLaunchAtLoginService(status: .notRegistered)
-        let harness = MenuHarness(launchAtLoginService: launchAtLoginService)
-        var menu = harness.makeMenu()
-
-        menu.performItem(title: "Enable Launch at Login")
-        XCTAssertEqual(launchAtLoginService.enableCount, 1)
-
-        launchAtLoginService.status = .enabled
-        menu = harness.makeMenu()
-        menu.performItem(title: "Disable Launch at Login")
-        XCTAssertEqual(launchAtLoginService.disableCount, 1)
-
-        launchAtLoginService.status = .requiresApproval
-        menu = harness.makeMenu()
-        menu.performItem(title: "Open Login Items Settings")
-        XCTAssertEqual(launchAtLoginService.openSettingsCount, 1)
-
-        menu.performItem(title: "Debug: Show Preview For Frontmost App")
-        XCTAssertEqual(harness.orchestrator.debugPreviewCount, 1)
-    }
-
-    func testAboutStatusAndExportDiagnosticsActionsCallInjectedServices() {
-        let aboutPresenter = FakeAboutStatusPresenter()
+    func testAboutStatusOpensEmbeddedSettingsPageAndExportDiagnosticsCallsInjectedService() {
         let diagnosticPresenter = FakeDiagnosticExportPresenter()
+        let settingsWindowPresenter = FakeSettingsWindowPresenter()
         let harness = MenuHarness(
-            aboutStatusPresenter: aboutPresenter,
-            diagnosticExportPresenter: diagnosticPresenter
+            diagnosticExportPresenter: diagnosticPresenter,
+            settingsWindowPresenter: settingsWindowPresenter
         )
         let menu = harness.makeMenu()
 
-        XCTAssertNotNil(menu.findItem(title: "About / Status"))
+        XCTAssertNotNil(menu.findItem(title: "About & Status"))
         XCTAssertNotNil(menu.findItem(title: "Export Diagnostics..."))
 
-        menu.performItem(title: "About / Status")
+        menu.performItem(title: "About & Status")
         menu.performItem(title: "Export Diagnostics...")
 
-        XCTAssertEqual(aboutPresenter.showCount, 1)
+        XCTAssertEqual(settingsWindowPresenter.selectedPages, [.aboutStatus])
         XCTAssertEqual(diagnosticPresenter.exportCount, 1)
     }
 
-    func testSimplifiedChineseMenuLocalizesAboutAndDiagnosticsEntries() {
+    func testSimplifiedChineseMinimalMenuLocalizesPrimaryActions() {
         let harness = MenuHarness(settings: .defaultsWith(language: .simplifiedChinese))
 
         let menu = harness.makeMenu()
 
-        XCTAssertNotNil(menu.findItem(title: "\u{5173}\u{4E8E} / \u{72B6}\u{6001}"))
-        XCTAssertNotNil(menu.findItem(title: "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}..."))
+        XCTAssertEqual(
+            menu.visibleTitles(),
+            [
+                "zongMacTools",
+                "\u{0044}\u{006f}\u{0063}\u{006b} \u{7A97}\u{53E3}\u{901F}\u{89C8}\u{FF1A}\u{5DF2}\u{542F}\u{7528}",
+                "\u{6253}\u{5F00}\u{8BBE}\u{7F6E}...",
+                "\u{505C}\u{7528} \u{0044}\u{006f}\u{0063}\u{006b} \u{7A97}\u{53E3}\u{901F}\u{89C8}",
+                "\u{5173}\u{4E8E}\u{4E0E}\u{72B6}\u{6001}",
+                "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}...",
+                "\u{9000}\u{51FA}"
+            ]
+        )
     }
-
-    func testLaunchAtLoginNotFoundDisablesToggleAndKeepsOpenSettingsEnabled() {
-        let launchAtLoginService = FakeLaunchAtLoginService(status: .notFound)
-        let harness = MenuHarness(launchAtLoginService: launchAtLoginService)
-
-        let menu = harness.makeMenu()
-
-        XCTAssertNotNil(menu.findItem(title: "Launch at Login: Not Found"))
-        XCTAssertFalse(menu.findItem(title: "Enable Launch at Login")?.isEnabled ?? true)
-        XCTAssertFalse(menu.findItem(title: "Disable Launch at Login")?.isEnabled ?? true)
-        XCTAssertTrue(menu.findItem(title: "Open Login Items Settings")?.isEnabled ?? false)
-    }
-
-    func testEnableLaunchAtLoginActionCallsService() {
-        let launchAtLoginService = FakeLaunchAtLoginService(status: .notRegistered)
-        let harness = MenuHarness(launchAtLoginService: launchAtLoginService)
-        let menu = harness.makeMenu()
-
-        menu.performItem(title: "Enable Launch at Login")
-
-        XCTAssertEqual(launchAtLoginService.enableCount, 1)
-    }
-
-    func testLaunchAtLoginEnableFailureDoesNotCrash() {
-        let launchAtLoginService = FakeLaunchAtLoginService(status: .notRegistered)
-        launchAtLoginService.enableError = LaunchAtLoginTestError.failed
-        let harness = MenuHarness(launchAtLoginService: launchAtLoginService)
-        let menu = harness.makeMenu()
-
-        menu.performItem(title: "Enable Launch at Login")
-
-        XCTAssertEqual(launchAtLoginService.enableCount, 1)
-    }
-
-    func testRequiresApprovalOnlyOffersOpenSettings() {
-        let launchAtLoginService = FakeLaunchAtLoginService(status: .requiresApproval)
-        let harness = MenuHarness(launchAtLoginService: launchAtLoginService)
-
-        let menu = harness.makeMenu()
-
-        XCTAssertNotNil(menu.findItem(title: "Launch at Login: Requires Approval"))
-        XCTAssertNil(menu.findItem(title: "Enable Launch at Login"))
-        XCTAssertNil(menu.findItem(title: "Disable Launch at Login"))
-        XCTAssertTrue(menu.findItem(title: "Open Login Items Settings")?.isEnabled ?? false)
-    }
-}
-
-private enum LaunchAtLoginTestError: Error {
-    case failed
 }
 
 @MainActor
 private final class MenuHarness {
     let permissionService = FakePermissionService()
     let settingsStore: FakeSettingsStore
-    let orchestrator = FakeMenuOrchestrator()
-    let launchAtLoginService: FakeLaunchAtLoginService
-    let appNameResolver: FakeAppNameResolver
-    let targetTracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
     let controller: MenuBarController
 
     init(
         settings: DockHoverPreviewSettings = .defaults,
-        launchAtLoginService: FakeLaunchAtLoginService = FakeLaunchAtLoginService(),
-        appNameResolver: FakeAppNameResolver = FakeAppNameResolver(),
-        aboutStatusPresenter: FakeAboutStatusPresenter = FakeAboutStatusPresenter(),
-        diagnosticExportPresenter: FakeDiagnosticExportPresenter = FakeDiagnosticExportPresenter()
+        diagnosticExportPresenter: FakeDiagnosticExportPresenter = FakeDiagnosticExportPresenter(),
+        settingsWindowPresenter: FakeSettingsWindowPresenter = FakeSettingsWindowPresenter()
     ) {
         _ = NSApplication.shared
         self.settingsStore = FakeSettingsStore(snapshot: settings)
-        self.launchAtLoginService = launchAtLoginService
-        self.appNameResolver = appNameResolver
         controller = MenuBarController(
             permissionService: permissionService,
-            orchestrator: orchestrator,
             settingsStore: settingsStore,
-            launchAtLoginService: launchAtLoginService,
-            targetTracker: targetTracker,
-            appNameResolver: appNameResolver,
-            aboutStatusPresenter: aboutStatusPresenter,
             diagnosticExportPresenter: diagnosticExportPresenter,
+            settingsWindowPresenter: settingsWindowPresenter,
             logger: ProbeLogger()
         )
     }
@@ -458,84 +303,20 @@ private final class FakeSettingsStore: DockHoverPreviewSettingsStore {
 }
 
 @MainActor
-private final class FakeMenuOrchestrator: MenuOrchestrating {
-    private(set) var hideReasons: [String] = []
-    private(set) var cancelReasons: [String] = []
-    private(set) var debugPreviewCount = 0
-
-    func showFrontmostAppProbe() {
-        debugPreviewCount += 1
-    }
-
-    func cancelPendingHover(reason: String) {
-        cancelReasons.append(reason)
-    }
-
-    func hidePreview(reason: String) {
-        hideReasons.append(reason)
-    }
-}
-
-@MainActor
-private final class FakeAboutStatusPresenter: AboutStatusPresenting {
-    private(set) var showCount = 0
-
-    func showAboutStatus() {
-        showCount += 1
-    }
-}
-
-@MainActor
 private final class FakeDiagnosticExportPresenter: DiagnosticExportPresenting {
     private(set) var exportCount = 0
 
-    func exportDiagnosticsFromMenu() {
+    func exportDiagnostics() {
         exportCount += 1
     }
 }
 
 @MainActor
-private final class FakeAppNameResolver: AppNameResolving {
-    var displayNames: [String: String]
+private final class FakeSettingsWindowPresenter: SettingsWindowPresenting {
+    private(set) var selectedPages: [SettingsPage] = []
 
-    init(displayNames: [String: String] = [:]) {
-        self.displayNames = displayNames
-    }
-
-    func displayName(forBundleIdentifier bundleIdentifier: String) -> String? {
-        displayNames[bundleIdentifier]
-    }
-}
-
-@MainActor
-private final class FakeLaunchAtLoginService: LaunchAtLoginService {
-    var status: LaunchAtLoginStatus
-    var enableError: Error?
-    var disableError: Error?
-    private(set) var enableCount = 0
-    private(set) var disableCount = 0
-    private(set) var openSettingsCount = 0
-
-    init(status: LaunchAtLoginStatus = .notRegistered) {
-        self.status = status
-    }
-
-    func enable() throws {
-        enableCount += 1
-        if let enableError {
-            throw enableError
-        }
-    }
-
-    func disable() throws {
-        disableCount += 1
-        if let disableError {
-            throw disableError
-        }
-    }
-
-    func openSettings() {
-        openSettingsCount += 1
+    func showSettings(selectedPage: SettingsPage) {
+        selectedPages.append(selectedPage)
     }
 }
 
@@ -545,10 +326,6 @@ private extension NSMenu {
         flattenedItems().first { item in
             item.title == title && (state.map { item.state == $0 } ?? true)
         }
-    }
-
-    func findItem(containing text: String) -> NSMenuItem? {
-        flattenedItems().first { $0.title.contains(text) }
     }
 
     func performItem(title: String, file: StaticString = #filePath, line: UInt = #line) {
@@ -565,6 +342,12 @@ private extension NSMenu {
             return
         }
         XCTAssertTrue(NSApplication.shared.sendAction(action, to: item.target, from: item), file: file, line: line)
+    }
+
+    func visibleTitles() -> [String] {
+        items.compactMap { item in
+            item.isSeparatorItem ? nil : item.title
+        }
     }
 
     private func flattenedItems() -> [NSMenuItem] {

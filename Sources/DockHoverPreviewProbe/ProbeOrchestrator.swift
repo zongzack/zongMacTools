@@ -21,6 +21,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     private var pendingHoverBundleIdentifier: String?
     private var pendingHoverGeneration = 0
     private var settingsObserverToken: UUID?
+    private var observedSettingsSnapshot: DockHoverPreviewSettings?
     private var isStopping = false
 
     init(
@@ -83,15 +84,6 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         Task { @MainActor [weak self] in
             await self?.previewSessionController.showPreview(for: app, anchor: anchor)
         }
-    }
-
-    func cancelPendingHoverForMenu(reason: String) {
-        cancelPendingHover()
-        logger.info("orchestrator.pendingHoverCancelled reason=\(reason)")
-    }
-
-    func hidePreviewForMenu(reason: String) {
-        previewSessionController.hide(reason: reason)
     }
 
     func dockHoverMonitor(_ monitor: DockHoverMonitor, didHover app: HoveredDockApp) {
@@ -159,6 +151,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         guard settingsObserverToken == nil else {
             return
         }
+        observedSettingsSnapshot = settingsStore.snapshot
         settingsObserverToken = settingsStore.addObserver { [weak self] settings in
             self?.settingsDidChange(settings)
         }
@@ -170,23 +163,44 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         }
         settingsStore.removeObserver(settingsObserverToken)
         self.settingsObserverToken = nil
+        observedSettingsSnapshot = nil
     }
 
     private func settingsDidChange(_ settings: DockHoverPreviewSettings) {
-        if !settings.isDockHoverPreviewEnabled {
-            cancelPendingHover()
+        let previousSettings = observedSettingsSnapshot ?? settings
+        let pendingBundleIdentifier = pendingHoverBundleIdentifier
+        let currentPreviewBundleIdentifier = targetTracker.currentPreviewBundleIdentifier
+        defer {
+            observedSettingsSnapshot = settings
+        }
+
+        if previousSettings.isDockHoverPreviewEnabled && !settings.isDockHoverPreviewEnabled {
+            cancelPendingHoverForSettings(reason: "settingsDisabled")
             previewSessionController.hide(reason: "settingsDisabled")
             logger.info("dock.hoverSkipped reason=settingsDisabled source=settingsObserver")
             return
         }
 
-        guard let pendingHoverBundleIdentifier,
-              settings.excludedAppBundleIdentifiers.contains(pendingHoverBundleIdentifier) else {
+        if previousSettings.hoverDelayMilliseconds != settings.hoverDelayMilliseconds {
+            cancelPendingHoverForSettings(reason: "settingsChanged")
+        }
+
+        let newlyExcludedBundleIdentifiers = settings.excludedAppBundleIdentifiers
+            .subtracting(previousSettings.excludedAppBundleIdentifiers)
+        guard !newlyExcludedBundleIdentifiers.isEmpty else {
             return
         }
-        cancelPendingHover()
+
+        let excludedMatchingBundleIdentifier = [pendingBundleIdentifier, currentPreviewBundleIdentifier]
+            .compactMap { $0 }
+            .first { newlyExcludedBundleIdentifiers.contains($0) }
+        guard let excludedMatchingBundleIdentifier else {
+            return
+        }
+
+        cancelPendingHoverForSettings(reason: "appExcluded")
         previewSessionController.hide(reason: "appExcluded")
-        logger.info("dock.hoverSkipped reason=appExcluded source=settingsObserver bundle=\(pendingHoverBundleIdentifier)")
+        logger.info("dock.hoverSkipped reason=appExcluded source=settingsObserver bundle=\(excludedMatchingBundleIdentifier)")
     }
 
     private func schedulePreviewAfterDelay(
@@ -278,6 +292,14 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         pendingHoverGeneration += 1
     }
 
+    private func cancelPendingHoverForSettings(reason: String) {
+        let hadPendingHover = pendingHoverCancellation != nil || pendingHoverBundleIdentifier != nil
+        cancelPendingHover()
+        if hadPendingHover {
+            logger.info("orchestrator.pendingHoverCancelled reason=\(reason) source=settingsObserver")
+        }
+    }
+
     private func isCurrentPendingHover(_ generation: Int) -> Bool {
         generation == pendingHoverGeneration
     }
@@ -301,15 +323,5 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
             screenFrame: screenFrame,
             visibleFrame: visibleFrame
         )
-    }
-}
-
-extension ProbeOrchestrator: MenuOrchestrating {
-    func cancelPendingHover(reason: String) {
-        cancelPendingHoverForMenu(reason: reason)
-    }
-
-    func hidePreview(reason: String) {
-        hidePreviewForMenu(reason: reason)
     }
 }

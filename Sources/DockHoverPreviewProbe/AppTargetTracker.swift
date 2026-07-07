@@ -24,6 +24,14 @@ final class AppTargetTracker {
             .first { isValidTarget($0) }
     }
 
+    var currentPreviewTarget: AppTarget? {
+        currentPreviewApp
+    }
+
+    var currentPreviewBundleIdentifier: String? {
+        currentPreviewApp?.bundleIdentifier
+    }
+
     func updateCurrentPreviewApp(_ target: AppTarget?) {
         currentPreviewApp = target.flatMap { isValidTarget($0) ? $0 : nil }
     }
@@ -33,7 +41,14 @@ final class AppTargetTracker {
     }
 
     func updateLatestNonSelfActiveApp(_ target: AppTarget?) {
-        latestNonSelfActiveApp = target.flatMap { isValidTarget($0) ? $0 : nil }
+        guard let target, isValidTarget(target) else {
+            return
+        }
+        latestNonSelfActiveApp = target
+    }
+
+    func refreshLatestNonSelfActiveApp(workspace: NSWorkspace = .shared) {
+        updateLatestNonSelfActiveApp(workspace.frontmostApplication.flatMap(AppTarget.init(app:)))
     }
 
     func startWorkspaceObservation(workspace: NSWorkspace = .shared) {

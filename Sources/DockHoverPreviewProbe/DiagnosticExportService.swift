@@ -216,26 +216,96 @@ struct SystemDiagnosticLogCollector: DiagnosticLogCollecting {
 
 @MainActor
 protocol DiagnosticExportPresenting: AnyObject {
-    func exportDiagnosticsFromMenu()
+    func exportDiagnostics()
+}
+
+@MainActor
+protocol DiagnosticSavePanelProviding: AnyObject {
+    var canCreateDirectories: Bool { get set }
+    var nameFieldStringValue: String { get set }
+    var title: String? { get set }
+    var message: String? { get set }
+    var prompt: String? { get set }
+    var nameFieldLabel: String? { get set }
+    var showsTagField: Bool { get set }
+    var url: URL? { get }
+
+    func begin(completionHandler handler: @escaping (NSApplication.ModalResponse) -> Void)
+}
+
+@MainActor
+private final class AppKitDiagnosticSavePanel: DiagnosticSavePanelProviding {
+    private let panel: NSSavePanel
+
+    init(panel: NSSavePanel = NSSavePanel()) {
+        self.panel = panel
+    }
+
+    var canCreateDirectories: Bool {
+        get { panel.canCreateDirectories }
+        set { panel.canCreateDirectories = newValue }
+    }
+
+    var nameFieldStringValue: String {
+        get { panel.nameFieldStringValue }
+        set { panel.nameFieldStringValue = newValue }
+    }
+
+    var title: String? {
+        get { panel.title }
+        set { panel.title = newValue }
+    }
+
+    var message: String? {
+        get { panel.message }
+        set { panel.message = newValue }
+    }
+
+    var prompt: String? {
+        get { panel.prompt }
+        set { panel.prompt = newValue }
+    }
+
+    var nameFieldLabel: String? {
+        get { panel.nameFieldLabel }
+        set { panel.nameFieldLabel = newValue }
+    }
+
+    var showsTagField: Bool {
+        get { panel.showsTagField }
+        set { panel.showsTagField = newValue }
+    }
+
+    var url: URL? {
+        panel.url
+    }
+
+    func begin(completionHandler handler: @escaping (NSApplication.ModalResponse) -> Void) {
+        panel.begin(completionHandler: handler)
+    }
 }
 
 @MainActor
 final class DiagnosticExportPresenter: DiagnosticExportPresenting {
     private let exportService: DiagnosticExportService
     private let statusProvider: AppStatusProviding
+    private let savePanelFactory: @MainActor () -> any DiagnosticSavePanelProviding
 
     init(
         exportService: DiagnosticExportService,
-        statusProvider: AppStatusProviding
+        statusProvider: AppStatusProviding,
+        savePanelFactory: @escaping @MainActor () -> any DiagnosticSavePanelProviding = { AppKitDiagnosticSavePanel() }
     ) {
         self.exportService = exportService
         self.statusProvider = statusProvider
+        self.savePanelFactory = savePanelFactory
     }
 
-    func exportDiagnosticsFromMenu() {
-        let panel = NSSavePanel()
-        panel.canCreateDirectories = true
-        panel.nameFieldStringValue = "zongMacTools-diagnostics.txt"
+    func exportDiagnostics() {
+        let snapshot = statusProvider.snapshot()
+        let panel = savePanelFactory()
+        configure(panel, language: snapshot.settingsSummary.displayLanguage)
+
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url else {
                 return
@@ -250,6 +320,18 @@ final class DiagnosticExportPresenter: DiagnosticExportPresenting {
             }
         }
     }
+
+    private func configure(_ panel: any DiagnosticSavePanelProviding, language: DisplayLanguage) {
+        let text = AppTextProvider(language: language)
+
+        panel.canCreateDirectories = true
+        panel.showsTagField = false
+        panel.title = text.string(.diagnosticSavePanelTitle)
+        panel.message = text.string(.diagnosticSavePanelMessage)
+        panel.prompt = text.string(.diagnosticSavePanelPrompt)
+        panel.nameFieldLabel = text.string(.diagnosticSavePanelNameFieldLabel)
+        panel.nameFieldStringValue = "zongMacTools-diagnostics.txt"
+    }
 }
 
 enum DiagnosticExportError: Error {
@@ -258,5 +340,5 @@ enum DiagnosticExportError: Error {
 
 @MainActor
 final class NoopDiagnosticExportPresenter: DiagnosticExportPresenting {
-    func exportDiagnosticsFromMenu() {}
+    func exportDiagnostics() {}
 }

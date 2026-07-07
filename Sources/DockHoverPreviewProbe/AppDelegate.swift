@@ -8,10 +8,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var previewPanelController: PreviewPanelController!
     private var previewSessionController: PreviewSessionController!
     private var menuBarController: MenuBarController!
+    private var settingsViewModel: SettingsViewModel!
+    private var settingsWindowController: SettingsWindowController!
     private var launchAtLoginService: LaunchAtLoginService!
+    private var appNameResolver: AppNameResolving!
     private var appMetadataProvider: CachedAppMetadataProvider!
     private var appStatusProvider: LiveAppStatusProvider!
-    private var aboutStatusWindowController: AboutStatusWindowController!
     private var diagnosticExportService: DiagnosticExportService!
     private var diagnosticExportPresenter: DiagnosticExportPresenter!
     private var orchestrator: ProbeOrchestrator!
@@ -23,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         targetTracker = AppTargetTracker(selfBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.zong.zongMacTools")
         targetTracker.startWorkspaceObservation()
         launchAtLoginService = SystemLaunchAtLoginService()
+        appNameResolver = WorkspaceAppNameResolver()
         appMetadataProvider = CachedAppMetadataProvider()
         appStatusProvider = LiveAppStatusProvider(
             permissionService: permissionService,
@@ -32,13 +35,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 appMetadataProvider?.currentMetadata() ?? AppMetadata()
             }
         )
-        aboutStatusWindowController = AboutStatusWindowController(statusProvider: appStatusProvider)
         diagnosticExportService = DiagnosticExportService(
             logger: logger
         )
         diagnosticExportPresenter = DiagnosticExportPresenter(
             exportService: diagnosticExportService,
             statusProvider: appStatusProvider
+        )
+        settingsViewModel = SettingsViewModel(
+            settingsStore: settingsStore,
+            launchAtLoginService: launchAtLoginService,
+            targetTracker: targetTracker,
+            appNameResolver: appNameResolver,
+            logger: logger
+        )
+        settingsWindowController = SettingsWindowController(
+            settingsViewModel: settingsViewModel,
+            permissionService: permissionService,
+            appStatusProvider: appStatusProvider,
+            diagnosticExportPresenter: diagnosticExportPresenter
         )
         previewPanelController = PreviewPanelController(logger: logger)
         let windowQueryService: WindowQueryService = ScreenCaptureWindowQueryService(logger: logger)
@@ -74,12 +89,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         menuBarController = MenuBarController(
             permissionService: permissionService,
-            orchestrator: orchestrator,
             settingsStore: settingsStore,
-            launchAtLoginService: launchAtLoginService,
-            targetTracker: targetTracker,
-            aboutStatusPresenter: aboutStatusWindowController,
             diagnosticExportPresenter: diagnosticExportPresenter,
+            settingsWindowPresenter: settingsWindowController,
             logger: logger
         )
         menuBarController.install()

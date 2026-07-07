@@ -10,10 +10,18 @@ final class AppDelegateWiringTests: XCTestCase {
         XCTAssertSource(source, contains: "settingsStore = UserDefaultsSettingsStore(logger: logger)", before: "targetTracker = AppTargetTracker")
         XCTAssertSource(source, contains: "targetTracker.startWorkspaceObservation()", before: "launchAtLoginService = SystemLaunchAtLoginService()")
         XCTAssertSource(source, contains: "launchAtLoginService = SystemLaunchAtLoginService()", before: "previewPanelController = PreviewPanelController(logger: logger)")
+        XCTAssertSource(source, contains: "diagnosticExportPresenter = DiagnosticExportPresenter", before: "settingsViewModel = SettingsViewModel")
+        XCTAssertSource(source, contains: "settingsViewModel = SettingsViewModel", before: "settingsWindowController = SettingsWindowController")
+        XCTAssertSource(source, contains: "settingsWindowController = SettingsWindowController", before: "previewPanelController = PreviewPanelController(logger: logger)")
 
         XCTAssertTrue(source.contains("settingsStore: settingsStore"))
         XCTAssertTrue(source.contains("targetTracker: targetTracker"))
         XCTAssertTrue(source.contains("launchAtLoginService: launchAtLoginService"))
+        XCTAssertTrue(source.contains("permissionService: permissionService"))
+        XCTAssertTrue(source.contains("appStatusProvider: appStatusProvider"))
+        XCTAssertFalse(source.contains("aboutStatusPresenter: aboutStatusWindowController"))
+        XCTAssertTrue(source.contains("diagnosticExportPresenter: diagnosticExportPresenter"))
+        XCTAssertTrue(source.contains("settingsWindowPresenter: settingsWindowController"))
     }
 
     func testTerminationStopsOrchestratorBeforeWorkspaceObservation() throws {
