@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appStatusProvider: LiveAppStatusProvider!
     private var diagnosticExportService: DiagnosticExportService!
     private var diagnosticExportPresenter: DiagnosticExportPresenter!
+    private var excludedAppSelectionPresenter: ExcludedAppSelectionPresenting!
     private var orchestrator: ProbeOrchestrator!
 
     @MainActor func applicationDidFinishLaunching(_ notification: Notification) {
@@ -42,11 +43,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             exportService: diagnosticExportService,
             statusProvider: appStatusProvider
         )
+        excludedAppSelectionPresenter = AppKitExcludedAppSelectionPresenter()
         settingsViewModel = SettingsViewModel(
             settingsStore: settingsStore,
             launchAtLoginService: launchAtLoginService,
             targetTracker: targetTracker,
             appNameResolver: appNameResolver,
+            excludedAppSelectionPresenter: excludedAppSelectionPresenter,
             logger: logger
         )
         settingsWindowController = SettingsWindowController(

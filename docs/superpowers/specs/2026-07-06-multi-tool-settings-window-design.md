@@ -83,6 +83,7 @@ Dock 窗口速览
 - 面板保留手感。
 - 最大卡片数。
 - 排除当前可排除 App。
+- 手动添加 `.app` 到排除列表。
 - 已排除 App 列表、移除单项和清空全部入口。
 
 ### 右键扩展
@@ -266,7 +267,7 @@ UI 显示：
 
 ### 排除规则
 
-包含两个区域。
+包含快捷排除、手动添加和已排除列表。
 
 #### 排除当前可排除 App
 
@@ -294,9 +295,21 @@ UI 显示：
 - 排除当前 preview app 后由 orchestrator observer 取消 pending hover 并隐藏当前 panel，reason 保持 `appExcluded`。
 - 不能排除 zongMacTools 自己。
 
+#### 手动添加 App
+
+在 `排除的 App` 标题行提供 `添加...` 按钮。点击后打开 `NSOpenPanel`，只允许用户选择 `.app` 应用包，不提供内置搜索窗口、不扫描 `/Applications` 生成应用列表，也不显示运行中 App 列表。
+
+选中 `.app` 后读取该 bundle 的 bundle identifier 和显示名称：
+
+- 如果 bundle identifier 有效、不是 zongMacTools 自己且当前不在排除列表中，则只写入 `excludedAppBundleIdentifiers`。
+- 如果用户取消选择，不做任何变更。
+- 如果选中的 `.app` 没有 bundle identifier、bundle identifier 为空、是 zongMacTools 自己或已经被排除，不写入重复或非法值，可记录日志。
+- 手动添加不改变 `AppTargetTracker` 的“当前可排除 App”来源语义；它只是用户显式选择 bundle 的补充入口。
+- 手动添加命中 pending hover app 或当前 preview app 时，取消 pending hover 和隐藏 preview 仍由 orchestrator observer 统一处理，不在设置页重复调用 hide/cancel。
+
 #### 已排除 App 列表
 
-列表显示已排除 app。优先显示 app 名称，旁边显示 bundle id。每行提供移除按钮。列表顶部或底部提供 `清空全部` 操作；当列表为空时禁用该操作。
+列表显示已排除 app。优先显示 app 名称，旁边显示 bundle id。每行提供移除按钮。列表标题行提供 `添加...` 和 `清空全部` 操作；当列表为空时禁用 `清空全部`，但 `添加...` 保持可用。
 
 空状态：
 
@@ -422,6 +435,7 @@ SwiftUI 视图通过轻量 view model 或 observable adapter 读取和写入现�
 - `AppNameResolving`
 - `AppStatusProviding`
 - `DiagnosticExportPresenting`
+- `ExcludedAppSelectionPresenting`
 
 ### 设置 Store 适配
 
@@ -436,6 +450,7 @@ SettingsViewModel
 - 持有当前 settings snapshot。
 - 注册 settings observer，并在变化时更新 published state。
 - 暴露 intent 方法，例如 `setHoverDelayPreset(_:)`、`setPanelRetentionMode(_:)`、`setMaxCardCount(_:)`、`toggleDockWindowQuickLook()`。
+- 暴露手动添加排除 App 的 intent，接收由选择器解析出的 bundle identifier，并只写入合法、非重复、非本 app 的 bundle id。
 - 集中写入 `DockHoverPreviewSettingsStore`，并通过少量 intent 暴露给 SwiftUI view。
 - 不直接隐藏 preview panel，也不直接操作 hover monitor；这些副作用由统一的 orchestrator 路径处理。
 
@@ -448,6 +463,7 @@ SettingsViewModel
 - 关闭 Dock 窗口速览：取消 pending hover，并隐藏当前 preview，reason `settingsDisabled`。
 - 修改悬停延迟：取消 pending hover，reason `settingsChanged`。
 - 排除当前可排除 App：取消 pending hover，并隐藏当前 preview，reason `appExcluded`。
+- 手动添加 `.app` 到排除列表：如果新增 bundle id 命中 pending hover app 或当前 preview app，同样由 observer 取消 pending hover / 隐藏 preview，reason `appExcluded`。
 
 第一版建议把 `ProbeOrchestrator` 的 settings observer 扩展为设置派生副作用的权威来源：
 
@@ -520,6 +536,8 @@ DockHoverPreview.displayLanguage
 - 排除规则。
 - 排除当前可排除 App。
 - 恢复当前可排除 App。
+- 添加...
+- 选择要排除的 App
 - 没有可排除的 App。
 - 当前没有排除项。
 - 清空全部。
@@ -541,6 +559,8 @@ DockHoverPreview.displayLanguage
 - `About & Status`
 - `Exclude Current App`
 - `Include Current App`
+- `Add...`
+- `Choose App to Exclude`
 - `Clear All`
 - `zongMacTools Settings`
 - `Remove excluded app`
@@ -553,6 +573,7 @@ DockHoverPreview.displayLanguage
 - Launch at Login 写入失败时记录日志并保留当前显示状态。
 - 权限入口打开失败时静默降级或记录日志，不弹出重复干扰提示。
 - 导出诊断失败时沿用现有错误文案。
+- 手动添加 `.app` 时，用户取消选择不记录错误；无法读取 bundle identifier、选择本应用或选择重复项时不写入 store，可记录诊断日志。
 - 设置读取到非法值时沿用现有 Store 回退策略。
 
 ## 测试策略
@@ -593,6 +614,7 @@ DockHoverPreview.displayLanguage
 - 修改 hover delay 时只写 store；具体取消 pending hover 由 orchestrator observer 测试覆盖。
 - 关闭 Dock 窗口速览时只写 store，不重复调用已经由 orchestrator observer 处理的 hide/cancel。
 - 排除当前可排除 App 时只写 store，不重复调用已经由 orchestrator observer 处理的 hide/cancel。
+- 手动添加 `.app` 时只接受有效、非本 app、非重复 bundle id，并只写 store。
 - 清空全部排除项时只清空 `excludedAppBundleIdentifiers`，不改变其他 settings。
 - 语言和 Launch at Login 属于 general page state。
 

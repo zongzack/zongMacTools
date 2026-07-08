@@ -50,6 +50,8 @@ final class SettingsViewModel: ObservableObject {
     private let launchAtLoginService: LaunchAtLoginService
     private let targetTracker: AppTargetTracker
     private let appNameResolver: AppNameResolving
+    private let excludedAppSelectionPresenter: any ExcludedAppSelectionPresenting
+    private let selfBundleIdentifier: String
     private let logger: ProbeLogger
     private var observerToken: UUID?
 
@@ -58,12 +60,16 @@ final class SettingsViewModel: ObservableObject {
         launchAtLoginService: LaunchAtLoginService,
         targetTracker: AppTargetTracker,
         appNameResolver: AppNameResolving = WorkspaceAppNameResolver(),
+        excludedAppSelectionPresenter: any ExcludedAppSelectionPresenting = AppKitExcludedAppSelectionPresenter(),
+        selfBundleIdentifier: String = Bundle.main.bundleIdentifier ?? "com.zong.zongMacTools",
         logger: ProbeLogger
     ) {
         self.settingsStore = settingsStore
         self.launchAtLoginService = launchAtLoginService
         self.targetTracker = targetTracker
         self.appNameResolver = appNameResolver
+        self.excludedAppSelectionPresenter = excludedAppSelectionPresenter
+        self.selfBundleIdentifier = BundleIdentifierValidator.sanitized(selfBundleIdentifier) ?? selfBundleIdentifier
         self.logger = logger
         self.state = Self.makeState(
             snapshot: settingsStore.snapshot,
@@ -141,6 +147,42 @@ final class SettingsViewModel: ObservableObject {
                 settings.excludedAppBundleIdentifiers.insert(target.bundleIdentifier)
             }
         }
+    }
+
+    @discardableResult
+    func addExcludedAppFromSelection() -> Bool {
+        let text = AppTextProvider(language: state.displayLanguage)
+        guard let selection = excludedAppSelectionPresenter.selectAppToExclude(
+            panelTitle: text.string(.chooseAppToExclude)
+        ) else {
+            return false
+        }
+
+        return addExcludedApp(selection)
+    }
+
+    @discardableResult
+    func addExcludedApp(_ selection: ExcludedAppSelection) -> Bool {
+        guard let bundleIdentifier = BundleIdentifierValidator.sanitized(selection.bundleIdentifier) else {
+            logger.warning("settings.excludedAppManualAddSkipped reason=invalidBundleIdentifier")
+            return false
+        }
+
+        guard bundleIdentifier != selfBundleIdentifier else {
+            logger.info("settings.excludedAppManualAddSkipped reason=self bundle=\(bundleIdentifier)")
+            return false
+        }
+
+        guard !settingsStore.snapshot.excludedAppBundleIdentifiers.contains(bundleIdentifier) else {
+            logger.info("settings.excludedAppManualAddSkipped reason=duplicate bundle=\(bundleIdentifier)")
+            return false
+        }
+
+        settingsStore.update { settings in
+            settings.excludedAppBundleIdentifiers.insert(bundleIdentifier)
+        }
+        logger.info("settings.excludedAppManualAdded bundle=\(bundleIdentifier)")
+        return true
     }
 
     func removeExcludedApp(bundleIdentifier: String) {

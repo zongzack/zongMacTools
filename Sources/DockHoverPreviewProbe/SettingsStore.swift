@@ -214,11 +214,10 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
         var valid: Set<String> = []
 
         for value in values {
-            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard isValidBundleIdentifier(trimmed) else {
+            guard let bundleIdentifier = BundleIdentifierValidator.sanitized(value) else {
                 continue
             }
-            valid.insert(trimmed)
+            valid.insert(bundleIdentifier)
         }
 
         let sorted = valid.sorted()
@@ -242,21 +241,6 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
         "settings.changed enabled=\(settings.isDockHoverPreviewEnabled) delayMS=\(settings.hoverDelayMilliseconds) " +
         "retention=\(settings.panelRetentionMode.rawValue) maxCards=\(settings.maxCardCount) " +
         "excludedCount=\(settings.excludedAppBundleIdentifiers.count) language=\(settings.displayLanguage.rawValue)"
-    }
-
-    private static func isValidBundleIdentifier(_ value: String) -> Bool {
-        guard (1...256).contains(value.utf8.count) else {
-            return false
-        }
-
-        return value.unicodeScalars.allSatisfy { scalar in
-            switch scalar.value {
-            case 45, 46, 48...57, 65...90, 95, 97...122:
-                true
-            default:
-                false
-            }
-        }
     }
 
     private static func isBooleanNumber(_ number: NSNumber) -> Bool {

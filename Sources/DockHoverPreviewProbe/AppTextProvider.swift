@@ -13,6 +13,8 @@ enum LocalizedTextKey: String, CaseIterable {
     case exclusionRules
     case excludeCurrentApp
     case includeCurrentApp
+    case addExcludedApp
+    case chooseAppToExclude
     case noExcludableApp
     case noExcludedApps
     case clearAll
@@ -214,6 +216,10 @@ struct AppTextProvider: Equatable {
             "Exclude Current App"
         case .includeCurrentApp:
             "Include Current App"
+        case .addExcludedApp:
+            "Add..."
+        case .chooseAppToExclude:
+            "Choose App to Exclude"
         case .noExcludableApp:
             "No excludable app"
         case .noExcludedApps:
@@ -341,6 +347,10 @@ struct AppTextProvider: Equatable {
             "\u{6392}\u{9664}\u{5F53}\u{524D}\u{53EF}\u{6392}\u{9664} App"
         case .includeCurrentApp:
             "\u{6062}\u{590D}\u{5F53}\u{524D}\u{53EF}\u{6392}\u{9664} App"
+        case .addExcludedApp:
+            "\u{6DFB}\u{52A0}..."
+        case .chooseAppToExclude:
+            "\u{9009}\u{62E9}\u{8981}\u{6392}\u{9664}\u{7684} App"
         case .noExcludableApp:
             "\u{6CA1}\u{6709}\u{53EF}\u{6392}\u{9664}\u{7684} App"
         case .noExcludedApps:

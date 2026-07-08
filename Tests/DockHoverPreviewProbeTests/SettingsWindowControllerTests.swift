@@ -91,15 +91,16 @@ final class SettingsWindowControllerTests: XCTestCase {
         )
     }
 
-    func testSettingsGroupsUseLighterHoverAnimatedSurfaces() throws {
+    func testSettingsGroupsUseStableHoverSurfacesWithoutScale() throws {
         let source = try settingsRootViewSource()
 
         XCTAssertTrue(source.contains("SettingsGroupVisualStyle"))
         XCTAssertTrue(source.contains("hoverBackgroundColor"))
         XCTAssertTrue(source.contains("Color(nsColor: .systemGray)"))
         XCTAssertTrue(source.contains(".onHover"))
-        XCTAssertTrue(source.contains("scaleEffect(isHovering ? SettingsGroupVisualStyle.hoverScale : 1)"))
         XCTAssertTrue(source.contains(".animation(.easeOut"))
+        XCTAssertFalse(source.contains("scaleEffect(isHovering ? SettingsGroupVisualStyle.hoverScale : 1)"))
+        XCTAssertFalse(source.contains("SettingsGroupVisualStyle.hoverScale"))
         XCTAssertFalse(source.contains("controlBackgroundColor"))
         XCTAssertFalse(source.contains(".background(.regularMaterial)"))
     }
@@ -119,6 +120,15 @@ final class SettingsWindowControllerTests: XCTestCase {
         XCTAssertTrue(source.contains(".background(SettingsScrollBarTuner())"))
         XCTAssertTrue(source.contains("text.string(.removeExcludedAppHelp)"))
         XCTAssertFalse(source.contains("\"Remove excluded app\""))
+    }
+
+    func testExcludedAppsHeaderHasAddButtonWiredToViewModelIntent() throws {
+        let source = try settingsRootViewSource()
+
+        XCTAssertTrue(source.contains("Button(text.string(.addExcludedApp))"))
+        XCTAssertTrue(source.contains("viewModel.addExcludedAppFromSelection()"))
+        XCTAssertTrue(source.contains("Button(text.string(.clearAll))"))
+        XCTAssertTrue(source.contains(".disabled(viewModel.state.excludedApps.isEmpty)"))
     }
 
     private func closeSettingsWindows() {

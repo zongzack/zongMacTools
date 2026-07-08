@@ -353,6 +353,10 @@ private struct ExcludedAppsListView: View {
                 Text(text.string(.excludedApps))
                     .font(.headline)
                 Spacer()
+                Button(text.string(.addExcludedApp)) {
+                    viewModel.addExcludedAppFromSelection()
+                }
+
                 Button(text.string(.clearAll)) {
                     viewModel.clearExcludedApps()
                 }
@@ -675,7 +679,6 @@ private struct SettingsGroup<Content: View>: View {
                     )
             }
             .clipShape(RoundedRectangle(cornerRadius: SettingsGroupVisualStyle.cornerRadius, style: .continuous))
-            .scaleEffect(isHovering ? SettingsGroupVisualStyle.hoverScale : 1)
             .shadow(
                 color: Color.black.opacity(isHovering ? SettingsGroupVisualStyle.hoverShadowOpacity : 0),
                 radius: isHovering ? SettingsGroupVisualStyle.hoverShadowRadius : 0,
@@ -698,6 +701,5 @@ private enum SettingsGroupVisualStyle {
     static let hoverShadowOpacity = 0.06
     static let hoverShadowRadius: CGFloat = 8
     static let hoverShadowYOffset: CGFloat = 3
-    static let hoverScale: CGFloat = 1.004
     static let animationDuration = 0.18
 }

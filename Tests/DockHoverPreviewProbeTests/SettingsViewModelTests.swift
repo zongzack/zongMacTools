@@ -208,6 +208,115 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.state.currentExclusionTarget)
     }
 
+    func testManualAddEntryCallsInjectedSelectionPresenterWithLocalizedTitle() {
+        var settings = DockHoverPreviewSettings.defaults
+        settings.displayLanguage = .simplifiedChinese
+        let store = RecordingSettingsStore(snapshot: settings)
+        let selectionPresenter = FakeExcludedAppSelectionPresenter(selection: nil)
+        let viewModel = SettingsViewModel(
+            settingsStore: store,
+            launchAtLoginService: FakeLaunchAtLoginService(),
+            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
+            excludedAppSelectionPresenter: selectionPresenter,
+            logger: ProbeLogger()
+        )
+
+        viewModel.addExcludedAppFromSelection()
+
+        XCTAssertEqual(selectionPresenter.presentedTitles, ["\u{9009}\u{62E9}\u{8981}\u{6392}\u{9664}\u{7684} App"])
+        XCTAssertEqual(store.writtenSnapshots, [])
+    }
+
+    func testSuccessfulManualSelectionWritesExcludedBundleIdentifier() {
+        let store = RecordingSettingsStore(snapshot: .defaults)
+        let selectionPresenter = FakeExcludedAppSelectionPresenter(
+            selection: ExcludedAppSelection(bundleIdentifier: "com.example.Editor", displayName: "Editor")
+        )
+        let viewModel = SettingsViewModel(
+            settingsStore: store,
+            launchAtLoginService: FakeLaunchAtLoginService(),
+            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
+            excludedAppSelectionPresenter: selectionPresenter,
+            logger: ProbeLogger()
+        )
+
+        viewModel.addExcludedAppFromSelection()
+
+        XCTAssertEqual(selectionPresenter.presentedTitles, ["Choose App to Exclude"])
+        XCTAssertEqual(store.snapshot.excludedAppBundleIdentifiers, ["com.example.Editor"])
+        XCTAssertEqual(store.writtenSnapshots.count, 1)
+    }
+
+    func testCancelledManualSelectionDoesNotWriteSettingsStore() {
+        let store = RecordingSettingsStore(snapshot: .defaults)
+        let viewModel = SettingsViewModel(
+            settingsStore: store,
+            launchAtLoginService: FakeLaunchAtLoginService(),
+            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
+            excludedAppSelectionPresenter: FakeExcludedAppSelectionPresenter(selection: nil),
+            logger: ProbeLogger()
+        )
+
+        viewModel.addExcludedAppFromSelection()
+
+        XCTAssertEqual(store.snapshot.excludedAppBundleIdentifiers, [])
+        XCTAssertEqual(store.writtenSnapshots, [])
+    }
+
+    func testManualAddRejectsEmptySelfInvalidAndDuplicateBundleIdentifiers() {
+        let store = RecordingSettingsStore(snapshot: .viewModelSettings(
+            enabled: true,
+            hoverDelayMilliseconds: 250,
+            maxCardCount: 8,
+            retention: .standard,
+            excludedApps: ["com.example.Existing"],
+            language: .english
+        ))
+        let viewModel = SettingsViewModel(
+            settingsStore: store,
+            launchAtLoginService: FakeLaunchAtLoginService(),
+            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
+            selfBundleIdentifier: "com.zong.zongMacTools",
+            logger: ProbeLogger()
+        )
+
+        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "", displayName: nil)))
+        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "   ", displayName: nil)))
+        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "bad id", displayName: nil)))
+        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "com.zong.zongMacTools", displayName: "zongMacTools")))
+        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "com.example.Existing", displayName: "Existing")))
+
+        XCTAssertEqual(store.snapshot.excludedAppBundleIdentifiers, ["com.example.Existing"])
+        XCTAssertEqual(store.writtenSnapshots, [])
+    }
+
+    func testManualAddOnlyMutatesExcludedSet() {
+        let initialSettings = DockHoverPreviewSettings.viewModelSettings(
+            enabled: false,
+            hoverDelayMilliseconds: 400,
+            maxCardCount: 12,
+            retention: .forgiving,
+            excludedApps: ["com.example.One"],
+            language: .simplifiedChinese
+        )
+        let store = RecordingSettingsStore(snapshot: initialSettings)
+        let viewModel = SettingsViewModel(
+            settingsStore: store,
+            launchAtLoginService: FakeLaunchAtLoginService(),
+            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
+            logger: ProbeLogger()
+        )
+
+        XCTAssertTrue(viewModel.addExcludedApp(
+            ExcludedAppSelection(bundleIdentifier: "com.example.Two", displayName: "Example Two")
+        ))
+
+        var expected = initialSettings
+        expected.excludedAppBundleIdentifiers = ["com.example.One", "com.example.Two"]
+        XCTAssertEqual(store.snapshot, expected)
+        XCTAssertEqual(store.writtenSnapshots, [expected])
+    }
+
     func testRemoveAndClearExcludedAppsOnlyMutateExcludedSet() {
         let initialSettings = DockHoverPreviewSettings.viewModelSettings(
             enabled: false,
@@ -358,6 +467,21 @@ private final class FakeAppNameResolver: AppNameResolving {
 
     func displayName(forBundleIdentifier bundleIdentifier: String) -> String? {
         displayNames[bundleIdentifier]
+    }
+}
+
+@MainActor
+private final class FakeExcludedAppSelectionPresenter: ExcludedAppSelectionPresenting {
+    var selection: ExcludedAppSelection?
+    private(set) var presentedTitles: [String] = []
+
+    init(selection: ExcludedAppSelection?) {
+        self.selection = selection
+    }
+
+    func selectAppToExclude(panelTitle: String) -> ExcludedAppSelection? {
+        presentedTitles.append(panelTitle)
+        return selection
     }
 }
 

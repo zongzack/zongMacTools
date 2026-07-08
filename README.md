@@ -23,7 +23,7 @@
 - Dock 重启后可重新订阅 Dock Accessibility 事件。
 - 菜单栏提供极简入口：打开设置、启用/停用 Dock 窗口速览、关于与状态、导出诊断和退出。
 - 独立设置窗口提供通用、Dock 窗口速览、权限与状态、关于与状态页面，并保留右键扩展的禁用占位。
-- Dock 窗口速览设置页承载 P1 设置能力：启停、悬停延迟、面板保留手感、最大卡片数、排除当前可排除 App 和排除列表管理。
+- Dock 窗口速览设置页承载 P1 设置能力：启停、悬停延迟、面板保留手感、最大卡片数、排除当前可排除 App、手动添加 `.app` 和排除列表管理。
 - 菜单栏和设置窗口都可主动导出本地诊断文件，便于查看版本、build、bundle id、权限、登录项、签名和设置摘要。
 - 预览面板显示/隐藏使用轻量动画，并尊重系统减少动态效果设置；浅色/深色外观下的边框、阴影、占位区域使用集中视觉规则。
 
@@ -164,7 +164,7 @@ Scripts/package_release_app.sh
 
 菜单栏中的 `Open Settings...` 会打开独立设置窗口，并默认进入 Dock 窗口速览页。菜单栏只保留启用/停用 Dock 窗口速览、关于与状态、导出诊断和退出等快捷操作。
 
-设置窗口左侧分为应用、工具和支持。通用页提供显示语言和开机启动；Dock 窗口速览页提供总开关、悬停延迟、面板保留手感、最大卡片数和排除规则；权限与状态页提供权限状态、系统设置入口、刷新和导出诊断；关于与状态页显示版本、build、bundle id、权限、登录项、签名和设置摘要。悬停延迟、面板保留手感和最大卡片数使用离散预设滑杆，只写入既有合法设置值。
+设置窗口左侧分为应用、工具和支持。通用页提供显示语言和开机启动；Dock 窗口速览页提供总开关、悬停延迟、面板保留手感、最大卡片数和排除规则；排除规则既支持排除当前可排除 App，也支持通过 `添加...` 选择 `.app` 应用包写入排除列表。权限与状态页提供权限状态、系统设置入口、刷新和导出诊断；关于与状态页显示版本、build、bundle id、权限、登录项、签名和设置摘要。悬停延迟、面板保留手感和最大卡片数使用离散预设滑杆，只写入既有合法设置值。
 
 菜单栏和设置窗口中的 `About & Status` / `关于与状态` 会打开设置窗口内的关于与状态页，显示版本、build、bundle id、bundle path、权限状态、Launch at Login 状态、签名状态和设置摘要，并提供 Copy Status。Copy Status 只包含本工具状态摘要，不包含第三方窗口标题或第三方 app 名称。
 
@@ -184,7 +184,7 @@ Scripts/package_release_app.sh
 - `AppMetadata.swift` / `AppStatusSnapshot.swift`：读取版本、build、bundle id、bundle path、签名摘要，并聚合权限、登录项和设置状态。
 - `SettingsRootView.swift` 的关于与状态页：显示 About / Status 信息并提供 Copy Status。
 - `DiagnosticExportService.swift`：在用户主动触发后导出本地诊断文本。
-- `AppTargetTracker.swift`：为 excluded apps 菜单选择当前 preview、最近 Dock hover 或最近非本 app 前台应用。
+- `AppTargetTracker.swift`：为“排除当前可排除 App”选择当前 preview、最近 Dock hover 或最近非本 app 前台应用；手动添加 `.app` 是独立补充入口，不改变该目标来源语义。
 
 ### 权限与日志
 
@@ -242,7 +242,7 @@ pkill -x DockHoverPreviewProbe
 - 几何与坐标转换。
 - P1 settings 默认值、非法值回退、`UserDefaults` 持久化和 observer 通知。
 - English / 简体中文静态文案。
-- 极简菜单迁移、设置窗口 controller、设置 view model、excluded apps、Launch at Login fake service 和菜单刷新。
+- 极简菜单迁移、设置窗口 controller、设置 view model、excluded apps、手动添加 `.app` 排除、Launch at Login fake service 和菜单刷新。
 - 预览面板布局引擎。
 - 预览 view model 的卡片数量限制、缩略图更新、fit/fill 模式、unavailable 状态和可访问性标签。
 - SwiftUI render plan 的 fill / fit 分支、loading spinner 和 unavailable 文案分支。
