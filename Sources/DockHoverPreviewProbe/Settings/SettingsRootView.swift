@@ -8,7 +8,7 @@ struct SettingsRootView: View {
     let diagnosticExportPresenter: DiagnosticExportPresenting
 
     private var text: AppTextProvider {
-        AppTextProvider(language: viewModel.state.displayLanguage)
+        AppTextProvider(language: viewModel.displayLanguage)
     }
 
     var body: some View {
@@ -34,9 +34,9 @@ struct SettingsRootView: View {
     private var detail: some View {
         switch selection.selectedPage {
         case .general:
-            GeneralSettingsView(viewModel: viewModel, text: text)
+            GeneralSettingsView(viewModel: viewModel.appSettings, text: text)
         case .dockWindowQuickLook:
-            DockWindowQuickLookSettingsView(viewModel: viewModel, text: text)
+            DockWindowQuickLookSettingsView(viewModel: viewModel.dockWindowQuickLookSettings, text: text)
         case .support:
             SupportSettingsView(
                 text: text,

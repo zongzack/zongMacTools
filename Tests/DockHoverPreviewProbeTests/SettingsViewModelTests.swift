@@ -1,9 +1,34 @@
+import Combine
 import XCTest
 @testable import DockHoverPreviewProbe
 
 @MainActor
 final class SettingsViewModelTests: XCTestCase {
-    func testInitialSnapshotMapsToUIState() {
+    func testSettingsViewModelHasAppAndDockToolChildren() throws {
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let expectedFiles = [
+            "Sources/DockHoverPreviewProbe/Settings/AppSettingsViewModel.swift",
+            "Sources/DockHoverPreviewProbe/Tools/DockWindowQuickLook/DockWindowQuickLookSettingsViewModel.swift"
+        ]
+
+        for relativePath in expectedFiles {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent(relativePath).path),
+                "\(relativePath) should exist"
+            )
+        }
+
+        let sourceURL = packageRoot
+            .appendingPathComponent("Sources/DockHoverPreviewProbe/Settings/SettingsViewModel.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(source.contains("let appSettings: AppSettingsViewModel"))
+        XCTAssertTrue(source.contains("let dockWindowQuickLookSettings: DockWindowQuickLookSettingsViewModel"))
+    }
+
+    func testInitialSnapshotMapsToSplitUIStates() {
         let settings = DockHoverPreviewSettings.viewModelSettings(
             enabled: false,
             hoverDelayMilliseconds: 400,
@@ -22,39 +47,48 @@ final class SettingsViewModelTests: XCTestCase {
             "com.example.Editor": "Example Editor"
         ])
 
-        let viewModel = SettingsViewModel(
+        let appViewModel = AppSettingsViewModel(
             settingsStore: store,
             launchAtLoginService: launchAtLoginService,
+            logger: ProbeLogger()
+        )
+        let dockViewModel = DockWindowQuickLookSettingsViewModel(
+            settingsStore: store,
             targetTracker: targetTracker,
             appNameResolver: appNameResolver,
             logger: ProbeLogger()
         )
 
-        XCTAssertFalse(viewModel.state.isDockWindowQuickLookEnabled)
-        XCTAssertEqual(viewModel.state.hoverDelayMilliseconds, 400)
-        XCTAssertEqual(viewModel.state.hoverDelaySliderIndex, 2)
-        XCTAssertEqual(viewModel.state.panelRetentionMode, .forgiving)
-        XCTAssertEqual(viewModel.state.panelRetentionSliderIndex, 2)
-        XCTAssertEqual(viewModel.state.maxCardCount, 12)
-        XCTAssertEqual(viewModel.state.maxCardSliderIndex, 3)
-        XCTAssertEqual(viewModel.state.displayLanguage, .simplifiedChinese)
+        XCTAssertEqual(appViewModel.state.displayLanguage, .simplifiedChinese)
+        XCTAssertEqual(appViewModel.state.launchAtLoginStatus, .requiresApproval)
+        XCTAssertFalse(appViewModel.state.canEnableLaunchAtLogin)
+        XCTAssertFalse(appViewModel.state.canDisableLaunchAtLogin)
+        XCTAssertTrue(appViewModel.state.canOpenLaunchAtLoginSettings)
+        XCTAssertFalse(dockViewModel.state.isDockWindowQuickLookEnabled)
+        XCTAssertEqual(dockViewModel.state.hoverDelayMilliseconds, 400)
+        XCTAssertEqual(dockViewModel.state.hoverDelaySliderIndex, 2)
+        XCTAssertEqual(dockViewModel.state.panelRetentionMode, .forgiving)
+        XCTAssertEqual(dockViewModel.state.panelRetentionSliderIndex, 2)
+        XCTAssertEqual(dockViewModel.state.maxCardCount, 12)
+        XCTAssertEqual(dockViewModel.state.maxCardSliderIndex, 3)
+        XCTAssertEqual(dockViewModel.state.displayLanguage, .simplifiedChinese)
         XCTAssertEqual(
-            viewModel.state.excludedApps.map(\.title),
+            dockViewModel.state.excludedApps.map(\.title),
             ["Example Editor (com.example.Editor)", "com.example.Unknown"]
         )
-        XCTAssertEqual(viewModel.state.currentExclusionTarget?.bundleIdentifier, "com.example.Editor")
-        XCTAssertTrue(viewModel.state.isCurrentExclusionTargetExcluded)
-        XCTAssertEqual(viewModel.state.launchAtLoginStatus, .requiresApproval)
-        XCTAssertFalse(viewModel.state.canEnableLaunchAtLogin)
-        XCTAssertFalse(viewModel.state.canDisableLaunchAtLogin)
-        XCTAssertTrue(viewModel.state.canOpenLaunchAtLoginSettings)
+        XCTAssertEqual(dockViewModel.state.currentExclusionTarget?.bundleIdentifier, "com.example.Editor")
+        XCTAssertTrue(dockViewModel.state.isCurrentExclusionTargetExcluded)
     }
 
-    func testStoreObserverRefreshesMappedState() {
+    func testStoreObserverRefreshesSplitMappedStates() {
         let store = RecordingSettingsStore(snapshot: .defaults)
-        let viewModel = SettingsViewModel(
+        let appViewModel = AppSettingsViewModel(
             settingsStore: store,
             launchAtLoginService: FakeLaunchAtLoginService(),
+            logger: ProbeLogger()
+        )
+        let dockViewModel = DockWindowQuickLookSettingsViewModel(
+            settingsStore: store,
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             logger: ProbeLogger()
         )
@@ -68,15 +102,16 @@ final class SettingsViewModelTests: XCTestCase {
             language: .simplifiedChinese
         ))
 
-        XCTAssertFalse(viewModel.state.isDockWindowQuickLookEnabled)
-        XCTAssertEqual(viewModel.state.hoverDelayMilliseconds, 150)
-        XCTAssertEqual(viewModel.state.hoverDelaySliderIndex, 0)
-        XCTAssertEqual(viewModel.state.panelRetentionMode, .tight)
-        XCTAssertEqual(viewModel.state.panelRetentionSliderIndex, 0)
-        XCTAssertEqual(viewModel.state.maxCardCount, 3)
-        XCTAssertEqual(viewModel.state.maxCardSliderIndex, 0)
-        XCTAssertEqual(viewModel.state.displayLanguage, .simplifiedChinese)
-        XCTAssertEqual(viewModel.state.excludedApps.map(\.bundleIdentifier), ["com.example.One"])
+        XCTAssertEqual(appViewModel.state.displayLanguage, .simplifiedChinese)
+        XCTAssertFalse(dockViewModel.state.isDockWindowQuickLookEnabled)
+        XCTAssertEqual(dockViewModel.state.hoverDelayMilliseconds, 150)
+        XCTAssertEqual(dockViewModel.state.hoverDelaySliderIndex, 0)
+        XCTAssertEqual(dockViewModel.state.panelRetentionMode, .tight)
+        XCTAssertEqual(dockViewModel.state.panelRetentionSliderIndex, 0)
+        XCTAssertEqual(dockViewModel.state.maxCardCount, 3)
+        XCTAssertEqual(dockViewModel.state.maxCardSliderIndex, 0)
+        XCTAssertEqual(dockViewModel.state.displayLanguage, .simplifiedChinese)
+        XCTAssertEqual(dockViewModel.state.excludedApps.map(\.bundleIdentifier), ["com.example.One"])
     }
 
     func testNonPresetUserDefaultsValuesFallBackBeforeMappingToUIState() {
@@ -87,9 +122,8 @@ final class SettingsViewModelTests: XCTestCase {
 
         let logger = ProbeLogger()
         let store = UserDefaultsSettingsStore(userDefaults: defaults, logger: logger)
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             logger: logger
         )
@@ -103,9 +137,8 @@ final class SettingsViewModelTests: XCTestCase {
 
     func testSliderIndexesClampRoundAndOnlyWritePresetValues() {
         let store = RecordingSettingsStore(snapshot: .defaults)
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             logger: ProbeLogger()
         )
@@ -131,7 +164,7 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.state.maxCardSliderIndex, 3)
     }
 
-    func testSettingIntentsWriteOnlySettingsStore() {
+    func testSplitSettingIntentsWriteOnlySettingsStore() {
         let store = RecordingSettingsStore(snapshot: .viewModelSettings(
             enabled: true,
             hoverDelayMilliseconds: 250,
@@ -140,15 +173,19 @@ final class SettingsViewModelTests: XCTestCase {
             excludedApps: ["com.example.One"],
             language: .english
         ))
-        let viewModel = SettingsViewModel(
+        let appViewModel = AppSettingsViewModel(
             settingsStore: store,
             launchAtLoginService: FakeLaunchAtLoginService(),
+            logger: ProbeLogger()
+        )
+        let dockViewModel = DockWindowQuickLookSettingsViewModel(
+            settingsStore: store,
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             logger: ProbeLogger()
         )
 
-        viewModel.toggleDockWindowQuickLook()
-        viewModel.setDisplayLanguage(.simplifiedChinese)
+        dockViewModel.toggleDockWindowQuickLook()
+        appViewModel.setDisplayLanguage(.simplifiedChinese)
 
         XCTAssertEqual(store.writtenSnapshots.count, 2)
         XCTAssertFalse(store.snapshot.isDockHoverPreviewEnabled)
@@ -171,9 +208,8 @@ final class SettingsViewModelTests: XCTestCase {
         targetTracker.updateCurrentPreviewApp(
             AppTarget(bundleIdentifier: "com.microsoft.VSCode", displayName: "Code")
         )
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: targetTracker,
             logger: ProbeLogger()
         )
@@ -195,9 +231,8 @@ final class SettingsViewModelTests: XCTestCase {
         targetTracker.updateLatestNonSelfActiveApp(
             AppTarget(bundleIdentifier: "com.zong.zongMacTools", displayName: "zongMacTools")
         )
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: targetTracker,
             logger: ProbeLogger()
         )
@@ -213,9 +248,8 @@ final class SettingsViewModelTests: XCTestCase {
         settings.displayLanguage = .simplifiedChinese
         let store = RecordingSettingsStore(snapshot: settings)
         let selectionPresenter = FakeExcludedAppSelectionPresenter(selection: nil)
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             excludedAppSelectionPresenter: selectionPresenter,
             logger: ProbeLogger()
@@ -232,9 +266,8 @@ final class SettingsViewModelTests: XCTestCase {
         let selectionPresenter = FakeExcludedAppSelectionPresenter(
             selection: ExcludedAppSelection(bundleIdentifier: "com.example.Editor", displayName: "Editor")
         )
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             excludedAppSelectionPresenter: selectionPresenter,
             logger: ProbeLogger()
@@ -249,9 +282,8 @@ final class SettingsViewModelTests: XCTestCase {
 
     func testCancelledManualSelectionDoesNotWriteSettingsStore() {
         let store = RecordingSettingsStore(snapshot: .defaults)
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             excludedAppSelectionPresenter: FakeExcludedAppSelectionPresenter(selection: nil),
             logger: ProbeLogger()
@@ -272,9 +304,8 @@ final class SettingsViewModelTests: XCTestCase {
             excludedApps: ["com.example.Existing"],
             language: .english
         ))
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             selfBundleIdentifier: "com.zong.zongMacTools",
             logger: ProbeLogger()
@@ -283,8 +314,14 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "", displayName: nil)))
         XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "   ", displayName: nil)))
         XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "bad id", displayName: nil)))
-        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "com.zong.zongMacTools", displayName: "zongMacTools")))
-        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(bundleIdentifier: "com.example.Existing", displayName: "Existing")))
+        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(
+            bundleIdentifier: "com.zong.zongMacTools",
+            displayName: "zongMacTools"
+        )))
+        XCTAssertFalse(viewModel.addExcludedApp(ExcludedAppSelection(
+            bundleIdentifier: "com.example.Existing",
+            displayName: "Existing"
+        )))
 
         XCTAssertEqual(store.snapshot.excludedAppBundleIdentifiers, ["com.example.Existing"])
         XCTAssertEqual(store.writtenSnapshots, [])
@@ -300,9 +337,8 @@ final class SettingsViewModelTests: XCTestCase {
             language: .simplifiedChinese
         )
         let store = RecordingSettingsStore(snapshot: initialSettings)
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             logger: ProbeLogger()
         )
@@ -327,9 +363,8 @@ final class SettingsViewModelTests: XCTestCase {
             language: .simplifiedChinese
         )
         let store = RecordingSettingsStore(snapshot: initialSettings)
-        let viewModel = SettingsViewModel(
+        let viewModel = DockWindowQuickLookSettingsViewModel(
             settingsStore: store,
-            launchAtLoginService: FakeLaunchAtLoginService(),
             targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             logger: ProbeLogger()
         )
@@ -348,10 +383,9 @@ final class SettingsViewModelTests: XCTestCase {
         let logger = ProbeLogger()
         let launchAtLoginService = FakeLaunchAtLoginService(status: .notRegistered)
         launchAtLoginService.enableError = LaunchAtLoginTestError.failed
-        let viewModel = SettingsViewModel(
+        let viewModel = AppSettingsViewModel(
             settingsStore: RecordingSettingsStore(snapshot: .defaults),
             launchAtLoginService: launchAtLoginService,
-            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
             logger: logger
         )
 
@@ -378,6 +412,96 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(launchAtLoginService.enableCount, 1)
         XCTAssertEqual(launchAtLoginService.disableCount, 1)
         XCTAssertEqual(viewModel.state.launchAtLoginStatus, .notFound)
+    }
+
+    func testCoordinatorRefreshForSettingsPresentationRefreshesBothChildren() {
+        let store = RecordingSettingsStore(snapshot: .defaults)
+        let launchAtLoginService = FakeLaunchAtLoginService(status: .notRegistered)
+        let targetTracker = AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
+        let appViewModel = AppSettingsViewModel(
+            settingsStore: store,
+            launchAtLoginService: launchAtLoginService,
+            logger: ProbeLogger()
+        )
+        let dockViewModel = DockWindowQuickLookSettingsViewModel(
+            settingsStore: store,
+            targetTracker: targetTracker,
+            logger: ProbeLogger()
+        )
+        let coordinator = SettingsViewModel(
+            appSettings: appViewModel,
+            dockWindowQuickLookSettings: dockViewModel
+        )
+
+        launchAtLoginService.status = .requiresApproval
+        targetTracker.updateLatestHoveredDockApp(
+            AppTarget(bundleIdentifier: "com.example.Editor", displayName: "Example Editor")
+        )
+        coordinator.refreshForSettingsPresentation()
+
+        XCTAssertEqual(appViewModel.state.launchAtLoginStatus, .requiresApproval)
+        XCTAssertEqual(
+            dockViewModel.state.currentExclusionTarget,
+            AppTarget(bundleIdentifier: "com.example.Editor", displayName: "Example Editor")
+        )
+    }
+
+    func testCoordinatorPublishesWhenAppSettingsChange() async {
+        let store = RecordingSettingsStore(snapshot: .defaults)
+        let appViewModel = AppSettingsViewModel(
+            settingsStore: store,
+            launchAtLoginService: FakeLaunchAtLoginService(),
+            logger: ProbeLogger()
+        )
+        let dockViewModel = DockWindowQuickLookSettingsViewModel(
+            settingsStore: store,
+            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
+            logger: ProbeLogger()
+        )
+        let coordinator = SettingsViewModel(
+            appSettings: appViewModel,
+            dockWindowQuickLookSettings: dockViewModel
+        )
+        let published = expectation(description: "coordinator publishes app child changes")
+        published.assertForOverFulfill = false
+        let cancellable = coordinator.objectWillChange.sink { _ in
+            published.fulfill()
+        }
+
+        appViewModel.setDisplayLanguage(.simplifiedChinese)
+
+        await fulfillment(of: [published], timeout: 1)
+        XCTAssertEqual(coordinator.displayLanguage, .simplifiedChinese)
+        withExtendedLifetime(cancellable) {}
+    }
+
+    func testCoordinatorPublishesWhenDockSettingsChange() async {
+        let store = RecordingSettingsStore(snapshot: .defaults)
+        let appViewModel = AppSettingsViewModel(
+            settingsStore: store,
+            launchAtLoginService: FakeLaunchAtLoginService(),
+            logger: ProbeLogger()
+        )
+        let dockViewModel = DockWindowQuickLookSettingsViewModel(
+            settingsStore: store,
+            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
+            logger: ProbeLogger()
+        )
+        let coordinator = SettingsViewModel(
+            appSettings: appViewModel,
+            dockWindowQuickLookSettings: dockViewModel
+        )
+        let published = expectation(description: "coordinator publishes dock child changes")
+        published.assertForOverFulfill = false
+        let cancellable = coordinator.objectWillChange.sink { _ in
+            published.fulfill()
+        }
+
+        dockViewModel.toggleDockWindowQuickLook()
+
+        await fulfillment(of: [published], timeout: 1)
+        XCTAssertFalse(dockViewModel.state.isDockWindowQuickLookEnabled)
+        withExtendedLifetime(cancellable) {}
     }
 
     private func makeTemporaryDefaults() -> (UserDefaults, String) {

@@ -78,7 +78,7 @@ final class SettingsWindowControllerTests: XCTestCase {
         closeSettingsWindows()
         defer { closeSettingsWindows() }
         let harness = SettingsWindowHarness()
-        XCTAssertNil(harness.viewModel.state.currentExclusionTarget)
+        XCTAssertNil(harness.viewModel.dockWindowQuickLookSettings.state.currentExclusionTarget)
 
         harness.targetTracker.updateLatestHoveredDockApp(
             AppTarget(bundleIdentifier: "com.example.Editor", displayName: "Example Editor")
@@ -86,7 +86,7 @@ final class SettingsWindowControllerTests: XCTestCase {
         harness.controller.showSettings(selectedPage: .dockWindowQuickLook)
 
         XCTAssertEqual(
-            harness.viewModel.state.currentExclusionTarget,
+            harness.viewModel.dockWindowQuickLookSettings.state.currentExclusionTarget,
             AppTarget(bundleIdentifier: "com.example.Editor", displayName: "Example Editor")
         )
     }
@@ -207,11 +207,19 @@ private final class SettingsWindowHarness {
 
     init() {
         let settingsStore = FakeSettingsStore(snapshot: .defaults)
-        viewModel = SettingsViewModel(
+        let appSettings = AppSettingsViewModel(
             settingsStore: settingsStore,
             launchAtLoginService: FakeLaunchAtLoginService(),
+            logger: ProbeLogger()
+        )
+        let dockWindowQuickLookSettings = DockWindowQuickLookSettingsViewModel(
+            settingsStore: settingsStore,
             targetTracker: targetTracker,
             logger: ProbeLogger()
+        )
+        viewModel = SettingsViewModel(
+            appSettings: appSettings,
+            dockWindowQuickLookSettings: dockWindowQuickLookSettings
         )
         controller = SettingsWindowController(
             settingsViewModel: viewModel,

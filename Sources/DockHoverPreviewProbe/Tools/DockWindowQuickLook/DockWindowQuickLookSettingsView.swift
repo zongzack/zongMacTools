@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DockWindowQuickLookSettingsView: View {
-    @ObservedObject var viewModel: SettingsViewModel
+    @ObservedObject var viewModel: DockWindowQuickLookSettingsViewModel
     let text: AppTextProvider
 
     var body: some View {
@@ -71,7 +71,7 @@ struct DockWindowQuickLookSettingsView: View {
 }
 
 private struct CurrentExclusionTargetView: View {
-    @ObservedObject var viewModel: SettingsViewModel
+    @ObservedObject var viewModel: DockWindowQuickLookSettingsViewModel
     let text: AppTextProvider
 
     var body: some View {
@@ -108,7 +108,7 @@ private struct CurrentExclusionTargetView: View {
 }
 
 private struct ExcludedAppsListView: View {
-    @ObservedObject var viewModel: SettingsViewModel
+    @ObservedObject var viewModel: DockWindowQuickLookSettingsViewModel
     let text: AppTextProvider
 
     var body: some View {

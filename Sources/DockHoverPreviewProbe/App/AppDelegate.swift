@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var previewPanelController: PreviewPanelController!
     private var previewSessionController: PreviewSessionController!
     private var menuBarController: MenuBarController!
+    private var appSettingsViewModel: AppSettingsViewModel!
+    private var dockWindowQuickLookSettingsViewModel: DockWindowQuickLookSettingsViewModel!
     private var settingsViewModel: SettingsViewModel!
     private var settingsWindowController: SettingsWindowController!
     private var launchAtLoginService: LaunchAtLoginService!
@@ -44,13 +46,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusProvider: appStatusProvider
         )
         excludedAppSelectionPresenter = AppKitExcludedAppSelectionPresenter()
-        settingsViewModel = SettingsViewModel(
+        appSettingsViewModel = AppSettingsViewModel(
             settingsStore: settingsStore,
             launchAtLoginService: launchAtLoginService,
+            logger: logger
+        )
+        dockWindowQuickLookSettingsViewModel = DockWindowQuickLookSettingsViewModel(
+            settingsStore: settingsStore,
             targetTracker: targetTracker,
             appNameResolver: appNameResolver,
             excludedAppSelectionPresenter: excludedAppSelectionPresenter,
             logger: logger
+        )
+        settingsViewModel = SettingsViewModel(
+            appSettings: appSettingsViewModel,
+            dockWindowQuickLookSettings: dockWindowQuickLookSettingsViewModel
         )
         settingsWindowController = SettingsWindowController(
             settingsViewModel: settingsViewModel,

@@ -46,7 +46,7 @@ final class SettingsWindowController: NSObject, SettingsWindowPresenting {
         selection.selectedPage = selectedPage
         let window = window ?? makeWindow()
         self.window = window
-        window.title = AppTextProvider(language: settingsViewModel.state.displayLanguage)
+        window.title = AppTextProvider(language: settingsViewModel.displayLanguage)
             .string(.settingsWindowTitle)
         window.makeKeyAndOrderFront(nil)
         appActivator()
@@ -67,7 +67,7 @@ final class SettingsWindowController: NSObject, SettingsWindowPresenting {
             defer: false
         )
         window.identifier = Self.windowIdentifier
-        window.title = AppTextProvider(language: settingsViewModel.state.displayLanguage)
+        window.title = AppTextProvider(language: settingsViewModel.displayLanguage)
             .string(.settingsWindowTitle)
         window.isReleasedWhenClosed = false
         window.contentViewController = NSHostingController(rootView: rootView)
