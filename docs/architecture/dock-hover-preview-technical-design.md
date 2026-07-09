@@ -2,7 +2,7 @@
 
 日期：2026-06-25
 
-最近更新：2026-07-03
+最近更新：2026-07-09
 
 ## 目标
 
@@ -20,10 +20,10 @@
 
 MVP 范围内：
 
-- SwiftPM executable 打包成菜单栏 `.app`。
+- SwiftPM executable / target `DockHoverPreviewProbe` 打包成菜单栏 `.app`；本次多工具源码结构拆分没有引入 plugin system、多 target runtime、额外 product 或新 executable。
 - AppKit + SwiftUI + ScreenCaptureKit + Accessibility。
 - Dock hover 是主触发方式。
-- 菜单栏提供 P1 设置、Launch at Login、权限入口和 frontmost app 调试预览入口。
+- 菜单栏提供极简入口：打开设置、启用/停用 Dock 窗口速览、关于与状态、导出诊断和退出；Launch at Login、权限状态和细分设置位于独立设置窗口。
 - 使用非激活 `NSPanel` 显示预览，不抢焦点。
 - 使用 ScreenCaptureKit 枚举当前可见/可捕获窗口，并用 AX 做窗口匹配。
 - 使用静态缩略图，不做实时视频预览。
@@ -45,7 +45,7 @@ MVP 范围外：
 - 恢复最小化窗口、其他 Space 窗口、全屏 Space 自动切换。
 - 精确遮挡检测。
 - 卡片上的关闭/最小化/全屏按钮。
-- 搜索、键盘切换器、Cmd+Tab 替代、独立设置窗口、Dock 锁定等扩展功能。
+- 搜索、键盘切换器、Cmd+Tab 替代、Dock 锁定等扩展功能。
 - App Store 分发。
 
 ## 外部参考和许可边界
@@ -71,73 +71,40 @@ MVP 范围外：
 
 ## 模块结构
 
-### 应用启动和菜单栏
+源码根目录仍是 `Sources/DockHoverPreviewProbe`，`Info.plist` 也保留在该 target 下。目录拆分只是源码组织方式：app 仍只有一个 SwiftPM executable / target，名称仍为 `DockHoverPreviewProbe`，运行时没有插件加载器、多 target host、额外 product 或新增 executable。
 
-- `ProbeApp.swift`：SwiftPM executable 入口，启动 `NSApplication`。
-- `AppDelegate.swift`：初始化服务、设置存储、target tracker、Launch at Login、预览会话、菜单栏和 orchestrator。
-- `MenuBarController.swift`：安装 `zongMacTools` 菜单栏 template logo 状态项，展示权限状态、P1 设置、Launch at Login 和调试入口。菜单栏使用适合 18 px 状态栏尺寸的单色 template 标记，不直接把全彩 app icon 缩成菜单栏小图标。
-- `DockHoverPreviewSettings.swift` / `SettingsStore.swift`：定义 P1 设置模型、默认值、非法值回退和 `UserDefaults` 持久化。
-- `AppTextProvider.swift`：根据 English / 简体中文设置返回本工具静态 UI 文案，不翻译 app 名称、窗口标题、bundle id 或系统权限名称。
-- `AppTargetTracker.swift`：按当前 preview、最新 Dock hover、最新非本 app 前台应用的优先级提供 excluded-app target。
-- `LaunchAtLoginService.swift`：封装公开 `ServiceManagement` / `SMAppService.mainApp` 状态读取、register/unregister 和 Login Items 设置入口。
+当前唯一实现的真实工具是 Dock Window Quick Look，domain folder 为 `Sources/DockHoverPreviewProbe/Tools/DockWindowQuickLook/`。`Settings/ToolDescriptor.swift` 及其 registry 只描述设置窗口里的工具导航 metadata，用于 sidebar/detail 页面，不是 runtime plugin、menu/status item 或工具生命周期抽象。
 
-### 权限和日志
+### 源码布局
 
-- `PermissionService.swift`：检查 Accessibility 与 Screen Recording；打开对应系统设置页面。
-- `ProbeLogger.swift`：封装 OSLog，并保留内存日志快照，方便测试和排障。
+- `App/`：app launch、`NSApplication` wiring、`AppDelegate`、菜单栏/status-bar app shell、Launch at Login 和菜单栏入口。`ProbeApp.swift` 仍是 SwiftPM executable 入口。
+- `Settings/`：设置模型、`SettingsStore`、settings view models、独立设置窗口、sidebar/detail 页面和 settings-only tool descriptor registry。`DockHoverPreviewSettings` 仍写入既有 `UserDefaults` key，非法值回退规则不变。
+- `Support/`：权限、状态、关于与状态、诊断导出和相关支持界面/服务，包括 `PermissionService`、`AppMetadata`、`AppStatusSnapshot` 和 `DiagnosticExportService`。
+- `Shared/`：共享校验、日志和 text provider base，包括 `BundleIdentifierValidator`、`ProbeLogger`、`AppTextProvider`。English / 简体中文静态文案拆分在 `Shared/Text/` 下；app 名称、窗口标题、bundle id 和系统权限名称不翻译。
+- `Tools/DockWindowQuickLook/`：Dock Window Quick Look 的完整实现，包含 Dock hover monitor、target tracking、orchestrator、窗口查询、缩略图、激活/窗口操作、预览 panel/session，以及该工具的设置页和 view model。
 
 权限策略：
 
 - Accessibility 缺失时不启动 Dock observer，也不尝试 AX 激活。
 - Screen Recording 缺失时静默抑制正常 Dock hover preview，因为窗口枚举和缩略图依赖 ScreenCaptureKit。
-- 权限问题只通过菜单栏和日志体现，不在 Dock hover 路径弹窗打扰。
+- 权限问题只通过设置窗口支持页、关于与状态和日志体现，不在 Dock hover 路径弹窗打扰。
 
-### Dock hover 监听
+### Dock Window Quick Look 关键组件
 
 - `DockHoverMonitor.swift`：连接 Dock 进程的 Accessibility 树，订阅 `kAXSelectedChildrenChangedNotification`。
 - `ProbeOrchestrator.swift`：负责 settings-aware hover 延迟、二次验证、enabled/excluded app gating、pending work 取消和预览会话启动。
+- `HoverDelayScheduler.swift`：封装 hover 延迟调度，便于 orchestrator 测试。
+- `AppTargetTracker.swift`：按当前 preview、最新 Dock hover、最新非本 app 前台应用的优先级提供 excluded-app target。
 - `GeometryHelpers.swift` / `AXHelpers.swift`：提供坐标转换、命中测试和 AX 属性读取。
-
-关键规则：
-
-- Dock selected-child 只是候选项。
-- 显示 preview 前必须确认 bundle 仍匹配，且鼠标仍在当前 Dock item frame 内。
-- 如果 Dock item 变 stale、候选为空、鼠标离开、preview 被禁用或 app 被排除，都必须取消 pending preview 或隐藏当前面板。
-- 鼠标从 Dock 图标移动到 panel 时允许保留面板，但横向移动到相邻 Dock item，尤其是未启动 app，不应保留旧面板。
-
-### 窗口查询
-
 - `WindowQueryService.swift`：用 ScreenCaptureKit 查询当前可见窗口，并用 AX 做 best-effort 匹配；调用方传入当前 max cards limit。
 - `ProbeModels.swift`：定义 `PreviewWindowID`、`PreviewWindow`、`ThumbnailSource` 等模型。
-
-当前窗口范围是“当前可交互环境近似值”，不是严格 Mission Control Space API。实现依赖：
-
-- `SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)`。
-- `SCWindow.isOnScreen`。
-- 普通窗口 layer 和尺寸过滤。
-- AX title/frame/minimized/role/subrole 辅助匹配。
-
-限制：
-
-- 不承诺精确 Space membership。
-- 不恢复最小化窗口。
-- Stage Manager、多显示器和全屏 Space 必须以实测记录为准。
-
-### 缩略图
-
 - `ThumbnailService.swift`：优先 ScreenCaptureKit 截图，失败时 CoreGraphics fallback。
 - 缩略图按窗口 ID、frame size、title 等短期缓存。
 - 缩略图失败只显示应用图标和标题，不阻塞面板展示。
-
-### 激活
-
 - `ActivationService.swift`：优先 AX raise，再调用 `NSRunningApplication.activate(options: [])`。
 - 如果 AX element 缺失或 raise 失败，仍激活 app 并隐藏面板。
 - 不依赖 `.activateIgnoringOtherApps`，它在现代 macOS 上已不可靠且废弃。
 - 激活路径只使用 AX raise 和 `NSRunningApplication.activate(options: [])`。
-
-### 窗口操作
-
 - `WindowOperationService.swift`：P3 窗口操作服务，隔离激活、隐藏应用、关闭窗口和最小化窗口的能力判断与执行。
 - 激活窗口：委托 `ActivationService`，不复制激活逻辑。
 - 隐藏应用：调用公开 `NSRunningApplication.hide()`。
@@ -145,14 +112,19 @@ MVP 范围外：
 - 最小化窗口：优先读取公开 `kAXMinimizeButtonAttribute` 并执行 `kAXPressAction`；按钮不可用但 `kAXMinimizedAttribute` 可设置时设置为 `true`。
 - `availability` 只做只读探测，不 press、不 set；菜单项根据窗口级可用性启用或禁用。
 - `WindowEnvironmentDescriptor.swift`：按窗口 frame 与屏幕 frame 最大交集生成“屏幕：...”提示；无法匹配时显示“屏幕：未知”，不承诺真实空间归属。
-
-### 预览面板 UI
-
 - `PreviewPanelModels.swift`：anchor、卡片 view model、panel view model。P2 增加 `ThumbnailDisplayMode`，默认 `.fill`，当窗口 frame aspect ratio `< 1.2` 时使用 `.fit`；`updateThumbnail(nil, for:)` 会让对应卡片停止 loading 并进入 unavailable 语义。
 - `PreviewPanelLayoutEngine.swift`：根据 Dock item frame、鼠标位置和可见屏幕区域计算面板 frame。
 - `PreviewPanelView.swift`：SwiftUI 卡片 UI。P2 通过 `PreviewThumbnailRenderPlan` 映射 `.fill` / `.fit` 渲染分支；loading 显示 app icon + spinner，unavailable 显示 app icon + 本地化 `No thumbnail` / `无缩略图`；Light / Dark 视觉常量集中在 `PreviewPanelVisualStyle`。
 - `PreviewPanelController.swift`：拥有非激活 `NSPanel`，负责 show/update/hide、Reduce Motion aware animation、Esc 监听和 panel frame 查询。update 只更新内容和 frame，不重复触发 show animation。
 - `PreviewSessionController.swift`：会话状态机，负责权限抑制、max cards、retention 参数、窗口查询、thumbnail unavailable 文案注入、缩略图更新、点击激活和鼠标离开轮询。
+
+关键规则：
+
+- Dock selected-child 只是候选项。
+- 显示 preview 前必须确认 bundle 仍匹配，且鼠标仍在当前 Dock item frame 内。
+- 如果 Dock item 变 stale、候选为空、鼠标离开、preview 被禁用或 app 被排除，都必须取消 pending preview 或隐藏当前面板。
+- 鼠标从 Dock 图标移动到 panel 时允许保留面板，但横向移动到相邻 Dock item，尤其是未启动 app，不应保留旧面板。
+- 当前窗口范围是“当前可交互环境近似值”，不是严格 Mission Control Space API；不承诺精确 Space membership，不恢复最小化窗口，Stage Manager、多显示器和全屏 Space 必须以实测记录为准。
 
 面板行为：
 
@@ -227,8 +199,16 @@ MVP/P1/P2 当前验收标准：
 - P2 人工视觉验证已完成：底部程序坞、左右程序坞、程序坞自动隐藏、台前调度、浅色/深色外观、减少动态效果、Typora 窄窗口、多窗口应用、屏幕录制权限缺失和快速悬停失效取消均由用户反馈正常。
 - P3 自动测试覆盖：窗口操作服务公开接口路径、失败降级和日志结果；右键菜单模型、禁用项、动作回调；菜单跟踪期间会话保留；旧会话动作保护；屏幕提示匹配。
 - P3 自动验证已完成：`swift test` 在 2026-07-06 CST 记录 164 XCTest、0 failures、exit 0；`swift build` exit 0；`Scripts/build_probe_app.sh` exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature；`git diff --check` exit 0。
+- 多工具源码结构文档自动验证：2026-07-09 Asia/Shanghai，`git diff --check` exit 0；`swift test` 记录 212 XCTest、0 failures、exit 0；`swift build` exit 0；`Scripts/build_probe_app.sh` exit 0，输出 `build/zongMacTools.app`，executable `DockHoverPreviewProbe`，bundle id `com.zong.zongMacTools`。
 
 待补验收：
 
 - Multiple displays。
 - P3 人工验收。
+- 多工具源码结构重组后的人工 smoke test 尚未执行，需覆盖：
+  - 从 `build/zongMacTools.app` 启动 app。
+  - 打开设置，切换 General language，确认 sidebar 和 detail 刷新，并确认窗口重新显示时 title 使用当前语言。
+  - 验证 Dock Window Quick Look 设置控件仍写入设置，预览行为仍响应。
+  - 验证 Context Menu Extension 仍只是设置里的禁用占位。
+  - 覆盖 Dock hover preview、右键窗口操作菜单、诊断导出/关于状态、Launch at Login 状态和打开设置路径等主流程。
+  - ad-hoc 重新签名后，macOS TCC 可能需要重新添加 `build/zongMacTools.app`。
