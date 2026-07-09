@@ -114,10 +114,118 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(observed.count, 1)
     }
 
+    func testAppSettingsStoreOnlyMutatesAppSettings() {
+        let (defaults, suiteName) = makeTemporaryDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = UserDefaultsSettingsStore(userDefaults: defaults, logger: ProbeLogger())
+        store.update { settings in
+            settings.isDockHoverPreviewEnabled = false
+            settings.hoverDelayMilliseconds = 400
+            settings.panelRetentionMode = .forgiving
+            settings.maxCardCount = 12
+            settings.excludedAppBundleIdentifiers = ["com.example.Editor"]
+            settings.displayLanguage = .english
+        }
+        let before = store.snapshot
+
+        let appStore: AppSettingsStore = store
+        appStore.updateAppSettings { settings in
+            settings.displayLanguage = .simplifiedChinese
+        }
+
+        XCTAssertEqual(appStore.appSettingsSnapshot.displayLanguage, .simplifiedChinese)
+        XCTAssertEqual(store.snapshot.displayLanguage, .simplifiedChinese)
+        XCTAssertEqual(store.snapshot.isDockHoverPreviewEnabled, before.isDockHoverPreviewEnabled)
+        XCTAssertEqual(store.snapshot.hoverDelayMilliseconds, before.hoverDelayMilliseconds)
+        XCTAssertEqual(store.snapshot.panelRetentionMode, before.panelRetentionMode)
+        XCTAssertEqual(store.snapshot.maxCardCount, before.maxCardCount)
+        XCTAssertEqual(store.snapshot.excludedAppBundleIdentifiers, before.excludedAppBundleIdentifiers)
+    }
+
+    func testDockWindowQuickLookSettingsStoreDoesNotExposeDisplayLanguageMutation() throws {
+        let (defaults, suiteName) = makeTemporaryDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = UserDefaultsSettingsStore(userDefaults: defaults, logger: ProbeLogger())
+        store.update { settings in
+            settings.displayLanguage = .simplifiedChinese
+        }
+
+        let dockStore: DockWindowQuickLookSettingsStore = store
+        dockStore.updateDockWindowQuickLookSettings { settings in
+            settings.isDockHoverPreviewEnabled = false
+            settings.hoverDelayMilliseconds = 400
+            settings.panelRetentionMode = .forgiving
+            settings.maxCardCount = 12
+            settings.excludedAppBundleIdentifiers = ["com.example.Editor"]
+        }
+
+        XCTAssertEqual(store.snapshot.displayLanguage, .simplifiedChinese)
+        XCTAssertFalse(dockStore.dockWindowQuickLookSettingsSnapshot.isDockHoverPreviewEnabled)
+        XCTAssertEqual(dockStore.dockWindowQuickLookSettingsSnapshot.hoverDelayMilliseconds, 400)
+        XCTAssertEqual(dockStore.dockWindowQuickLookSettingsSnapshot.panelRetentionMode, .forgiving)
+        XCTAssertEqual(dockStore.dockWindowQuickLookSettingsSnapshot.maxCardCount, 12)
+        XCTAssertEqual(
+            dockStore.dockWindowQuickLookSettingsSnapshot.excludedAppBundleIdentifiers,
+            ["com.example.Editor"]
+        )
+        XCTAssertEqual(dockStore.dockWindowQuickLookSettingsSnapshot.displayLanguage, .simplifiedChinese)
+
+        let source = try settingsStoreSource()
+        let dockSnapshotSource = try sourceBlock(
+            named: "DockWindowQuickLookSettingsSnapshot",
+            in: source
+        )
+        XCTAssertTrue(dockSnapshotSource.contains("let displayLanguage: DisplayLanguage"))
+        XCTAssertFalse(dockSnapshotSource.contains("var displayLanguage: DisplayLanguage"))
+        XCTAssertTrue(
+            source.contains(
+                "updateDockWindowQuickLookSettings(transform: (inout DockWindowQuickLookSettingsSnapshot) -> Void)"
+            )
+        )
+        XCTAssertFalse(
+            source.contains("updateDockWindowQuickLookSettings(transform: (inout DockHoverPreviewSettings) -> Void)")
+        )
+    }
+
     private func makeTemporaryDefaults() -> (UserDefaults, String) {
         let suiteName = "SettingsStoreTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return (defaults, suiteName)
+    }
+
+    private func settingsStoreSource() throws -> String {
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = packageRoot
+            .appendingPathComponent("Sources/DockHoverPreviewProbe/Settings/SettingsStore.swift")
+        return try String(contentsOf: sourceURL, encoding: .utf8)
+    }
+
+    private func sourceBlock(named name: String, in source: String) throws -> String {
+        let marker = "struct \(name)"
+        let start = try XCTUnwrap(source.range(of: marker)?.lowerBound)
+        let openingBrace = try XCTUnwrap(source[start...].firstIndex(of: "{"))
+        var depth = 0
+        var index = openingBrace
+
+        while index < source.endIndex {
+            if source[index] == "{" {
+                depth += 1
+            } else if source[index] == "}" {
+                depth -= 1
+                if depth == 0 {
+                    return String(source[start...index])
+                }
+            }
+            index = source.index(after: index)
+        }
+
+        XCTFail("Could not find end of struct \(name)")
+        return ""
     }
 }

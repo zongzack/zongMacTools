@@ -22,13 +22,13 @@ struct AppSettingsViewState: Equatable {
 final class AppSettingsViewModel: ObservableObject {
     @Published private(set) var state: AppSettingsViewState
 
-    private let settingsStore: DockHoverPreviewSettingsStore
+    private let settingsStore: AppSettingsStore
     private let launchAtLoginService: LaunchAtLoginService
     private let logger: ProbeLogger
     private var observerToken: UUID?
 
     init(
-        settingsStore: DockHoverPreviewSettingsStore,
+        settingsStore: AppSettingsStore,
         launchAtLoginService: LaunchAtLoginService,
         logger: ProbeLogger
     ) {
@@ -36,21 +36,21 @@ final class AppSettingsViewModel: ObservableObject {
         self.launchAtLoginService = launchAtLoginService
         self.logger = logger
         self.state = Self.makeState(
-            snapshot: settingsStore.snapshot,
+            snapshot: settingsStore.appSettingsSnapshot,
             launchAtLoginStatus: launchAtLoginService.status
         )
 
-        observerToken = settingsStore.addObserver { [weak self] snapshot in
+        observerToken = settingsStore.addAppSettingsObserver { [weak self] snapshot in
             self?.refresh(snapshot: snapshot)
         }
     }
 
     func refresh() {
-        refresh(snapshot: settingsStore.snapshot)
+        refresh(snapshot: settingsStore.appSettingsSnapshot)
     }
 
     func setDisplayLanguage(_ language: DisplayLanguage) {
-        settingsStore.update { settings in
+        settingsStore.updateAppSettings { settings in
             settings.displayLanguage = language
         }
     }
@@ -93,7 +93,7 @@ final class AppSettingsViewModel: ObservableObject {
         refresh()
     }
 
-    private func refresh(snapshot: DockHoverPreviewSettings) {
+    private func refresh(snapshot: AppSettingsSnapshot) {
         state = Self.makeState(
             snapshot: snapshot,
             launchAtLoginStatus: launchAtLoginService.status
@@ -101,7 +101,7 @@ final class AppSettingsViewModel: ObservableObject {
     }
 
     private static func makeState(
-        snapshot: DockHoverPreviewSettings,
+        snapshot: AppSettingsSnapshot,
         launchAtLoginStatus: LaunchAtLoginStatus
     ) -> AppSettingsViewState {
         AppSettingsViewState(

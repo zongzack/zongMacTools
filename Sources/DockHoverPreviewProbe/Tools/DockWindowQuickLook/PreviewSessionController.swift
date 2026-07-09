@@ -9,7 +9,7 @@ final class PreviewSessionController {
     private let activationService: ActivationService
     private let windowOperationService: WindowOperationService
     private let panelDisplay: PreviewPanelDisplaying
-    private let settingsStore: DockHoverPreviewSettingsStore
+    private let settingsStore: DockWindowQuickLookSettingsStore
     private let targetTracker: AppTargetTracker
     private let screenProvider: @MainActor () -> [WindowEnvironmentDescriptor.Screen]
     private let logger: ProbeLogger
@@ -30,7 +30,7 @@ final class PreviewSessionController {
         activationService: ActivationService,
         windowOperationService: WindowOperationService,
         panelDisplay: PreviewPanelDisplaying,
-        settingsStore: DockHoverPreviewSettingsStore,
+        settingsStore: DockWindowQuickLookSettingsStore,
         targetTracker: AppTargetTracker,
         screenProvider: @MainActor @escaping () -> [WindowEnvironmentDescriptor.Screen] = WindowEnvironmentDescriptor.currentScreens,
         logger: ProbeLogger
@@ -58,7 +58,7 @@ final class PreviewSessionController {
         generation += 1
         contextMenuDepth = 0
         let sessionGeneration = generation
-        let settings = settingsStore.snapshot
+        let settings = settingsStore.dockWindowQuickLookSettingsSnapshot
         currentRetentionParameters = settings.panelRetentionParameters
         let windows = await windowQueryService.windows(for: app, limit: settings.maxCardCount)
         guard isCurrent(sessionGeneration) else { return }
@@ -126,8 +126,8 @@ final class PreviewSessionController {
             return
         }
 
-        currentRetentionParameters = settingsStore.snapshot.panelRetentionParameters
-        settingsObserverToken = settingsStore.addObserver { [weak self] settings in
+        currentRetentionParameters = settingsStore.dockWindowQuickLookSettingsSnapshot.panelRetentionParameters
+        settingsObserverToken = settingsStore.addDockWindowQuickLookSettingsObserver { [weak self] settings in
             self?.currentRetentionParameters = settings.panelRetentionParameters
         }
     }

@@ -33,7 +33,7 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
 
     @Published private(set) var state: DockWindowQuickLookSettingsViewState
 
-    private let settingsStore: DockHoverPreviewSettingsStore
+    private let settingsStore: DockWindowQuickLookSettingsStore
     private let targetTracker: AppTargetTracker
     private let appNameResolver: AppNameResolving
     private let excludedAppSelectionPresenter: any ExcludedAppSelectionPresenting
@@ -42,7 +42,7 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
     private var observerToken: UUID?
 
     init(
-        settingsStore: DockHoverPreviewSettingsStore,
+        settingsStore: DockWindowQuickLookSettingsStore,
         targetTracker: AppTargetTracker,
         appNameResolver: AppNameResolving = WorkspaceAppNameResolver(),
         excludedAppSelectionPresenter: any ExcludedAppSelectionPresenting = AppKitExcludedAppSelectionPresenter(),
@@ -56,27 +56,27 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
         self.selfBundleIdentifier = BundleIdentifierValidator.sanitized(selfBundleIdentifier) ?? selfBundleIdentifier
         self.logger = logger
         self.state = Self.makeState(
-            snapshot: settingsStore.snapshot,
+            snapshot: settingsStore.dockWindowQuickLookSettingsSnapshot,
             targetTracker: targetTracker,
             appNameResolver: appNameResolver
         )
 
-        observerToken = settingsStore.addObserver { [weak self] snapshot in
+        observerToken = settingsStore.addDockWindowQuickLookSettingsObserver { [weak self] snapshot in
             self?.refresh(snapshot: snapshot)
         }
     }
 
     func refresh() {
-        refresh(snapshot: settingsStore.snapshot)
+        refresh(snapshot: settingsStore.dockWindowQuickLookSettingsSnapshot)
     }
 
     func refreshForSettingsPresentation() {
         targetTracker.refreshLatestNonSelfActiveApp()
-        refresh(snapshot: settingsStore.snapshot)
+        refresh(snapshot: settingsStore.dockWindowQuickLookSettingsSnapshot)
     }
 
     func toggleDockWindowQuickLook() {
-        settingsStore.update { settings in
+        settingsStore.updateDockWindowQuickLookSettings { settings in
             settings.isDockHoverPreviewEnabled.toggle()
         }
     }
@@ -86,7 +86,7 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
             forSliderIndex: sliderIndex,
             presets: Self.hoverDelayPresets
         )
-        settingsStore.update { settings in
+        settingsStore.updateDockWindowQuickLookSettings { settings in
             settings.hoverDelayMilliseconds = value
         }
     }
@@ -96,7 +96,7 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
             forSliderIndex: sliderIndex,
             presets: Self.panelRetentionPresets
         )
-        settingsStore.update { settings in
+        settingsStore.updateDockWindowQuickLookSettings { settings in
             settings.panelRetentionMode = value
         }
     }
@@ -106,7 +106,7 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
             forSliderIndex: sliderIndex,
             presets: Self.maxCardCountPresets
         )
-        settingsStore.update { settings in
+        settingsStore.updateDockWindowQuickLookSettings { settings in
             settings.maxCardCount = value
         }
     }
@@ -117,7 +117,7 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
             return
         }
 
-        settingsStore.update { settings in
+        settingsStore.updateDockWindowQuickLookSettings { settings in
             if settings.excludedAppBundleIdentifiers.contains(target.bundleIdentifier) {
                 settings.excludedAppBundleIdentifiers.remove(target.bundleIdentifier)
             } else {
@@ -150,12 +150,12 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
             return false
         }
 
-        guard !settingsStore.snapshot.excludedAppBundleIdentifiers.contains(bundleIdentifier) else {
+        guard !settingsStore.dockWindowQuickLookSettingsSnapshot.excludedAppBundleIdentifiers.contains(bundleIdentifier) else {
             logger.info("settings.excludedAppManualAddSkipped reason=duplicate bundle=\(bundleIdentifier)")
             return false
         }
 
-        settingsStore.update { settings in
+        settingsStore.updateDockWindowQuickLookSettings { settings in
             settings.excludedAppBundleIdentifiers.insert(bundleIdentifier)
         }
         logger.info("settings.excludedAppManualAdded bundle=\(bundleIdentifier)")
@@ -167,7 +167,7 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
             return
         }
 
-        settingsStore.update { settings in
+        settingsStore.updateDockWindowQuickLookSettings { settings in
             settings.excludedAppBundleIdentifiers.remove(bundleIdentifier)
         }
     }
@@ -177,12 +177,12 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
             return
         }
 
-        settingsStore.update { settings in
+        settingsStore.updateDockWindowQuickLookSettings { settings in
             settings.excludedAppBundleIdentifiers.removeAll()
         }
     }
 
-    private func refresh(snapshot: DockHoverPreviewSettings) {
+    private func refresh(snapshot: DockWindowQuickLookSettingsSnapshot) {
         state = Self.makeState(
             snapshot: snapshot,
             targetTracker: targetTracker,
@@ -191,7 +191,7 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
     }
 
     private static func makeState(
-        snapshot: DockHoverPreviewSettings,
+        snapshot: DockWindowQuickLookSettingsSnapshot,
         targetTracker: AppTargetTracker,
         appNameResolver: AppNameResolving
     ) -> DockWindowQuickLookSettingsViewState {

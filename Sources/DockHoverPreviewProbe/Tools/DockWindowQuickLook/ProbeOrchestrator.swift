@@ -11,7 +11,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     private let permissionService: PermissionService
     private let logger: ProbeLogger
     private let previewSessionController: PreviewSessionController
-    private let settingsStore: DockHoverPreviewSettingsStore
+    private let settingsStore: DockWindowQuickLookSettingsStore
     private let targetTracker: AppTargetTracker
     private let hoverDelayScheduler: HoverDelayScheduling
     private let frontmostApplicationProvider: FrontmostApplicationProviding
@@ -21,14 +21,14 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     private var pendingHoverBundleIdentifier: String?
     private var pendingHoverGeneration = 0
     private var settingsObserverToken: UUID?
-    private var observedSettingsSnapshot: DockHoverPreviewSettings?
+    private var observedSettingsSnapshot: DockWindowQuickLookSettingsSnapshot?
     private var isStopping = false
 
     init(
         permissionService: PermissionService,
         logger: ProbeLogger,
         previewSessionController: PreviewSessionController,
-        settingsStore: DockHoverPreviewSettingsStore,
+        settingsStore: DockWindowQuickLookSettingsStore,
         targetTracker: AppTargetTracker,
         hoverDelayScheduler: HoverDelayScheduling = DispatchHoverDelayScheduler(),
         frontmostApplicationProvider: FrontmostApplicationProviding = WorkspaceFrontmostApplicationProvider()
@@ -74,7 +74,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
             logger.warning("debug.frontmost.noApp")
             return
         }
-        if isExcluded(app.bundleIdentifier, in: settingsStore.snapshot) {
+        if isExcluded(app.bundleIdentifier, in: settingsStore.dockWindowQuickLookSettingsSnapshot) {
             previewSessionController.hide(reason: "appExcluded")
             logger.info("debug.frontmost.skipped reason=appExcluded bundle=\(app.bundleIdentifier ?? "nil")")
             return
@@ -151,8 +151,8 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         guard settingsObserverToken == nil else {
             return
         }
-        observedSettingsSnapshot = settingsStore.snapshot
-        settingsObserverToken = settingsStore.addObserver { [weak self] settings in
+        observedSettingsSnapshot = settingsStore.dockWindowQuickLookSettingsSnapshot
+        settingsObserverToken = settingsStore.addDockWindowQuickLookSettingsObserver { [weak self] settings in
             self?.settingsDidChange(settings)
         }
     }
@@ -166,7 +166,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         observedSettingsSnapshot = nil
     }
 
-    private func settingsDidChange(_ settings: DockHoverPreviewSettings) {
+    private func settingsDidChange(_ settings: DockWindowQuickLookSettingsSnapshot) {
         let previousSettings = observedSettingsSnapshot ?? settings
         let pendingBundleIdentifier = pendingHoverBundleIdentifier
         let currentPreviewBundleIdentifier = targetTracker.currentPreviewBundleIdentifier
@@ -209,7 +209,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
     ) {
         cancelPendingHover()
 
-        let settings = settingsStore.snapshot
+        let settings = settingsStore.dockWindowQuickLookSettingsSnapshot
         guard settings.isDockHoverPreviewEnabled else {
             previewSessionController.hide(reason: "settingsDisabled")
             logger.info("dock.hoverSkipped reason=settingsDisabled bundle=\(candidate.bundleIdentifier)")
@@ -263,7 +263,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         let validationFrame = resolved?.dockItemFrame
         logger.info("dock.hoverDelayed bundle=\(candidate.bundleIdentifier) matches=\(matches) mouseInside=\(mouseInside) frame=\(String(describing: validationFrame))")
 
-        let settings = settingsStore.snapshot
+        let settings = settingsStore.dockWindowQuickLookSettingsSnapshot
         guard settings.isDockHoverPreviewEnabled else {
             previewSessionController.hide(reason: "settingsDisabled")
             logger.info("dock.hoverDelayed.skipped reason=settingsDisabled bundle=\(candidate.bundleIdentifier)")
@@ -304,7 +304,7 @@ final class ProbeOrchestrator: DockHoverMonitorDelegate {
         generation == pendingHoverGeneration
     }
 
-    private func isExcluded(_ bundleIdentifier: String?, in settings: DockHoverPreviewSettings) -> Bool {
+    private func isExcluded(_ bundleIdentifier: String?, in settings: DockWindowQuickLookSettingsSnapshot) -> Bool {
         guard let bundleIdentifier else {
             return false
         }

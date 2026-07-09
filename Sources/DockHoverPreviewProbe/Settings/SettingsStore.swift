@@ -1,13 +1,137 @@
 import Foundation
 
+struct AppSettingsSnapshot: Equatable, Sendable {
+    var displayLanguage: DisplayLanguage
+
+    init(displayLanguage: DisplayLanguage) {
+        self.displayLanguage = displayLanguage
+    }
+
+    init(settings: DockHoverPreviewSettings) {
+        self.init(displayLanguage: settings.displayLanguage)
+    }
+}
+
+struct DockWindowQuickLookSettingsSnapshot: Equatable, Sendable {
+    var isDockHoverPreviewEnabled: Bool
+    var hoverDelayMilliseconds: Int
+    var panelRetentionMode: PanelRetentionMode
+    var maxCardCount: Int
+    var excludedAppBundleIdentifiers: Set<String>
+    let displayLanguage: DisplayLanguage
+
+    init(
+        isDockHoverPreviewEnabled: Bool,
+        hoverDelayMilliseconds: Int,
+        panelRetentionMode: PanelRetentionMode,
+        maxCardCount: Int,
+        excludedAppBundleIdentifiers: Set<String>,
+        displayLanguage: DisplayLanguage
+    ) {
+        self.isDockHoverPreviewEnabled = isDockHoverPreviewEnabled
+        self.hoverDelayMilliseconds = hoverDelayMilliseconds
+        self.panelRetentionMode = panelRetentionMode
+        self.maxCardCount = maxCardCount
+        self.excludedAppBundleIdentifiers = excludedAppBundleIdentifiers
+        self.displayLanguage = displayLanguage
+    }
+
+    init(settings: DockHoverPreviewSettings) {
+        self.init(
+            isDockHoverPreviewEnabled: settings.isDockHoverPreviewEnabled,
+            hoverDelayMilliseconds: settings.hoverDelayMilliseconds,
+            panelRetentionMode: settings.panelRetentionMode,
+            maxCardCount: settings.maxCardCount,
+            excludedAppBundleIdentifiers: settings.excludedAppBundleIdentifiers,
+            displayLanguage: settings.displayLanguage
+        )
+    }
+
+    var panelRetentionParameters: PanelRetentionParameters {
+        panelRetentionMode.parameters
+    }
+}
+
 @MainActor
-protocol DockHoverPreviewSettingsStore: AnyObject {
+protocol AppSettingsStore: AnyObject {
+    var appSettingsSnapshot: AppSettingsSnapshot { get }
+
+    @discardableResult
+    func addAppSettingsObserver(_ observer: @MainActor @escaping (AppSettingsSnapshot) -> Void) -> UUID
+    func removeObserver(_ token: UUID)
+    func updateAppSettings(transform: (inout AppSettingsSnapshot) -> Void)
+}
+
+@MainActor
+protocol DockWindowQuickLookSettingsStore: AnyObject {
+    var dockWindowQuickLookSettingsSnapshot: DockWindowQuickLookSettingsSnapshot { get }
+
+    @discardableResult
+    func addDockWindowQuickLookSettingsObserver(
+        _ observer: @MainActor @escaping (DockWindowQuickLookSettingsSnapshot) -> Void
+    ) -> UUID
+    func removeObserver(_ token: UUID)
+    func updateDockWindowQuickLookSettings(transform: (inout DockWindowQuickLookSettingsSnapshot) -> Void)
+}
+
+@MainActor
+protocol DockHoverPreviewSettingsStore: AppSettingsStore, DockWindowQuickLookSettingsStore {
     var snapshot: DockHoverPreviewSettings { get }
 
     @discardableResult
     func addObserver(_ observer: @MainActor @escaping (DockHoverPreviewSettings) -> Void) -> UUID
     func removeObserver(_ token: UUID)
     func update(transform: (inout DockHoverPreviewSettings) -> Void)
+}
+
+extension DockHoverPreviewSettingsStore {
+    var appSettingsSnapshot: AppSettingsSnapshot {
+        AppSettingsSnapshot(settings: snapshot)
+    }
+
+    @discardableResult
+    func addAppSettingsObserver(_ observer: @MainActor @escaping (AppSettingsSnapshot) -> Void) -> UUID {
+        let fullObserver: @MainActor (DockHoverPreviewSettings) -> Void = { settings in
+            observer(AppSettingsSnapshot(settings: settings))
+        }
+        return addObserver(fullObserver)
+    }
+
+    func updateAppSettings(transform: (inout AppSettingsSnapshot) -> Void) {
+        var next = appSettingsSnapshot
+        transform(&next)
+
+        update { settings in
+            settings.displayLanguage = next.displayLanguage
+        }
+    }
+
+    var dockWindowQuickLookSettingsSnapshot: DockWindowQuickLookSettingsSnapshot {
+        DockWindowQuickLookSettingsSnapshot(settings: snapshot)
+    }
+
+    @discardableResult
+    func addDockWindowQuickLookSettingsObserver(
+        _ observer: @MainActor @escaping (DockWindowQuickLookSettingsSnapshot) -> Void
+    ) -> UUID {
+        let fullObserver: @MainActor (DockHoverPreviewSettings) -> Void = { settings in
+            observer(DockWindowQuickLookSettingsSnapshot(settings: settings))
+        }
+        return addObserver(fullObserver)
+    }
+
+    func updateDockWindowQuickLookSettings(transform: (inout DockWindowQuickLookSettingsSnapshot) -> Void) {
+        var next = dockWindowQuickLookSettingsSnapshot
+        transform(&next)
+
+        update { settings in
+            settings.isDockHoverPreviewEnabled = next.isDockHoverPreviewEnabled
+            settings.hoverDelayMilliseconds = next.hoverDelayMilliseconds
+            settings.panelRetentionMode = next.panelRetentionMode
+            settings.maxCardCount = next.maxCardCount
+            settings.excludedAppBundleIdentifiers = next.excludedAppBundleIdentifiers
+        }
+    }
 }
 
 @MainActor
