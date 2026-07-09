@@ -41,6 +41,7 @@ final class AppDelegateWiringTests: XCTestCase {
         let sourceURL = packageRoot
             .appendingPathComponent("Sources")
             .appendingPathComponent("DockHoverPreviewProbe")
+            .appendingPathComponent("App")
             .appendingPathComponent("AppDelegate.swift")
         return try String(contentsOf: sourceURL, encoding: .utf8)
     }

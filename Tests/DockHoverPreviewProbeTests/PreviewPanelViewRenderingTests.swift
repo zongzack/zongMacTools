@@ -156,7 +156,7 @@ final class PreviewPanelViewRenderingTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("Sources/DockHoverPreviewProbe/PreviewPanelView.swift")
+            .appendingPathComponent("Sources/DockHoverPreviewProbe/Tools/DockWindowQuickLook/PreviewPanelView.swift")
         return try String(contentsOf: url, encoding: .utf8)
     }
 }

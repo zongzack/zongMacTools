@@ -85,8 +85,8 @@ final class PackagingTests: XCTestCase {
     }
 
     func testRuntimeDiagnosticsUseZongMacToolsIdentity() throws {
-        let appDelegateSource = try sourceFile("AppDelegate.swift")
-        let loggerSource = try sourceFile("ProbeLogger.swift")
+        let appDelegateSource = try sourceFile("App/AppDelegate.swift")
+        let loggerSource = try sourceFile("Shared/ProbeLogger.swift")
 
         XCTAssertTrue(appDelegateSource.contains("Bundle.main.bundleIdentifier ?? \"com.zong.zongMacTools\""))
         XCTAssertFalse(appDelegateSource.contains("bundleIdentifier=com.zong.DockHoverPreviewProbe"))

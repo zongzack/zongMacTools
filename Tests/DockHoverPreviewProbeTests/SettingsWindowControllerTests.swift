@@ -143,7 +143,7 @@ final class SettingsWindowControllerTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        let sourceURL = packageRoot.appendingPathComponent("Sources/DockHoverPreviewProbe/SettingsRootView.swift")
+        let sourceURL = packageRoot.appendingPathComponent("Sources/DockHoverPreviewProbe/Settings/SettingsRootView.swift")
         return try String(contentsOf: sourceURL, encoding: .utf8)
     }
 }

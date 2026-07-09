@@ -107,7 +107,7 @@ final class DiagnosticExportServiceTests: XCTestCase {
     }
 
     func testMenuExportUsesChosenFileURLAndFailurePathStaysQuiet() throws {
-        let source = try sourceFile("DiagnosticExportService.swift")
+        let source = try sourceFile("Support/DiagnosticExportService.swift")
 
         XCTAssertTrue(source.contains("func exportDiagnostics()"))
         XCTAssertFalse(source.contains("func exportDiagnosticsFromMenu()"))
