@@ -125,6 +125,43 @@ final class SettingsWindowControllerTests: XCTestCase {
         }
     }
 
+    func testSettingsToolsUseDescriptorRegistryForSidebarNavigation() throws {
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let descriptorRelativePath = "Sources/DockHoverPreviewProbe/Settings/ToolDescriptor.swift"
+        let descriptorURL = packageRoot.appendingPathComponent(descriptorRelativePath)
+        let descriptorExists = FileManager.default.fileExists(atPath: descriptorURL.path)
+
+        XCTAssertTrue(
+            descriptorExists,
+            "\(descriptorRelativePath) should exist"
+        )
+        guard descriptorExists else {
+            return
+        }
+
+        let descriptorSource = try source(at: descriptorRelativePath)
+        XCTAssertTrue(descriptorSource.contains("enum ToolID"))
+        XCTAssertTrue(descriptorSource.contains("case dockWindowQuickLook"))
+        XCTAssertTrue(descriptorSource.contains("case contextMenuExtension"))
+        XCTAssertTrue(descriptorSource.contains("struct ToolDescriptor"))
+
+        let sidebarSource = try source(at: "Sources/DockHoverPreviewProbe/Settings/SettingsSidebarView.swift")
+        XCTAssertTrue(sidebarSource.contains("let tools: [ToolDescriptor]"))
+        XCTAssertTrue(sidebarSource.contains("ForEach(tools)"))
+
+        let rootSource = try settingsRootViewSource()
+        let compactRootSource = rootSource.filter { !$0.isWhitespace }
+        XCTAssertTrue(
+            compactRootSource.contains("tools:[.dockWindowQuickLook,.contextMenuExtensionPlaceholder]")
+        )
+
+        let menuBarSource = try source(at: "Sources/DockHoverPreviewProbe/App/MenuBarController.swift")
+        XCTAssertFalse(menuBarSource.contains("ToolDescriptor"))
+    }
+
     func testSettingsGroupsUseStableHoverSurfacesWithoutScale() throws {
         let source = try source(at: "Sources/DockHoverPreviewProbe/Settings/SettingsGroup.swift")
 

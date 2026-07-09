@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsSidebarView: View {
     @ObservedObject var selection: SettingsWindowSelection
     let text: AppTextProvider
+    let tools: [ToolDescriptor]
 
     var body: some View {
         ScrollView {
@@ -18,19 +19,9 @@ struct SettingsSidebarView: View {
                 }
 
                 SidebarSection(title: text.string(.settingsSectionTools)) {
-                    SidebarButton(
-                        title: text.string(.dockWindowQuickLook),
-                        systemImage: "dock.rectangle",
-                        isSelected: selection.selectedPage == .dockWindowQuickLook
-                    ) {
-                        selection.selectedPage = .dockWindowQuickLook
+                    ForEach(tools) { tool in
+                        toolSidebarItem(tool)
                     }
-
-                    DisabledSidebarItem(
-                        title: text.string(.contextMenuExtension),
-                        badge: text.string(.notDeveloped),
-                        systemImage: "contextualmenu.and.cursorarrow"
-                    )
                 }
 
                 SidebarSection(title: text.string(.settingsSectionSupport)) {
@@ -52,6 +43,25 @@ struct SettingsSidebarView: View {
                 }
             }
             .padding(16)
+        }
+    }
+
+    @ViewBuilder
+    private func toolSidebarItem(_ tool: ToolDescriptor) -> some View {
+        if let settingsPage = tool.settingsPage {
+            SidebarButton(
+                title: text.string(tool.titleKey),
+                systemImage: tool.systemImage,
+                isSelected: selection.selectedPage == settingsPage
+            ) {
+                selection.selectedPage = settingsPage
+            }
+        } else {
+            DisabledSidebarItem(
+                title: text.string(tool.titleKey),
+                badge: tool.badgeKey.map(text.string) ?? "",
+                systemImage: tool.systemImage
+            )
         }
     }
 }

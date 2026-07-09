@@ -27,7 +27,11 @@ struct SettingsRootView: View {
     }
 
     private var sidebar: some View {
-        SettingsSidebarView(selection: selection, text: text)
+        SettingsSidebarView(
+            selection: selection,
+            text: text,
+            tools: [.dockWindowQuickLook, .contextMenuExtensionPlaceholder]
+        )
     }
 
     @ViewBuilder
