@@ -91,8 +91,42 @@ final class SettingsWindowControllerTests: XCTestCase {
         )
     }
 
+    func testSettingsRootViewIsSplitIntoFocusedFiles() throws {
+        let packageRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let expectedFiles = [
+            "Sources/DockHoverPreviewProbe/Settings/SettingsSidebarView.swift",
+            "Sources/DockHoverPreviewProbe/Settings/SettingsPageContainer.swift",
+            "Sources/DockHoverPreviewProbe/Settings/SettingsGroup.swift",
+            "Sources/DockHoverPreviewProbe/Settings/GeneralSettingsView.swift",
+            "Sources/DockHoverPreviewProbe/Tools/DockWindowQuickLook/DockWindowQuickLookSettingsView.swift",
+            "Sources/DockHoverPreviewProbe/Support/SupportSettingsView.swift",
+            "Sources/DockHoverPreviewProbe/Support/AboutStatusSettingsView.swift"
+        ]
+
+        for relativePath in expectedFiles {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent(relativePath).path),
+                "\(relativePath) should exist"
+            )
+        }
+
+        let rootSource = try settingsRootViewSource()
+        for movedViewDeclaration in [
+            "struct GeneralSettingsView",
+            "struct DockWindowQuickLookSettingsView",
+            "struct SupportSettingsView",
+            "struct AboutStatusSettingsView",
+            "struct SettingsGroup"
+        ] {
+            XCTAssertFalse(rootSource.contains(movedViewDeclaration))
+        }
+    }
+
     func testSettingsGroupsUseStableHoverSurfacesWithoutScale() throws {
-        let source = try settingsRootViewSource()
+        let source = try source(at: "Sources/DockHoverPreviewProbe/Settings/SettingsGroup.swift")
 
         XCTAssertTrue(source.contains("SettingsGroupVisualStyle"))
         XCTAssertTrue(source.contains("hoverBackgroundColor"))
@@ -106,24 +140,32 @@ final class SettingsWindowControllerTests: XCTestCase {
     }
 
     func testSettingsRootViewEmbedsAboutStatusPageAndUsesThinDetailScrollbars() throws {
-        let source = try settingsRootViewSource()
+        let rootSource = try settingsRootViewSource()
+        let sidebarSource = try source(at: "Sources/DockHoverPreviewProbe/Settings/SettingsSidebarView.swift")
+        let pageContainerSource = try source(at: "Sources/DockHoverPreviewProbe/Settings/SettingsPageContainer.swift")
+        let aboutSource = try source(at: "Sources/DockHoverPreviewProbe/Support/AboutStatusSettingsView.swift")
+        let dockSettingsSource = try source(
+            at: "Sources/DockHoverPreviewProbe/Tools/DockWindowQuickLook/DockWindowQuickLookSettingsView.swift"
+        )
 
-        XCTAssertTrue(source.contains("selection.selectedPage == .aboutStatus"))
-        XCTAssertTrue(source.contains("systemImage: \"info.circle\""))
-        XCTAssertTrue(source.contains("case .aboutStatus:"))
-        XCTAssertTrue(source.contains("AboutStatusSettingsView("))
-        XCTAssertTrue(source.contains("AppStatusProviding"))
-        XCTAssertTrue(source.contains("statusProvider.snapshot()"))
-        XCTAssertTrue(source.contains("NSPasteboard.general.setString"))
-        XCTAssertTrue(source.contains("SettingsScrollBarTuner"))
-        XCTAssertTrue(source.contains("static let controlSize: NSControl.ControlSize = .mini"))
-        XCTAssertTrue(source.contains(".background(SettingsScrollBarTuner())"))
-        XCTAssertTrue(source.contains("text.string(.removeExcludedAppHelp)"))
-        XCTAssertFalse(source.contains("\"Remove excluded app\""))
+        XCTAssertTrue(sidebarSource.contains("selection.selectedPage == .aboutStatus"))
+        XCTAssertTrue(sidebarSource.contains("systemImage: \"info.circle\""))
+        XCTAssertTrue(rootSource.contains("case .aboutStatus:"))
+        XCTAssertTrue(rootSource.contains("AboutStatusSettingsView("))
+        XCTAssertTrue(aboutSource.contains("AppStatusProviding"))
+        XCTAssertTrue(aboutSource.contains("statusProvider.snapshot()"))
+        XCTAssertTrue(aboutSource.contains("NSPasteboard.general.setString"))
+        XCTAssertTrue(pageContainerSource.contains("SettingsScrollBarTuner"))
+        XCTAssertTrue(pageContainerSource.contains("static let controlSize: NSControl.ControlSize = .mini"))
+        XCTAssertTrue(pageContainerSource.contains(".background(SettingsScrollBarTuner())"))
+        XCTAssertTrue(dockSettingsSource.contains("text.string(.removeExcludedAppHelp)"))
+        XCTAssertFalse(dockSettingsSource.contains("\"Remove excluded app\""))
     }
 
     func testExcludedAppsHeaderHasAddButtonWiredToViewModelIntent() throws {
-        let source = try settingsRootViewSource()
+        let source = try source(
+            at: "Sources/DockHoverPreviewProbe/Tools/DockWindowQuickLook/DockWindowQuickLookSettingsView.swift"
+        )
 
         XCTAssertTrue(source.contains("Button(text.string(.addExcludedApp))"))
         XCTAssertTrue(source.contains("viewModel.addExcludedAppFromSelection()"))
@@ -139,11 +181,15 @@ final class SettingsWindowControllerTests: XCTestCase {
     }
 
     private func settingsRootViewSource() throws -> String {
+        try source(at: "Sources/DockHoverPreviewProbe/Settings/SettingsRootView.swift")
+    }
+
+    private func source(at relativePath: String) throws -> String {
         let packageRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        let sourceURL = packageRoot.appendingPathComponent("Sources/DockHoverPreviewProbe/Settings/SettingsRootView.swift")
+        let sourceURL = packageRoot.appendingPathComponent(relativePath)
         return try String(contentsOf: sourceURL, encoding: .utf8)
     }
 }
