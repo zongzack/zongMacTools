@@ -1,0 +1,74 @@
+name: Create GitHub Draft Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-draft-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag version
+        env:
+          TAG: ${{ github.ref_name }}
+          INFO_PLIST: Sources/DockHoverPreviewProbe/Info.plist
+        run: |
+          VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$INFO_PLIST")"
+          BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$INFO_PLIST")"
+          test "$TAG" == "v${VERSION}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        run: swift test
+
+      - name: Package public beta
+        env:
+          NOTARYTOOL_PROFILE: ""
+        run: Scripts/package_release_app.sh
+
+      - name: Verify release assets
+        run: |
+          DIST_DIR="dist/zongMacTools-${VERSION}-${BUILD_NUMBER}"
+          ZIP_PATH="$DIST_DIR/zongMacTools-${VERSION}-${BUILD_NUMBER}.zip"
+          test -f "$ZIP_PATH"
+          test -f "$DIST_DIR/SHA256SUMS.txt"
+          test -f "$DIST_DIR/release-metadata.txt"
+          test -f "$DIST_DIR/README-install.txt"
+          test -f "$DIST_DIR/CHANGELOG.md"
+          (
+            cd "$DIST_DIR"
+            shasum -a 256 -c SHA256SUMS.txt
+          )
+          echo "DIST_DIR=$DIST_DIR" >> "$GITHUB_ENV"
+          echo "ZIP_PATH=$ZIP_PATH" >> "$GITHUB_ENV"
+
+      - name: Create Draft Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG"; then
+            exit 1
+          fi
+          gh release create "$TAG" \
+            "$ZIP_PATH" \
+            "$DIST_DIR/SHA256SUMS.txt" \
+            "$DIST_DIR/release-metadata.txt" \
+            "$DIST_DIR/README-install.txt" \
+            "$DIST_DIR/CHANGELOG.md" \
+            --draft \
+            --generate-notes \
+            --title "zongMacTools $TAG"

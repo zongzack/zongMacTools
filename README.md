@@ -153,7 +153,20 @@ dock.subscribed pid=...
 Scripts/package_release_app.sh
 ```
 
-脚本默认使用 `CONFIGURATION=release`，调用 `Scripts/build_probe_app.sh` 和 `Scripts/verify_app_bundle.sh build/zongMacTools.app`，并把产物写入 ignored 的 `dist/zongMacTools-<version>-<build>/`。目录中包含 `zongMacTools-<version>-<build>.zip`、`SHA256SUMS.txt`、`release-metadata.txt` 和安装说明。
+脚本默认使用 `CONFIGURATION=release`，调用 `Scripts/build_probe_app.sh` 和 `Scripts/verify_app_bundle.sh build/zongMacTools.app`，并把产物写入 ignored 的 `dist/zongMacTools-<version>-<build>/`。目录中包含 `zongMacTools-<version>-<build>.zip`、`SHA256SUMS.txt`、`release-metadata.txt`、`README-install.txt` 和 `CHANGELOG.md`。
+
+### GitHub Draft Release
+
+GitHub 发布标签必须与 `Sources/DockHoverPreviewProbe/Info.plist` 中的 `CFBundleShortVersionString` 完全一致，格式为 `v<version>`。例如版本号为 `0.1.0` 时：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+匹配的标签会触发 GitHub Action：运行测试、打包 `ad-hoc` 公开测试版、校验 SHA-256 checksum，然后创建私有 Draft Release。Draft 只会附加 ZIP、`SHA256SUMS.txt`、release metadata、安装指南和 changelog；不会附加其他构建产物。该流程不改变现有签名或公证配置。
+
+维护者必须先下载并检查 Draft 中的资产，再发布；发布时可在适当情况下将其标记为 prerelease。
 
 上传到网站的文件是 ZIP，而不是整个 `build/` 目录，也不要直接上传 `.app` 目录：
 

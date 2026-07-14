@@ -8,6 +8,7 @@
 - P4 正式应用化：新增 About / Status、Copy Status 和 Export Diagnostics 菜单入口。
 - P4 正式应用化：新增本地诊断导出，包含状态快照、签名摘要、bundle 验证摘要和最近本工具统一日志。
 - P4 正式应用化：新增 Sparkle 评估与轻量本地更新流程文档；Sparkle 尚未引入。
+- 与 `CFBundleShortVersionString` 匹配的 `v<version>` 标签会触发 GitHub Actions 运行测试、打包、校验 SHA-256，并创建 Draft Release。
 
 Validation commands:
 
