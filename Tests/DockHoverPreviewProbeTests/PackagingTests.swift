@@ -206,6 +206,41 @@ final class PackagingTests: XCTestCase {
         )
     }
 
+    func testGitHubDraftReleaseWorkflowSelectsSwiftSixToolchain() throws {
+        let source = try String(contentsOf: githubDraftReleaseWorkflowURL(), encoding: .utf8)
+        let jobsBlock = try yamlTopLevelBlock(named: "jobs", in: source)
+        let releaseJob = try yamlJobBlock(named: "release", in: jobsBlock)
+
+        XCTAssertTrue(
+            releaseJob.contains("DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer"),
+            "Release job must select Xcode 16.2 so SwiftPM supports swift-tools-version 6.0"
+        )
+
+        let showToolchainStep = try yamlStepBlock(named: "Show toolchain", in: releaseJob)
+        XCTAssertTrue(showToolchainStep.contains("xcodebuild -version"), "Toolchain step must report the selected Xcode")
+        XCTAssertTrue(showToolchainStep.contains("swift --version"), "Toolchain step must report the selected Swift version")
+
+        let toolchainStepRange = try XCTUnwrap(
+            releaseJob.range(
+                of: #"(?m)^[ \t]*-[ \t]+name:[ \t]*(?:\"Show toolchain\"|'Show toolchain'|Show toolchain)[ \t]*(?:#.*)?\r?$"#,
+                options: .regularExpression
+            ),
+            "Workflow must include the Show toolchain step"
+        )
+        let runTestsStepRange = try XCTUnwrap(
+            releaseJob.range(
+                of: #"(?m)^[ \t]*-[ \t]+name:[ \t]*(?:\"Run tests\"|'Run tests'|Run tests)[ \t]*(?:#.*)?\r?$"#,
+                options: .regularExpression
+            ),
+            "Workflow must include the Run tests step"
+        )
+        XCTAssertLessThan(
+            releaseJob.distance(from: releaseJob.startIndex, to: toolchainStepRange.lowerBound),
+            releaseJob.distance(from: releaseJob.startIndex, to: runTestsStepRange.lowerBound),
+            "Toolchain version must be reported before running tests"
+        )
+    }
+
     private func yamlTopLevelBlock(named name: String, in source: String) throws -> String {
         let lines = source.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
         let headerPrefix = "\(name):"

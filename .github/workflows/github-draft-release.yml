@@ -15,6 +15,8 @@ concurrency:
 jobs:
   release:
     runs-on: macos-14
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +32,11 @@ jobs:
           test "$TAG" == "v${VERSION}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
 
       - name: Run tests
         run: swift test
