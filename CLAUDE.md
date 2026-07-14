@@ -19,23 +19,22 @@ git status --short --branch
 - `README.md`
 - `docs/roadmap.md`
 - `docs/architecture/dock-hover-preview-technical-design.md`
+- `docs/architecture/release-update-strategy.md`
 - `docs/verification/dock-hover-preview-probe-summary.md`
-- `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`
 - `docs/verification/dock-hover-preview-environment-variant-verification-plan.md`
+- 与任务对应的 P3、P4 或多工具人工验收清单
 
 ## 当前工作主线
 
-优先执行 `docs/roadmap.md` 的 P0：环境变体验证和稳定性修复。
+优先执行已实现能力的人工验收和仍受硬件限制的环境验证。
 
-不要一次性处理所有环境。一次验证一个场景，记录结果，再决定是否修 bug。
+不要一次性处理所有场景。一次验证一个场景，记录结果，再决定是否修 bug。
 
-P0 场景：
+当前待验收场景：
 
-- Full-screen Space
-- Dock auto-hide
-- Dock on left
-- Dock on right
-- Stage Manager
+- P3 window actions
+- P4 formal-app workflow
+- Multi-tool settings-window smoke test
 - Multiple displays
 
 ## 必须遵守
@@ -71,7 +70,7 @@ pkill -x DockHoverPreviewProbe
 统一日志命令：
 
 ```bash
-/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.DockHoverPreviewProbe"'
+/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.zongMacTools"'
 ```
 
 排障时重点看：

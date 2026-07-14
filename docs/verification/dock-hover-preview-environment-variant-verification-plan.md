@@ -1,4 +1,4 @@
-# Dock 悬停窗口预览环境变体验证计划
+# Dock 悬停窗口预览环境变体验证记录与复验指南
 
 日期：2026-06-30
 
@@ -6,15 +6,15 @@
 
 ## 目标
 
-验证 `DockHoverPreviewProbe` 在不同 macOS 环境变体下是否仍然稳定、安静、可恢复，并把证据写入文档。
+记录 `DockHoverPreviewProbe` 在不同 macOS 环境变体下的已验证结果，并为未完成的多显示器场景保留复验步骤。
 
 本计划不新增产品功能。若验证发现可复现 bug，应先记录证据，再单独走 bugfix 流程。
 
 ## 相关文档
 
 - [验证总结](dock-hover-preview-probe-summary.md)
-- [MVP UI 手动验收清单](dock-hover-preview-mvp-ui-manual-checklist.md)
-- [Probe 原始证据](dock-hover-preview-probe-checklist.md)
+- [MVP UI 原始手动验收](../archive/verification/dock-hover-preview-mvp-ui-manual-checklist.md)
+- [Probe 原始证据](../archive/verification/dock-hover-preview-probe-checklist.md)
 - [技术设计](../architecture/dock-hover-preview-technical-design.md)
 - [后续路线](../roadmap.md)
 
@@ -132,7 +132,7 @@
 - 设置：用户手动验证 Dock on left；验证后未要求保留系统设置变更。
 - 操作：hover 有窗口 Dock app，检查 preview 展示、位置不越界、Dock-to-panel 保留、离开隐藏、点击激活、`Esc` 隐藏、移到相邻未启动 app 隐藏旧 panel。
 - 观察：功能行为反馈正常。视觉上横向 panel 在 side Dock 下横向侵入工作区较多；已将 side Dock panel 改为纵向排列，单张卡片仍保持完整缩略图和标题尺寸，最多 3 张完整卡片后竖向滚动。
-- 后续问题：Stage Manager 和 Multiple displays 仍需继续验证。
+- 后续问题：Multiple displays 仍需在可用硬件上验证。
 
 ### 4. Dock on right
 
@@ -146,7 +146,7 @@
 - 设置：用户手动验证 Dock on right；验证后未要求保留系统设置变更。
 - 操作：同 Dock on left。
 - 观察：功能行为反馈正常。与 Dock on left 一样，side Dock 使用纵向完整卡片 panel，bottom Dock 保持横向 panel。
-- 后续问题：Stage Manager 和 Multiple displays 仍需继续验证。
+- 后续问题：Multiple displays 仍需在可用硬件上验证。
 
 ### 5. Stage Manager enabled
 
@@ -207,7 +207,7 @@
 
 ## 结果记录模板
 
-每完成一个场景，在 [MVP UI 手动验收清单](dock-hover-preview-mvp-ui-manual-checklist.md) 更新对应条目，并在验证总结中追加摘要。
+每完成一个场景，在验证总结中追加摘要；原始 MVP UI 清单仅作为历史证据保留。
 
 建议记录格式：
 

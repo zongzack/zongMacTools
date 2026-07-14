@@ -77,4 +77,4 @@
 ## 备注
 
 - 当前 P0 环境变体验收结论是 `pass with note`；多显示器因当前硬件不可用，明确记录为 `blocked / not available`，不计为通过。
-- 后续若接入外接显示器，需按 [环境变体验证计划](dock-hover-preview-environment-variant-verification-plan.md) 重新执行 Multiple displays 场景。
+- 后续若接入外接显示器，需按 [环境变体验证记录与复验指南](../../verification/dock-hover-preview-environment-variant-verification-plan.md) 重新执行 Multiple displays 场景。

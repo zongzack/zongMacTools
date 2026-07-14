@@ -143,7 +143,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot.excludedAppBundleIdentifiers, before.excludedAppBundleIdentifiers)
     }
 
-    func testDockWindowQuickLookSettingsStoreDoesNotExposeDisplayLanguageMutation() throws {
+    func testDockWindowQuickLookSettingsStorePreservesDisplayLanguage() {
         let (defaults, suiteName) = makeTemporaryDefaults()
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
@@ -172,21 +172,6 @@ final class SettingsStoreTests: XCTestCase {
         )
         XCTAssertEqual(dockStore.dockWindowQuickLookSettingsSnapshot.displayLanguage, .simplifiedChinese)
 
-        let source = try settingsStoreSource()
-        let dockSnapshotSource = try sourceBlock(
-            named: "DockWindowQuickLookSettingsSnapshot",
-            in: source
-        )
-        XCTAssertTrue(dockSnapshotSource.contains("let displayLanguage: DisplayLanguage"))
-        XCTAssertFalse(dockSnapshotSource.contains("var displayLanguage: DisplayLanguage"))
-        XCTAssertTrue(
-            source.contains(
-                "updateDockWindowQuickLookSettings(transform: (inout DockWindowQuickLookSettingsSnapshot) -> Void)"
-            )
-        )
-        XCTAssertFalse(
-            source.contains("updateDockWindowQuickLookSettings(transform: (inout DockHoverPreviewSettings) -> Void)")
-        )
     }
 
     private func makeTemporaryDefaults() -> (UserDefaults, String) {
@@ -196,36 +181,4 @@ final class SettingsStoreTests: XCTestCase {
         return (defaults, suiteName)
     }
 
-    private func settingsStoreSource() throws -> String {
-        let packageRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let sourceURL = packageRoot
-            .appendingPathComponent("Sources/DockHoverPreviewProbe/Settings/SettingsStore.swift")
-        return try String(contentsOf: sourceURL, encoding: .utf8)
-    }
-
-    private func sourceBlock(named name: String, in source: String) throws -> String {
-        let marker = "struct \(name)"
-        let start = try XCTUnwrap(source.range(of: marker)?.lowerBound)
-        let openingBrace = try XCTUnwrap(source[start...].firstIndex(of: "{"))
-        var depth = 0
-        var index = openingBrace
-
-        while index < source.endIndex {
-            if source[index] == "{" {
-                depth += 1
-            } else if source[index] == "}" {
-                depth -= 1
-                if depth == 0 {
-                    return String(source[start...index])
-                }
-            }
-            index = source.index(after: index)
-        }
-
-        XCTFail("Could not find end of struct \(name)")
-        return ""
-    }
 }

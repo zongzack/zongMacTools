@@ -15,22 +15,21 @@ git status --short --branch
 - `README.md`
 - `docs/roadmap.md`
 - `docs/architecture/dock-hover-preview-technical-design.md`
+- `docs/architecture/release-update-strategy.md`
 - `docs/verification/dock-hover-preview-probe-summary.md`
-- `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`
 - `docs/verification/dock-hover-preview-environment-variant-verification-plan.md`
+- 与任务对应的 P3、P4 或多工具人工验收清单
 
 ## 当前优先级
 
-当前主线是 `docs/roadmap.md` 的 P0：环境变体验证和稳定性修复。
+当前主线是补齐已实现能力的人工验收和受硬件限制的环境验证。
 
-优先验证：
+优先级：
 
-1. 全屏空间
-2. 程序坞自动隐藏
-3. 左侧程序坞
-4. 右侧程序坞
-5. 台前调度
-6. 多显示器
+1. P3 窗口操作人工验收。
+2. P4 正式应用化人工验收。
+3. 多工具设置窗口人工 smoke test。
+4. 多显示器验证；硬件不可用时维持 `blocked / not available`。
 
 一次只处理一个环境场景。发现 bug 时先记录复现步骤和日志，再补最小回归测试并小范围修复。
 
@@ -96,9 +95,11 @@ pkill -x DockHoverPreviewProbe
 
 ## 文档更新规则
 
-验证通过或发现 blocked 场景时，更新：
+验证通过或发现 blocked 场景时，更新当前对应的验收清单和验证总结：
 
-- `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`
+- `docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`
+- `docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md`
+- `docs/verification/dock-hover-preview-multi-tool-settings-window-manual-checklist.md`
 - `docs/verification/dock-hover-preview-probe-summary.md`
 
 如果实际验证步骤和计划不同，也更新：

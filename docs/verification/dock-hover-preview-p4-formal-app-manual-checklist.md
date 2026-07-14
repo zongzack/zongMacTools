@@ -4,7 +4,7 @@
 
 ## 状态
 
-P4 正式应用化已进入实现和自动验证阶段；人工验收尚未执行。本文只记录真实执行结果，未执行项保持 `not run`。没有稳定签名证书、公证凭据或多显示器硬件时，相关项标记为 `blocked / not available`，不提前写成通过。
+P4 正式应用化已完成实现和自动验证；人工验收尚未执行。本文只记录真实执行结果，未执行项保持 `not run`。没有稳定签名证书、公证凭据或多显示器硬件时，相关项标记为 `blocked / not available`，不提前写成通过。
 
 ## 自动验证覆盖
 
@@ -21,7 +21,7 @@ P4 正式应用化已进入实现和自动验证阶段；人工验收尚未执�
 - `swift build`：2026-07-06，exit 0。
 - `Scripts/build_probe_app.sh`：2026-07-06，exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，ad-hoc fallback 签名并提示 TCC caveat。
 - `Scripts/verify_app_bundle.sh build/zongMacTools.app`：2026-07-06，exit 0，Info.plist、executable、icon、bundle id 和签名摘要通过。
-- `Scripts/package_release_app.sh`：2026-07-06，exit 0，输出 `dist/zongMacTools-0.1.0-1/`；`NOTARYTOOL_PROFILE` 未配置，公证跳过。
+- `Scripts/package_release_app.sh`：2026-07-06，exit 0，输出 `dist/zongMacTools-0.1.0-1/`；`NOTARYTOOL_PROFILE` 未配置，公证跳过。该脚本不装订票据，不能单独证明正式公证发行。
 - `git diff --check`：2026-07-06，exit 0。
 - `rg -n "\b(CGS|SLS|AXUIElementSetMessagingTimeout|_AX)\b" Sources Tests`：2026-07-06，无匹配。
 

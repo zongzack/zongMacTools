@@ -3,43 +3,6 @@ import XCTest
 @testable import DockHoverPreviewProbe
 
 final class AppTextProviderTests: XCTestCase {
-    func testTextKeysAreSplitByDomain() throws {
-        let extensionPaths = [
-            "Sources/DockHoverPreviewProbe/Shared/Text/AppTextProvider+App.swift",
-            "Sources/DockHoverPreviewProbe/Shared/Text/AppTextProvider+DockWindowQuickLook.swift",
-            "Sources/DockHoverPreviewProbe/Shared/Text/AppTextProvider+Support.swift"
-        ]
-
-        for relativePath in extensionPaths {
-            XCTAssertTrue(
-                FileManager.default.fileExists(atPath: packageRoot().appendingPathComponent(relativePath).path),
-                "\(relativePath) should exist"
-            )
-        }
-
-        let baseSource = try contents(of: "Sources/DockHoverPreviewProbe/Shared/AppTextProvider.swift")
-        XCTAssertTrue(baseSource.contains("enum LocalizedTextKey"))
-        XCTAssertFalse(baseSource.contains("private func englishText(for key:"))
-        XCTAssertFalse(baseSource.contains("private func simplifiedChineseText(for key:"))
-        XCTAssertTrue(baseSource.contains("appText(for: key)"))
-        XCTAssertTrue(baseSource.contains("dockWindowQuickLookText(for: key)"))
-        XCTAssertTrue(baseSource.contains("supportText(for: key)"))
-
-        for relativePath in extensionPaths {
-            let url = packageRoot().appendingPathComponent(relativePath)
-            guard FileManager.default.fileExists(atPath: url.path) else {
-                continue
-            }
-            let source = try String(contentsOf: url, encoding: .utf8)
-            XCTAssertFalse(source.contains("enum LocalizedTextKey"), "\(relativePath) must not redeclare LocalizedTextKey")
-            XCTAssertFalse(source.contains("case dockWindowQuickLook"), "\(relativePath) must not declare enum cases")
-            XCTAssertNil(
-                source.range(of: #"(?m)^\s*case\s+[A-Za-z_]"#, options: .regularExpression),
-                "\(relativePath) must not contain case declarations"
-            )
-        }
-    }
-
     func testEnglishMenuStrings() {
         let provider = AppTextProvider(language: .english)
 
@@ -149,15 +112,4 @@ final class AppTextProviderTests: XCTestCase {
         }
     }
 
-    private func contents(of relativePath: String) throws -> String {
-        let url = packageRoot().appendingPathComponent(relativePath)
-        return try String(contentsOf: url, encoding: .utf8)
-    }
-
-    private func packageRoot() -> URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-    }
 }

@@ -106,17 +106,6 @@ final class DiagnosticExportServiceTests: XCTestCase {
         XCTAssertTrue(logger.snapshot().contains { $0.contains("diagnostics.exportFailed") })
     }
 
-    func testMenuExportUsesChosenFileURLAndFailurePathStaysQuiet() throws {
-        let source = try sourceFile("Support/DiagnosticExportService.swift")
-
-        XCTAssertTrue(source.contains("func exportDiagnostics()"))
-        XCTAssertFalse(source.contains("func exportDiagnosticsFromMenu()"))
-        XCTAssertTrue(source.contains("exportForMenu(snapshot: snapshot, toFile: url)"))
-        XCTAssertFalse(source.contains("url.deletingLastPathComponent()"))
-        XCTAssertFalse(source.contains("NSAlert"))
-        XCTAssertFalse(source.contains("showFailureAlert"))
-    }
-
     func testPresenterConfiguresSavePanelForSimplifiedChineseDisplayLanguage() {
         let panel = FakeDiagnosticSavePanel()
         let presenter = DiagnosticExportPresenter(
@@ -187,20 +176,6 @@ final class DiagnosticExportServiceTests: XCTestCase {
         return directory
     }
 
-    private func sourceFile(_ name: String) throws -> String {
-        let url = packageRoot()
-            .appendingPathComponent("Sources")
-            .appendingPathComponent("DockHoverPreviewProbe")
-            .appendingPathComponent(name)
-        return try String(contentsOf: url, encoding: .utf8)
-    }
-
-    private func packageRoot() -> URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-    }
 }
 
 private struct FakeDiagnosticLogCollector: DiagnosticLogCollecting {

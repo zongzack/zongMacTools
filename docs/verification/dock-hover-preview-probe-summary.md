@@ -16,7 +16,7 @@ P2 界面打磨自动验证已完成，覆盖预览面板裁切填满/完整显�
 
 P3 窗口操作增强已完成实现和自动测试，覆盖右键菜单动作模型、公开接口窗口操作服务、关闭/最小化失败降级、菜单期间会话保留、旧会话动作保护和屏幕提示匹配。P3 人工验收尚未执行，不写成通过。
 
-P4 正式应用化已完成实现和自动验证，覆盖稳定签名配置、app bundle 验证、release packaging、版本与 release notes、About / Status、Copy Status、诊断导出和更新策略文档。P4 人工验收尚未执行，不写成通过；稳定签名证书、公证、多显示器等受限项按 `blocked / not available` 记录。
+P4 正式应用化已完成实现和自动验证，覆盖稳定签名配置、app bundle 验证、release packaging、版本与 release notes、About / Status、Copy Status、诊断导出和更新策略文档。P4 人工验收尚未执行，不写成通过；稳定签名证书、公证、多显示器等受限项按 `blocked / not available` 记录。现有 release 脚本不装订公证票据，不能单独证明正式公证发行。
 
 ## 硬门槛结果
 
@@ -164,7 +164,6 @@ P3 人工验收：
 - `AppStatusSnapshotTests`：权限、Launch at Login、设置摘要、签名摘要和 Copy Status 不包含第三方 app/window 明细。
 - `MenuBarControllerTests` / `AppTextProviderTests`：About / Status、Export Diagnostics 菜单入口和中英文文案。
 - `DiagnosticExportServiceTests`：本地诊断导出、缺失 verify script fallback、导出失败日志降级和不记录用户选择的完整路径。
-- `DocumentationConsistencyTests`：README、changelog、更新策略和 P4 manual checklist 不提前宣称人工验收通过。
 
 P4 人工验收：
 
@@ -180,9 +179,11 @@ P4 人工验收：
 ## 相关文档
 
 - 架构设计：[dock-hover-preview-technical-design.md](../architecture/dock-hover-preview-technical-design.md)
-- MVP UI 手动验收：[dock-hover-preview-mvp-ui-manual-checklist.md](dock-hover-preview-mvp-ui-manual-checklist.md)
+- MVP UI 原始手动验收：[dock-hover-preview-mvp-ui-manual-checklist.md](../archive/verification/dock-hover-preview-mvp-ui-manual-checklist.md)
 - P2 UI polish 手动验收：[dock-hover-preview-p2-ui-polish-manual-checklist.md](dock-hover-preview-p2-ui-polish-manual-checklist.md)
+- P3 窗口操作人工验收：[dock-hover-preview-p3-window-actions-manual-checklist.md](dock-hover-preview-p3-window-actions-manual-checklist.md)
 - P4 正式应用化人工验收：[dock-hover-preview-p4-formal-app-manual-checklist.md](dock-hover-preview-p4-formal-app-manual-checklist.md)
-- Probe 原始证据：[dock-hover-preview-probe-checklist.md](dock-hover-preview-probe-checklist.md)
-- 环境变体验证计划：[dock-hover-preview-environment-variant-verification-plan.md](dock-hover-preview-environment-variant-verification-plan.md)
+- 多工具设置窗口人工验收：[dock-hover-preview-multi-tool-settings-window-manual-checklist.md](dock-hover-preview-multi-tool-settings-window-manual-checklist.md)
+- Probe 原始证据：[dock-hover-preview-probe-checklist.md](../archive/verification/dock-hover-preview-probe-checklist.md)
+- 环境变体验证记录与复验指南：[dock-hover-preview-environment-variant-verification-plan.md](dock-hover-preview-environment-variant-verification-plan.md)
 - 后续路线：[roadmap.md](../roadmap.md)

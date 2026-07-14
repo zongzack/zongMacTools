@@ -5,7 +5,7 @@
 ## 当前原则
 
 - 先稳定，再扩功能。
-- 不使用私有 API，除非后续单独评估并明确接受风险。
+- 不使用私有 API。
 - 不复制 DockDoor GPLv3 源码，只参考交互和 API 策略。
 - 屏幕录制权限缺失时继续静默抑制预览 UI。
 - stale hover cancellation 始终是一等状态。
@@ -21,8 +21,8 @@
 - [x] Dock on left。
 - [x] Dock on right。
 - [x] Stage Manager。
-- [x] Multiple displays。当前环境仅 1 个显示器，结果记录为 blocked / not available。
-- [x] 将每个环境变体的结果写入 `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`。
+- [ ] Multiple displays。当前环境仅 1 个显示器，结果记录为 blocked / not available，接入多显示器硬件后复验。
+- [x] 将每个环境变体的结果写入验证总结和环境变体验证记录。
 - [x] 对验证中发现的 bug 单独补测试并修复。
 
 验收标准：
@@ -76,7 +76,7 @@
 
 目标：在 preview 基础上增加少量高价值窗口操作。
 
-开发文档：`docs/plans/dock-hover-preview-p3-window-actions-development-plan.md`。
+历史实施计划：`docs/archive/plans/dock-hover-preview-p3-window-actions-development-plan.md`。
 
 - [x] 卡片右键菜单：Activate。
 - [x] 卡片右键菜单：Hide App。
@@ -96,7 +96,7 @@
 
 目标：减少本地运行摩擦，形成可长期维护的 release 流程。
 
-开发文档：`docs/plans/dock-hover-preview-p4-formal-app-development-plan.md`
+历史实施计划：`docs/archive/plans/dock-hover-preview-p4-formal-app-development-plan.md`
 
 - [x] 使用可配置稳定签名身份，保留 ad-hoc fallback，并提示 TCC caveat。
 - [x] 维护版本号规则和 release notes。
@@ -112,6 +112,13 @@
 - 普通本地安装流程清晰。
 - 诊断信息足够定位权限、Dock 订阅、窗口查询、缩略图和激活问题。
 - release 构建不会污染 git 工作区。
+
+## 当前待验收
+
+- P3 窗口操作真实 app 人工验收。
+- P4 正式应用化人工验收，包括 release artifact、TCC、关于与状态和诊断导出。
+- 多工具设置窗口人工 smoke test。
+- 接入可用硬件后的 Multiple displays 验证。
 
 ## 暂不计划
 

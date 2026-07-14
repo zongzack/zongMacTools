@@ -14,7 +14,7 @@
 - 每张卡片包含应用图标、窗口标题、静态缩略图或占位图。
 - 点击卡片后尝试激活对应窗口，并隐藏面板。
 
-当前状态是 MVP/P0 UI `pass with note`，P1 基础设置实现、自动验证和人工验证均已完成；P2 界面打磨实现、自动验证和人工视觉验证均已完成，人工验证由用户在 2026-07-03 反馈正常；P3 窗口操作增强已完成实现和自动测试，人工验收待执行。普通底部 Dock、全屏 Space、Dock auto-hide、左右 Dock 和 Stage Manager 已完成 P0 验证；多显示器因当前硬件不可用仍为 `blocked / not available`。
+当前状态是 MVP/P0 UI `pass with note`，P1 基础设置实现、自动验证和人工验证均已完成；P2 界面打磨实现、自动验证和人工视觉验证均已完成，人工验证由用户在 2026-07-03 反馈正常；P3 窗口操作增强和 P4 正式应用化均已完成实现与自动测试，人工验收待执行。普通底部 Dock、全屏 Space、Dock auto-hide、左右 Dock 和 Stage Manager 已完成 P0 验证；多显示器因当前硬件不可用仍为 `blocked / not available`。
 
 ## 范围
 
@@ -168,7 +168,7 @@ Dock 恢复：
 ## 已知限制
 
 - 当前只承诺普通可枚举窗口，不承诺最小化窗口或其他 Space 窗口。
-- ScreenCaptureKit 对 Stage Manager、多显示器、全屏 Space 的行为需要继续验证。
+- Multiple displays 的真实行为仍需在可用硬件上验证；已验证场景仍需在后续 macOS 版本回归时复查。
 - 不做精确遮挡检测。
 - 某些 app 的 AX raise 可能只能退化为 app-level activation。
 - 每次 ad-hoc 重新签名 app 后，macOS TCC 可能需要重新授权，系统权限列表显示名称应为 `zongMacTools`。

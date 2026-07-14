@@ -2,7 +2,7 @@
 
 `zongMacTools` 当前主要包含一个 macOS Dock 悬停窗口预览工具原型：`DockHoverPreviewProbe`。它是一个菜单栏常驻应用，用 Swift、AppKit、SwiftUI 和 ScreenCaptureKit 实现类似 Windows 任务栏窗口预览的最小可用能力：鼠标悬停在 Dock 应用图标上时，显示该应用当前可见窗口的横向预览面板，点击卡片即可切换到对应窗口。
 
-项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 界面打磨实现、自动验证和人工验证完成、P3 窗口操作增强实现完成、P4 正式应用化开发阶段。核心悬停预览路径已经可用；P1 新增设置持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；当前设置入口已迁移为“极简菜单 + 独立设置窗口”；P2 改善预览面板的缩略图显示、占位状态、动画和浅色/深色视觉规则；P3 为预览卡片增加右键窗口操作菜单；P4 增加稳定签名配置、关于与状态、诊断导出和 release packaging 流程。P2 人工视觉验证已由用户反馈完成，结果正常；P3 和 P4 人工验收尚未执行。
+项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 界面打磨实现与人工验证完成、P3 窗口操作增强实现与自动验证完成、P4 正式应用化实现与自动验证完成的状态。核心悬停预览路径已经可用；P1 新增设置持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；当前设置入口已迁移为“极简菜单 + 独立设置窗口”；P2 改善预览面板的缩略图显示、占位状态、动画和浅色/深色视觉规则；P3 为预览卡片增加右键窗口操作菜单；P4 增加稳定签名配置、关于与状态、诊断导出和 release packaging 流程。P2 人工视觉验证已由用户反馈完成，结果正常；P3、P4 和多工具源码重组后的人工验收尚未执行。
 
 ## 功能概览
 
@@ -29,7 +29,7 @@
 
 ## 当前状态
 
-MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 界面打磨自动验证状态：`complete`。P2 人工视觉验证状态：`complete`，2026-07-03 用户反馈正常。P3 窗口操作增强状态：实现完成，自动验证通过，人工验收待执行。
+MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 界面打磨自动与人工验证状态：`complete`。P3 窗口操作增强和 P4 正式应用化均已完成实现与自动验证，人工验收待执行。多工具源码重组后的人工 smoke test 也待执行。
 
 已验证内容：
 
@@ -49,13 +49,16 @@ MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 �
 
 - Multiple displays 因当前硬件不可用仍是 `blocked / not available`。
 - P3 真实 app 人工验收尚未执行，详见 `docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`。
+- P4 正式应用化人工验收尚未执行，详见 `docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md`。
 - 多工具源码结构重组后的人工 smoke test 尚未执行：需从 `build/zongMacTools.app` 启动，打开设置并切换 General language 后确认 sidebar/detail 刷新，并确认窗口重新显示时 title 使用当前语言；确认 Dock Window Quick Look 设置仍写入且预览行为响应，确认右键扩展仍只是设置里的禁用占位，覆盖 Dock 悬停预览、右键窗口操作菜单、诊断导出/关于状态、Launch at Login 状态/打开设置路径等主流程。ad-hoc 重新签名后 TCC 可能需要重新添加。
 
 详细记录见：
 
 - `docs/verification/dock-hover-preview-probe-summary.md`
-- `docs/verification/dock-hover-preview-mvp-ui-manual-checklist.md`
 - `docs/verification/dock-hover-preview-p2-ui-polish-manual-checklist.md`
+- `docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`
+- `docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md`
+- `docs/verification/dock-hover-preview-environment-variant-verification-plan.md`
 - `docs/architecture/dock-hover-preview-technical-design.md`
 - `docs/roadmap.md`
 
@@ -142,9 +145,9 @@ orchestrator.start accessibility=true screenRecording=true
 dock.subscribed pid=...
 ```
 
-## 正式本地安装
+## 网站公开测试版发布
 
-生成本地 release artifact：
+当前仓库的公开测试版使用 `ad-hoc` 签名，未使用 Developer ID 签名或 Apple 公证。它适合愿意手动安装和授权的测试用户，不应宣传为已通过 Gatekeeper 验证的正式发行版。发布前先更新 `Info.plist` 中的版本号、build number 和 `docs/releases/CHANGELOG.md`，然后生成 release artifact：
 
 ```bash
 Scripts/package_release_app.sh
@@ -152,7 +155,26 @@ Scripts/package_release_app.sh
 
 脚本默认使用 `CONFIGURATION=release`，调用 `Scripts/build_probe_app.sh` 和 `Scripts/verify_app_bundle.sh build/zongMacTools.app`，并把产物写入 ignored 的 `dist/zongMacTools-<version>-<build>/`。目录中包含 `zongMacTools-<version>-<build>.zip`、`SHA256SUMS.txt`、`release-metadata.txt` 和安装说明。
 
+上传到网站的文件是 ZIP，而不是整个 `build/` 目录，也不要直接上传 `.app` 目录：
+
+- 上传 `zongMacTools-<version>-<build>.zip`。
+- 同时提供 `SHA256SUMS.txt` 中的 SHA-256 值、版本号、build number、发布日期和 release notes。
+- 下载页标注 macOS 14 或更新版本、需要系统辅助功能与屏幕录制权限、当前为未公证公开测试版，以及多显示器尚未验证等已知限制。
+- 说明诊断导出仅在用户主动触发时本地生成；统一日志可能包含本机 app 名称、窗口标题、bundle id 和环境细节。
+
+用户下载 ZIP 后应解压，将 `zongMacTools.app` 移到 `/Applications`，再打开。因为当前是未获 Developer ID 信任的包，Gatekeeper 可能阻止首次启动；用户可在 Finder 中按住 Control 点击 app，选择“打开”并在确认后继续。不要建议用户关闭 Gatekeeper 或执行绕过系统安全策略的命令。首次运行或 app 身份变化后，用户还需要在系统设置中为 `/Applications/zongMacTools.app` 授予系统辅助功能和屏幕录制权限。
+
+下载者可用以下命令校验 ZIP 是否完整：
+
+```bash
+shasum -a 256 zongMacTools-<version>-<build>.zip
+```
+
+## 正式本地安装
+
 轻量本地更新流程是：校验 checksum，把 `zongMacTools.app` 复制到 `/Applications` 或你的固定安装目录，然后按需重新确认系统辅助功能和屏幕录制权限。P4 不直接启用 Sparkle 自动更新；更新策略见 `docs/architecture/release-update-strategy.md`。
+
+面向普通用户的正式站外发行应改用 Developer ID Application 签名、Apple 公证、票据装订和干净环境安装验证；在这些步骤完成前，继续将下载包标记为公开测试版。
 
 ## 使用方式
 
@@ -350,6 +372,6 @@ MVP 阶段坚持以下边界：
 1. 继续补跑多显示器验证；当前硬件不可用时保持 `blocked / not available`。
 2. 执行 P3 窗口操作增强人工验收，重点覆盖右键菜单、关闭/最小化失败降级、菜单期间会话保留和屏幕录制权限缺失。
 3. 执行 P4 正式应用化人工验收，重点覆盖稳定签名、TCC、关于与状态、诊断导出、release artifact、Launch at Login 和屏幕录制权限缺失静默抑制。
-4. 继续评估是否需要持久设置页、应用过滤或更完整的窗口状态处理。
+4. 在上述验收完成前，不扩展新产品功能。
 
 完整后续清单见 `docs/roadmap.md`。

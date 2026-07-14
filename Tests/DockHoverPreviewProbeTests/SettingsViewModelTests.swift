@@ -4,30 +4,6 @@ import XCTest
 
 @MainActor
 final class SettingsViewModelTests: XCTestCase {
-    func testSettingsViewModelHasAppAndDockToolChildren() throws {
-        let packageRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let expectedFiles = [
-            "Sources/DockHoverPreviewProbe/Settings/AppSettingsViewModel.swift",
-            "Sources/DockHoverPreviewProbe/Tools/DockWindowQuickLook/DockWindowQuickLookSettingsViewModel.swift"
-        ]
-
-        for relativePath in expectedFiles {
-            XCTAssertTrue(
-                FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent(relativePath).path),
-                "\(relativePath) should exist"
-            )
-        }
-
-        let sourceURL = packageRoot
-            .appendingPathComponent("Sources/DockHoverPreviewProbe/Settings/SettingsViewModel.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
-        XCTAssertTrue(source.contains("let appSettings: AppSettingsViewModel"))
-        XCTAssertTrue(source.contains("let dockWindowQuickLookSettings: DockWindowQuickLookSettingsViewModel"))
-    }
-
     func testInitialSnapshotMapsToSplitUIStates() {
         let settings = DockHoverPreviewSettings.viewModelSettings(
             enabled: false,

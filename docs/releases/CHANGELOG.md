@@ -7,7 +7,7 @@
 - P4 正式应用化：新增稳定签名配置、app bundle 验证脚本、release packaging 脚本。
 - P4 正式应用化：新增 About / Status、Copy Status 和 Export Diagnostics 菜单入口。
 - P4 正式应用化：新增本地诊断导出，包含状态快照、签名摘要、bundle 验证摘要和最近本工具统一日志。
-- P4 正式应用化：新增 Sparkle 与轻量本地更新流程评估文档。
+- P4 正式应用化：新增 Sparkle 评估与轻量本地更新流程文档；Sparkle 尚未引入。
 
 Validation commands:
 

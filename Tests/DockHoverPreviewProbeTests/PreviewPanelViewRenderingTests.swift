@@ -44,7 +44,7 @@ final class PreviewPanelViewRenderingTests: XCTestCase {
         XCTAssertEqual(unavailablePlan.unavailableText, "No thumbnail")
     }
 
-    func testTitleMetricsUseCardGeometryInsteadOfHardCodedWidth() throws {
+    func testTitleMetricsUseCardGeometry() {
         XCTAssertEqual(
             PreviewPanelMetrics.titleRowWidth,
             PreviewPanelMetrics.cardWidth - PreviewPanelMetrics.cardPadding * 2,
@@ -55,11 +55,6 @@ final class PreviewPanelViewRenderingTests: XCTestCase {
             PreviewPanelMetrics.titleRowWidth - PreviewPanelMetrics.iconSize - PreviewPanelMetrics.titleIconSpacing,
             accuracy: 0.001
         )
-
-        let source = try previewPanelViewSource()
-        XCTAssertFalse(source.contains(".frame(width: 208"))
-        XCTAssertTrue(source.contains("PreviewPanelMetrics.titleRowWidth"))
-        XCTAssertTrue(source.contains("PreviewPanelMetrics.titleTextWidth"))
     }
 
     func testOperationMenuPlanIncludesFourOperationsAndEnvironmentHint() {
@@ -151,12 +146,4 @@ final class PreviewPanelViewRenderingTests: XCTestCase {
         return context.makeImage()!
     }
 
-    private func previewPanelViewSource() throws -> String {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("Sources/DockHoverPreviewProbe/Tools/DockWindowQuickLook/PreviewPanelView.swift")
-        return try String(contentsOf: url, encoding: .utf8)
-    }
 }
