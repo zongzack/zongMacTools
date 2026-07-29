@@ -153,6 +153,7 @@ private final class ActivationSpy {
     }
 }
 
+@MainActor
 private final class FakePermissionService: PermissionService {
     var currentState = PermissionState(accessibilityGranted: true, screenRecordingGranted: true)
 

@@ -13,8 +13,8 @@ final class ProbeModelsTests: XCTestCase {
 
     func testThumbnailCacheKeyIncludesFrameSizeAndTitle() {
         let id = PreviewWindowID(pid: 1, windowID: 2)
-        let key = ThumbnailCacheKey(id: id, frame: CGRect(x: 0, y: 0, width: 640, height: 480), title: "One")
-        let changedTitle = ThumbnailCacheKey(id: id, frame: CGRect(x: 0, y: 0, width: 640, height: 480), title: "Two")
+        let key = ThumbnailCacheKey(id: id, captureFrame: CGRect(x: 0, y: 0, width: 640, height: 480), title: "One")
+        let changedTitle = ThumbnailCacheKey(id: id, captureFrame: CGRect(x: 0, y: 0, width: 640, height: 480), title: "Two")
         XCTAssertNotEqual(key, changedTitle)
     }
 

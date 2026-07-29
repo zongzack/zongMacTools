@@ -95,6 +95,10 @@ extension AppTextProvider {
             "Dock Window Quick Look"
         case .dockWindowQuickLookDescription:
             "Hover over Dock app icons to quickly view that app's window cards."
+        case .desktopWindowPeek:
+            "Desktop Window Peek"
+        case .desktopWindowPeekDescription:
+            "Show a high-resolution desktop mirror when hovering a window card"
         case .performanceAndFeel:
             "Performance & Feel"
         case .exclusionRules:
@@ -166,6 +170,10 @@ extension AppTextProvider {
             "Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}"
         case .dockWindowQuickLookDescription:
             "\u{60AC}\u{505C}\u{5728} Dock \u{5E94}\u{7528}\u{56FE}\u{6807}\u{4E0A}\u{65F6}\u{FF0C}\u{5FEB}\u{901F}\u{67E5}\u{770B}\u{8BE5}\u{5E94}\u{7528}\u{7684}\u{7A97}\u{53E3}\u{5361}\u{7247}\u{3002}"
+        case .desktopWindowPeek:
+            "\u{684C}\u{9762}\u{7A97}\u{53E3}\u{9884}\u{89C8}"
+        case .desktopWindowPeekDescription:
+            "\u{60AC}\u{505C}\u{7A97}\u{53E3}\u{5361}\u{7247}\u{65F6}\u{5728}\u{684C}\u{9762}\u{663E}\u{793A}\u{9AD8}\u{6E05}\u{955C}\u{50CF}"
         case .performanceAndFeel:
             "\u{6027}\u{80FD}\u{4E0E}\u{624B}\u{611F}"
         case .exclusionRules:

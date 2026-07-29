@@ -3,6 +3,7 @@ import CoreGraphics
 import XCTest
 @testable import DockHoverPreviewProbe
 
+@MainActor
 final class ThumbnailServiceTests: XCTestCase {
     func testThumbnailCacheExpiresAfterTenSeconds() async {
         let logger = ProbeLogger()
@@ -86,11 +87,12 @@ final class ThumbnailServiceTests: XCTestCase {
             cgWindowID: windowID,
             app: NSRunningApplication.current,
             title: "Window \(windowID)",
-            frame: CGRect(x: 0, y: 0, width: 640, height: 480),
-            scWindow: nil,
+            captureFrame: CGRect(x: 0, y: 0, width: 640, height: 480),
             axElement: nil,
             appIcon: NSImage(size: NSSize(width: 32, height: 32)),
-            thumbnailSource: thumbnailSource
+            thumbnailSource: thumbnailSource,
+            desktopPeekCaptureSource: nil,
+            desktopPeekEligible: false
         )
     }
 

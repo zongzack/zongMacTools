@@ -4,6 +4,18 @@ import XCTest
 @testable import DockHoverPreviewProbe
 
 final class PreviewPanelViewRenderingTests: XCTestCase {
+    func testContextMenuWillOpenIsSentBeforeMenuBegan() {
+        let id = PreviewWindowID(pid: 100, windowID: 1)
+        var actions: [PreviewPanelAction] = []
+
+        PreviewCardContextMenuEventOrder.emitBeforeMenuTracking(
+            for: id,
+            onAction: { actions.append($0) }
+        )
+
+        XCTAssertEqual(actions, [.contextMenuWillOpen(id), .contextMenuBegan(id)])
+    }
+
     func testFillThumbnailUsesFillSizingAndFixedClippedContainer() {
         let card = makeCard(sourceFrame: CGRect(x: 0, y: 0, width: 1600, height: 900), thumbnail: makeImage())
 

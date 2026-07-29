@@ -56,6 +56,28 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertTrue(dockViewModel.state.isCurrentExclusionTargetExcluded)
     }
 
+    func testDesktopWindowPeekMapsWritesObservesAndFollowsMasterDisabledState() {
+        let store = RecordingSettingsStore(snapshot: .defaults)
+        let viewModel = DockWindowQuickLookSettingsViewModel(
+            settingsStore: store,
+            targetTracker: AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools"),
+            logger: ProbeLogger()
+        )
+
+        XCTAssertTrue(viewModel.state.isDesktopWindowPeekEnabled)
+        XCTAssertTrue(viewModel.state.isDesktopWindowPeekControlEnabled)
+        viewModel.setDesktopWindowPeekEnabled(false)
+        XCTAssertFalse(viewModel.state.isDesktopWindowPeekEnabled)
+        XCTAssertTrue(store.snapshot.isDockHoverPreviewEnabled)
+
+        var external = store.snapshot
+        external.isDesktopWindowPeekEnabled = true
+        external.isDockHoverPreviewEnabled = false
+        store.replaceSnapshot(external)
+        XCTAssertTrue(viewModel.state.isDesktopWindowPeekEnabled)
+        XCTAssertFalse(viewModel.state.isDesktopWindowPeekControlEnabled)
+    }
+
     func testStoreObserverRefreshesSplitMappedStates() {
         let store = RecordingSettingsStore(snapshot: .defaults)
         let appViewModel = AppSettingsViewModel(

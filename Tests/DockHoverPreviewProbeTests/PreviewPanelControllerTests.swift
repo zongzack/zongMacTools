@@ -5,6 +5,80 @@ import XCTest
 
 @MainActor
 final class PreviewPanelControllerTests: XCTestCase {
+    func testPanelControllerAssignsMonotonicHoverSequences() throws {
+        let controller = PreviewPanelController(logger: ProbeLogger())
+        var actions: [PreviewPanelAction] = []
+        let first = PreviewWindowID(pid: 100, windowID: 1)
+        let second = PreviewWindowID(pid: 100, windowID: 2)
+        controller.show(model: makeModel(windowIDs: [1, 2]), anchor: makeAnchor(), sessionEpoch: 41) {
+            actions.append($0)
+        }
+
+        controller.routeHoverIntent(windowID: first, isInside: true, sessionEpoch: 41)
+        controller.routeHoverIntent(windowID: first, isInside: false, sessionEpoch: 41)
+        controller.routeHoverIntent(windowID: second, isInside: true, sessionEpoch: 41)
+
+        XCTAssertEqual(actions, [
+            .hoverEntered(first, sessionEpoch: 41, sequence: 1),
+            .hoverExited(first, sessionEpoch: 41, sequence: 2),
+            .hoverEntered(second, sessionEpoch: 41, sequence: 3)
+        ])
+    }
+
+    func testOldHoverIntentRelayCannotRouteIntoReplacementSession() throws {
+        let controller = PreviewPanelController(logger: ProbeLogger())
+        let id = PreviewWindowID(pid: 100, windowID: 1)
+        var actions: [PreviewPanelAction] = []
+        controller.show(model: makeModel(windowIDs: [1]), anchor: makeAnchor(), sessionEpoch: 41) {
+            actions.append($0)
+        }
+        let oldRelay = PreviewCardHoverIntentRelay(windowID: id, sessionEpoch: 41, router: controller)
+
+        controller.show(model: makeModel(windowIDs: [1]), anchor: makeAnchor(), sessionEpoch: 42) {
+            actions.append($0)
+        }
+        oldRelay.emit(isInside: true)
+        let currentRelay = PreviewCardHoverIntentRelay(windowID: id, sessionEpoch: 42, router: controller)
+        currentRelay.emit(isInside: true)
+        currentRelay.emit(isInside: false)
+
+        XCTAssertEqual(actions, [
+            .hoverEntered(id, sessionEpoch: 42, sequence: 1),
+            .hoverExited(id, sessionEpoch: 42, sequence: 2)
+        ])
+    }
+
+    func testOldEscapeRelayKeepsItsOriginalSessionEpochAfterReplacement() {
+        let controller = PreviewPanelController(logger: ProbeLogger())
+        var requestedEpochs: [UInt64] = []
+        controller.onRequestHide = { _, epoch in
+            requestedEpochs.append(epoch)
+        }
+
+        controller.show(model: makeModel(), anchor: makeAnchor(), sessionEpoch: 41) { _ in }
+        let oldRelay = PreviewPanelEscapeIntentRelay(
+            sessionEpoch: 41,
+            controller: controller
+        )
+        controller.show(model: makeModel(), anchor: makeAnchor(), sessionEpoch: 42) { _ in }
+
+        oldRelay.emit(reason: "escape")
+
+        XCTAssertEqual(requestedEpochs, [41])
+    }
+
+    func testExistingPreviewPanelUsesSharedLevelPolicy() throws {
+        let controller = PreviewPanelController(logger: ProbeLogger())
+        controller.show(model: makeModel(), anchor: makeAnchor(), sessionEpoch: 1) { _ in }
+        defer { controller.hide(reason: "test") }
+
+        let panel = try XCTUnwrap(controller.inspection().panel)
+        XCTAssertEqual(panel.level, WindowPeekPanelLevels.preview)
+        XCTAssertFalse(panel.canBecomeKey)
+        XCTAssertFalse(panel.canBecomeMain)
+        XCTAssertFalse(panel.ignoresMouseEvents)
+    }
+
     func testMouseInsidePanelIsFalseBeforePanelIsShown() {
         let controller = PreviewPanelController(logger: ProbeLogger())
 
@@ -21,7 +95,7 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(), anchor: makeAnchor(), onAction: { _ in })
+        controller.show(model: makeModel(), anchor: makeAnchor(), sessionEpoch: 1, onAction: { _ in })
         controller.hide(reason: "test")
 
         let calls = animator.animationCalls
@@ -42,7 +116,7 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(), anchor: makeAnchor(), onAction: { _ in })
+        controller.show(model: makeModel(), anchor: makeAnchor(), sessionEpoch: 1, onAction: { _ in })
         controller.hide(reason: "test")
 
         let calls = animator.animationCalls
@@ -63,7 +137,7 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(appName: "Initial", windowIDs: [1]), anchor: anchor, onAction: { _ in })
+        controller.show(model: makeModel(appName: "Initial", windowIDs: [1]), anchor: anchor, sessionEpoch: 1, onAction: { _ in })
         controller.update(model: makeModel(appName: "Updated", windowIDs: [1, 2, 3]))
 
         XCTAssertEqual(animator.animationCalls.filter { $0.kind == .show }.count, 1)
@@ -90,7 +164,7 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(), anchor: makeAnchor(), onAction: { _ in })
+        controller.show(model: makeModel(), anchor: makeAnchor(), sessionEpoch: 1, onAction: { _ in })
         let visibleFrame = try XCTUnwrap(controller.panelFrame())
 
         controller.hide(reason: "mouseLeftPreviewRegion")
@@ -99,6 +173,26 @@ final class PreviewPanelControllerTests: XCTestCase {
         XCTAssertFalse(controller.isMouseInsidePanel(CGPoint(x: visibleFrame.midX, y: visibleFrame.midY)))
         XCTAssertEqual(animator.latestPanel?.ignoresMouseEvents, true)
         XCTAssertEqual(animator.pendingHideCompletionCount, 1)
+    }
+
+    func testImmediateDismissalOrdersOutPanelWithoutSchedulingHideAnimation() throws {
+        let animator = RecordingPanelAnimationController()
+        let controller = PreviewPanelController(
+            logger: ProbeLogger(),
+            motionPreferences: FakeMotionPreferenceProvider(shouldReduceMotion: false),
+            animator: animator
+        )
+        defer { animator.orderOutTrackedPanels() }
+
+        controller.show(model: makeModel(), anchor: makeAnchor(), sessionEpoch: 1, onAction: { _ in })
+        let panel = try XCTUnwrap(animator.latestPanel)
+
+        controller.hideImmediately(reason: "primarySelection")
+
+        XCTAssertNil(controller.panelFrame())
+        XCTAssertFalse(panel.isVisible)
+        XCTAssertEqual(animator.pendingHideCompletionCount, 0)
+        XCTAssertFalse(animator.animationCalls.contains { $0.kind == .hide })
     }
 
     func testStaleHideCompletionDoesNotOrderOutPanelShownAgain() throws {
@@ -111,14 +205,14 @@ final class PreviewPanelControllerTests: XCTestCase {
         defer { animator.orderOutTrackedPanels() }
 
         var actions: [PreviewPanelAction] = []
-        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200)) {
+        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200), sessionEpoch: 1) {
             actions.append($0)
         }
         controller.hide(reason: "transition")
         XCTAssertNil(controller.panelFrame())
         XCTAssertEqual(animator.pendingHideCompletionCount, 1)
 
-        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700)) {
+        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700), sessionEpoch: 2) {
             actions.append($0)
         }
         let frameAfterSecondShow = try XCTUnwrap(controller.panelFrame())
@@ -151,14 +245,14 @@ final class PreviewPanelControllerTests: XCTestCase {
 
         var firstActions: [PreviewPanelAction] = []
         var secondActions: [PreviewPanelAction] = []
-        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200)) {
+        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200), sessionEpoch: 1) {
             firstActions.append($0)
         }
         let firstHostedView = try XCTUnwrap(animator.hostedView)
         let firstID = try XCTUnwrap(firstHostedView.model.cards.first?.id)
 
         controller.hide(reason: "transition")
-        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700)) {
+        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700), sessionEpoch: 2) {
             secondActions.append($0)
         }
 
@@ -177,9 +271,9 @@ final class PreviewPanelControllerTests: XCTestCase {
         )
         defer { animator.orderOutTrackedPanels() }
 
-        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200), onAction: { _ in })
+        controller.show(model: makeModel(appName: "First", windowIDs: [1]), anchor: makeAnchor(dockItemX: 200), sessionEpoch: 1, onAction: { _ in })
         controller.hide(reason: "transition")
-        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700), onAction: { _ in })
+        controller.show(model: makeModel(appName: "Second", windowIDs: [2]), anchor: makeAnchor(dockItemX: 700), sessionEpoch: 2, onAction: { _ in })
 
         let panel = try XCTUnwrap(animator.latestPanel)
         panel.alphaValue = 0.37

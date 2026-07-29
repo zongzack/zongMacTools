@@ -1,12 +1,13 @@
 import AppKit
-import ApplicationServices
+@preconcurrency import ApplicationServices
 import CoreGraphics
 import ScreenCaptureKit
 
 private let axMatchThreshold = 0.72
 
-protocol WindowQueryService: Sendable {
-    func windows(for app: NSRunningApplication, limit: Int) async -> [PreviewWindow]
+@MainActor
+protocol WindowQueryService: AnyObject {
+    func query(for app: NSRunningApplication, limit: Int) async -> WindowQueryResult
 }
 
 struct AXMatchDiagnostics {
@@ -43,7 +44,8 @@ struct AXWindowSnapshot {
     let element: AXUIElement?
 }
 
-final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Sendable {
+@MainActor
+final class ScreenCaptureWindowQueryService: WindowQueryService {
     private let logger: ProbeLogger
     private static let fallbackWindowIDBase: UInt32 = 0xFF00_0000
 
@@ -51,10 +53,28 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
         self.logger = logger
     }
 
-    func windows(for app: NSRunningApplication, limit: Int) async -> [PreviewWindow] {
+    func query(for app: NSRunningApplication, limit: Int) async -> WindowQueryResult {
         let start = CFAbsoluteTimeGetCurrent()
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+            let screens = WindowPeekGeometry.makeScreens(
+                captureDisplays: content.displays.map {
+                    WindowPeekCaptureDisplay(identifier: $0.displayID, frame: $0.frame)
+                },
+                appKitDisplays: NSScreen.screens.compactMap { screen in
+                    guard let number = screen.deviceDescription[
+                        NSDeviceDescriptionKey("NSScreenNumber")
+                    ] as? NSNumber else {
+                        return nil
+                    }
+                    return WindowPeekAppKitDisplay(
+                        identifier: number.uint32Value,
+                        localizedName: screen.localizedName,
+                        frame: screen.frame,
+                        backingScaleFactor: screen.backingScaleFactor
+                    )
+                }
+            )
             let candidates = content.windows.filter { window in
                 let ownerMatchesPID = window.owningApplication?.processID == app.processIdentifier
                 let ownerMatchesBundle = window.owningApplication?.bundleIdentifier == app.bundleIdentifier
@@ -84,8 +104,8 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
                 mapped = mappedCandidates.map(\.previewWindow)
             }
             let sorted = mapped.sorted { lhs, rhs in
-                let lhsArea = lhs.frame.width * lhs.frame.height
-                let rhsArea = rhs.frame.width * rhs.frame.height
+                let lhsArea = lhs.captureFrame.width * lhs.captureFrame.height
+                let rhsArea = rhs.captureFrame.width * rhs.captureFrame.height
                 if lhsArea != rhsArea { return lhsArea > rhsArea }
                 if lhs.title != rhs.title { return lhs.title < rhs.title }
                 return lhs.cgWindowID < rhs.cgWindowID
@@ -95,12 +115,12 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
             let elapsedMS = Int((CFAbsoluteTimeGetCurrent() - start) * 1000)
             logger.info("windows.query app=\(app.localizedName ?? "unknown") count=\(limited.count) totalCount=\(sorted.count) limit=\(safeLimit) elapsedMS=\(elapsedMS)")
             limited.forEach { window in
-                logger.info("windows.item id=\(window.cgWindowID) pid=\(window.id.pid) title=\(window.title) frame=\(window.frame) axMatched=\(window.axElement != nil)")
+                logger.info("windows.item id=\(window.cgWindowID) pid=\(window.id.pid) title=\(window.title) captureFrame=\(window.captureFrame) axMatched=\(window.axElement != nil)")
             }
-            return limited
+            return WindowQueryResult(windows: limited, screens: screens)
         } catch {
             logger.error("windows.queryFailed app=\(app.localizedName ?? "unknown") error=\(error)")
-            return []
+            return WindowQueryResult(windows: [], screens: [])
         }
     }
 
@@ -121,16 +141,24 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
         let title = match.snapshot?.title
             ?? scWindow.title
             ?? "(untitled)"
+        let id = PreviewWindowID(pid: app.processIdentifier, windowID: scWindow.windowID)
+        let desktopPeekCaptureSource = match.snapshot == nil
+            ? nil
+            : ScreenCaptureKitWindowPeekCaptureSource(windowID: id, window: scWindow)
         let previewWindow = PreviewWindow(
-            id: PreviewWindowID(pid: app.processIdentifier, windowID: scWindow.windowID),
+            id: id,
             cgWindowID: scWindow.windowID,
             app: app,
             title: title,
-            frame: scWindow.frame,
-            scWindow: scWindow,
+            captureFrame: scWindow.frame,
             axElement: match.snapshot?.element,
             appIcon: app.icon ?? NSImage(size: NSSize(width: 32, height: 32)),
-            thumbnailSource: .screenCaptureKit(scWindow)
+            thumbnailSource: .screenCaptureKit(scWindow),
+            desktopPeekCaptureSource: desktopPeekCaptureSource,
+            desktopPeekEligible: Self.desktopPeekEligibility(
+                hasCaptureSource: desktopPeekCaptureSource != nil,
+                axMatched: match.snapshot != nil
+            )
         )
         return (previewWindow, match.diagnostics)
     }
@@ -170,13 +198,18 @@ final class ScreenCaptureWindowQueryService: WindowQueryService, @unchecked Send
                     cgWindowID: windowID,
                     app: app,
                     title: axWindow.title,
-                    frame: axWindow.frame,
-                    scWindow: nil,
+                    captureFrame: axWindow.frame,
                     axElement: axWindow.element,
                     appIcon: app.icon ?? NSImage(size: NSSize(width: 32, height: 32)),
-                    thumbnailSource: nil
+                    thumbnailSource: nil,
+                    desktopPeekCaptureSource: nil,
+                    desktopPeekEligible: false
                 )
             }
+    }
+
+    static func desktopPeekEligibility(hasCaptureSource: Bool, axMatched: Bool) -> Bool {
+        hasCaptureSource && axMatched
     }
 
     static func shouldUseAXFallback(candidateCount: Int, matchedCandidateCount: Int, axWindowCount: Int) -> Bool {

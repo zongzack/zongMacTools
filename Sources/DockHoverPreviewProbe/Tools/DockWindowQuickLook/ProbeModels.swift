@@ -20,21 +20,27 @@ struct PreviewWindowID: Hashable, Sendable {
     let windowID: CGWindowID
 }
 
-enum ThumbnailSource: @unchecked Sendable {
+enum ThumbnailSource {
     case screenCaptureKit(SCWindow)
     case coreGraphics(CGWindowID)
 }
 
-struct PreviewWindow: Identifiable, @unchecked Sendable {
+struct PreviewWindow: Identifiable {
     let id: PreviewWindowID
     let cgWindowID: CGWindowID
     let app: NSRunningApplication
     let title: String
-    let frame: CGRect
-    let scWindow: SCWindow?
+    let captureFrame: CGRect
     let axElement: AXUIElement?
     let appIcon: NSImage
     let thumbnailSource: ThumbnailSource?
+    let desktopPeekCaptureSource: (any WindowPeekCaptureSource)?
+    let desktopPeekEligible: Bool
+}
+
+struct WindowQueryResult {
+    let windows: [PreviewWindow]
+    let screens: [WindowPeekScreen]
 }
 
 struct ThumbnailCacheKey: Hashable, Sendable {
@@ -43,10 +49,10 @@ struct ThumbnailCacheKey: Hashable, Sendable {
     let height: Int
     let title: String
 
-    init(id: PreviewWindowID, frame: CGRect, title: String) {
+    init(id: PreviewWindowID, captureFrame: CGRect, title: String) {
         self.id = id
-        self.width = Int(frame.width.rounded())
-        self.height = Int(frame.height.rounded())
+        self.width = Int(captureFrame.width.rounded())
+        self.height = Int(captureFrame.height.rounded())
         self.title = title
     }
 }

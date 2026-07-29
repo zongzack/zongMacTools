@@ -3,6 +3,8 @@ import Foundation
 enum LocalizedTextKey: String, CaseIterable {
     case dockWindowQuickLook
     case dockWindowQuickLookDescription
+    case desktopWindowPeek
+    case desktopWindowPeekDescription
     case openSettings
     case general
     case settingsSectionApplications

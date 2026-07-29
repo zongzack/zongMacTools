@@ -1,5 +1,12 @@
 import Foundation
 
+protocol SettingsKeyValueStoring: AnyObject {
+    func object(forKey defaultName: String) -> Any?
+    func set(_ value: Any?, forKey defaultName: String)
+}
+
+extension UserDefaults: SettingsKeyValueStoring {}
+
 struct AppSettingsSnapshot: Equatable, Sendable {
     var displayLanguage: DisplayLanguage
 
@@ -14,6 +21,7 @@ struct AppSettingsSnapshot: Equatable, Sendable {
 
 struct DockWindowQuickLookSettingsSnapshot: Equatable, Sendable {
     var isDockHoverPreviewEnabled: Bool
+    var isDesktopWindowPeekEnabled: Bool
     var hoverDelayMilliseconds: Int
     var panelRetentionMode: PanelRetentionMode
     var maxCardCount: Int
@@ -22,6 +30,7 @@ struct DockWindowQuickLookSettingsSnapshot: Equatable, Sendable {
 
     init(
         isDockHoverPreviewEnabled: Bool,
+        isDesktopWindowPeekEnabled: Bool,
         hoverDelayMilliseconds: Int,
         panelRetentionMode: PanelRetentionMode,
         maxCardCount: Int,
@@ -29,6 +38,7 @@ struct DockWindowQuickLookSettingsSnapshot: Equatable, Sendable {
         displayLanguage: DisplayLanguage
     ) {
         self.isDockHoverPreviewEnabled = isDockHoverPreviewEnabled
+        self.isDesktopWindowPeekEnabled = isDesktopWindowPeekEnabled
         self.hoverDelayMilliseconds = hoverDelayMilliseconds
         self.panelRetentionMode = panelRetentionMode
         self.maxCardCount = maxCardCount
@@ -39,6 +49,7 @@ struct DockWindowQuickLookSettingsSnapshot: Equatable, Sendable {
     init(settings: DockHoverPreviewSettings) {
         self.init(
             isDockHoverPreviewEnabled: settings.isDockHoverPreviewEnabled,
+            isDesktopWindowPeekEnabled: settings.isDesktopWindowPeekEnabled,
             hoverDelayMilliseconds: settings.hoverDelayMilliseconds,
             panelRetentionMode: settings.panelRetentionMode,
             maxCardCount: settings.maxCardCount,
@@ -126,6 +137,7 @@ extension DockHoverPreviewSettingsStore {
 
         update { settings in
             settings.isDockHoverPreviewEnabled = next.isDockHoverPreviewEnabled
+            settings.isDesktopWindowPeekEnabled = next.isDesktopWindowPeekEnabled
             settings.hoverDelayMilliseconds = next.hoverDelayMilliseconds
             settings.panelRetentionMode = next.panelRetentionMode
             settings.maxCardCount = next.maxCardCount
@@ -138,16 +150,20 @@ extension DockHoverPreviewSettingsStore {
 final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
     private typealias Observer = @MainActor (DockHoverPreviewSettings) -> Void
 
-    private let userDefaults: UserDefaults
+    private let persistence: any SettingsKeyValueStoring
     private let logger: ProbeLogger
     private var observers: [UUID: Observer] = [:]
 
     private(set) var snapshot: DockHoverPreviewSettings
 
-    init(userDefaults: UserDefaults = .standard, logger: ProbeLogger) {
-        self.userDefaults = userDefaults
+    convenience init(userDefaults: UserDefaults = .standard, logger: ProbeLogger) {
+        self.init(persistence: userDefaults, logger: logger)
+    }
+
+    init(persistence: any SettingsKeyValueStoring, logger: ProbeLogger) {
+        self.persistence = persistence
         self.logger = logger
-        self.snapshot = Self.readSnapshot(from: userDefaults, logger: logger)
+        self.snapshot = Self.readSnapshot(from: persistence, logger: logger)
     }
 
     @discardableResult
@@ -166,33 +182,53 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
         transform(&next)
         next = Self.sanitized(next, logger: logger)
 
-        persist(next)
-        snapshot = next
-        logger.info(Self.changedLogLine(for: next))
+        let persisted = persist(next)
+        snapshot = persisted
+        logger.info(Self.changedLogLine(for: persisted))
 
         let currentObservers = Array(observers.values)
-        currentObservers.forEach { $0(next) }
+        currentObservers.forEach { $0(persisted) }
     }
 
-    private func persist(_ settings: DockHoverPreviewSettings) {
-        userDefaults.set(settings.isDockHoverPreviewEnabled, forKey: SettingsKey.isEnabled.rawValue)
-        userDefaults.set(settings.hoverDelayMilliseconds, forKey: SettingsKey.hoverDelayMilliseconds.rawValue)
-        userDefaults.set(settings.panelRetentionMode.rawValue, forKey: SettingsKey.panelRetentionMode.rawValue)
-        userDefaults.set(settings.maxCardCount, forKey: SettingsKey.maxCardCount.rawValue)
-        userDefaults.set(Self.sortedExcludedApps(from: settings), forKey: SettingsKey.excludedAppBundleIdentifiers.rawValue)
-        userDefaults.set(settings.displayLanguage.rawValue, forKey: SettingsKey.displayLanguage.rawValue)
+    private func persist(_ settings: DockHoverPreviewSettings) -> DockHoverPreviewSettings {
+        persistence.set(settings.isDockHoverPreviewEnabled, forKey: SettingsKey.isEnabled.rawValue)
+        persistence.set(settings.isDesktopWindowPeekEnabled, forKey: SettingsKey.desktopWindowPeekEnabled.rawValue)
+        persistence.set(settings.hoverDelayMilliseconds, forKey: SettingsKey.hoverDelayMilliseconds.rawValue)
+        persistence.set(settings.panelRetentionMode.rawValue, forKey: SettingsKey.panelRetentionMode.rawValue)
+        persistence.set(settings.maxCardCount, forKey: SettingsKey.maxCardCount.rawValue)
+        persistence.set(Self.sortedExcludedApps(from: settings), forKey: SettingsKey.excludedAppBundleIdentifiers.rawValue)
+        persistence.set(settings.displayLanguage.rawValue, forKey: SettingsKey.displayLanguage.rawValue)
+
+        var persisted = settings
+        guard let object = persistence.object(forKey: SettingsKey.desktopWindowPeekEnabled.rawValue),
+              let number = object as? NSNumber,
+              Self.isBooleanNumber(number),
+              number.boolValue == settings.isDesktopWindowPeekEnabled
+        else {
+            logger.warning("settings.persistFailed key=\(SettingsKey.desktopWindowPeekEnabled.rawValue)")
+            persisted.isDesktopWindowPeekEnabled = true
+            return persisted
+        }
+        return persisted
     }
 
-    private static func readSnapshot(from userDefaults: UserDefaults, logger: ProbeLogger) -> DockHoverPreviewSettings {
+    private static func readSnapshot(
+        from persistence: any SettingsKeyValueStoring,
+        logger: ProbeLogger
+    ) -> DockHoverPreviewSettings {
         var settings = DockHoverPreviewSettings.defaults
 
-        if let value = readBool(for: .isEnabled, from: userDefaults, logger: logger) {
+        if let value = readBool(for: .isEnabled, from: persistence, logger: logger) {
             settings.isDockHoverPreviewEnabled = value
+        }
+
+        if let value = readBool(for: .desktopWindowPeekEnabled, from: persistence, logger: logger) {
+            settings.isDesktopWindowPeekEnabled = value
         }
 
         if let value = readInt(
             for: .hoverDelayMilliseconds,
-            from: userDefaults,
+            from: persistence,
             validValues: DockHoverPreviewSettings.validHoverDelayMilliseconds,
             defaultValue: DockHoverPreviewSettings.defaults.hoverDelayMilliseconds,
             logger: logger
@@ -202,7 +238,7 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
 
         if let value = readEnum(
             for: .panelRetentionMode,
-            from: userDefaults,
+            from: persistence,
             defaultValue: DockHoverPreviewSettings.defaults.panelRetentionMode,
             logger: logger,
             type: PanelRetentionMode.self
@@ -212,7 +248,7 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
 
         if let value = readInt(
             for: .maxCardCount,
-            from: userDefaults,
+            from: persistence,
             validValues: DockHoverPreviewSettings.validMaxCardCounts,
             defaultValue: DockHoverPreviewSettings.defaults.maxCardCount,
             logger: logger
@@ -220,13 +256,13 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
             settings.maxCardCount = value
         }
 
-        if let values = readExcludedApps(from: userDefaults, logger: logger) {
+        if let values = readExcludedApps(from: persistence, logger: logger) {
             settings.excludedAppBundleIdentifiers = values
         }
 
         if let value = readEnum(
             for: .displayLanguage,
-            from: userDefaults,
+            from: persistence,
             defaultValue: DockHoverPreviewSettings.defaults.displayLanguage,
             logger: logger,
             type: DisplayLanguage.self
@@ -265,10 +301,10 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
 
     private static func readBool(
         for key: SettingsKey,
-        from userDefaults: UserDefaults,
+        from persistence: any SettingsKeyValueStoring,
         logger: ProbeLogger
     ) -> Bool? {
-        guard let object = userDefaults.object(forKey: key.rawValue) else {
+        guard let object = persistence.object(forKey: key.rawValue) else {
             return nil
         }
         guard let number = object as? NSNumber, isBooleanNumber(number) else {
@@ -280,12 +316,12 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
 
     private static func readInt(
         for key: SettingsKey,
-        from userDefaults: UserDefaults,
+        from persistence: any SettingsKeyValueStoring,
         validValues: Set<Int>,
         defaultValue: Int,
         logger: ProbeLogger
     ) -> Int? {
-        guard let object = userDefaults.object(forKey: key.rawValue) else {
+        guard let object = persistence.object(forKey: key.rawValue) else {
             return nil
         }
         guard let number = object as? NSNumber, !isBooleanNumber(number), isWholeNumber(number) else {
@@ -303,12 +339,12 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
 
     private static func readEnum<Value>(
         for key: SettingsKey,
-        from userDefaults: UserDefaults,
+        from persistence: any SettingsKeyValueStoring,
         defaultValue: Value,
         logger: ProbeLogger,
         type: Value.Type
     ) -> Value? where Value: RawRepresentable, Value.RawValue == String {
-        guard let object = userDefaults.object(forKey: key.rawValue) else {
+        guard let object = persistence.object(forKey: key.rawValue) else {
             return nil
         }
         guard let rawValue = object as? String else {
@@ -322,9 +358,12 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
         return value
     }
 
-    private static func readExcludedApps(from userDefaults: UserDefaults, logger: ProbeLogger) -> Set<String>? {
+    private static func readExcludedApps(
+        from persistence: any SettingsKeyValueStoring,
+        logger: ProbeLogger
+    ) -> Set<String>? {
         let key = SettingsKey.excludedAppBundleIdentifiers
-        guard let object = userDefaults.object(forKey: key.rawValue) else {
+        guard let object = persistence.object(forKey: key.rawValue) else {
             return nil
         }
         guard let values = object as? [String] else {
@@ -362,7 +401,8 @@ final class UserDefaultsSettingsStore: DockHoverPreviewSettingsStore {
     }
 
     private static func changedLogLine(for settings: DockHoverPreviewSettings) -> String {
-        "settings.changed enabled=\(settings.isDockHoverPreviewEnabled) delayMS=\(settings.hoverDelayMilliseconds) " +
+        "settings.changed enabled=\(settings.isDockHoverPreviewEnabled) desktopPeek=\(settings.isDesktopWindowPeekEnabled) " +
+        "delayMS=\(settings.hoverDelayMilliseconds) " +
         "retention=\(settings.panelRetentionMode.rawValue) maxCards=\(settings.maxCardCount) " +
         "excludedCount=\(settings.excludedAppBundleIdentifiers.count) language=\(settings.displayLanguage.rawValue)"
     }

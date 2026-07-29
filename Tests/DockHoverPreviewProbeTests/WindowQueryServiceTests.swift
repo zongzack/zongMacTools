@@ -3,6 +3,7 @@ import CoreGraphics
 import XCTest
 @testable import DockHoverPreviewProbe
 
+@MainActor
 final class WindowQueryServiceTests: XCTestCase {
     func testAuxiliaryFullScreenStripsAreNotPreviewableWindows() {
         XCTAssertFalse(ScreenCaptureWindowQueryService.isPreviewableWindow(
@@ -60,8 +61,10 @@ final class WindowQueryServiceTests: XCTestCase {
 
         XCTAssertEqual(windows.count, 1)
         XCTAssertEqual(windows[0].title, "Termius - Hosts")
-        XCTAssertEqual(windows[0].frame, CGRect(x: 415, y: 182, width: 1515, height: 1130))
+        XCTAssertEqual(windows[0].captureFrame, CGRect(x: 415, y: 182, width: 1515, height: 1130))
         XCTAssertNil(windows[0].thumbnailSource)
+        XCTAssertNil(windows[0].desktopPeekCaptureSource)
+        XCTAssertFalse(windows[0].desktopPeekEligible)
     }
 
     func testUsesAXFallbackWhenStageManagerThumbnailsDoNotMatchAXWindows() {
@@ -79,6 +82,21 @@ final class WindowQueryServiceTests: XCTestCase {
             candidateCount: 3,
             matchedCandidateCount: 0,
             axWindowCount: 0
+        ))
+    }
+
+    func testDesktopPeekEligibilityRequiresCaptureSourceAndAXMatch() {
+        XCTAssertTrue(ScreenCaptureWindowQueryService.desktopPeekEligibility(
+            hasCaptureSource: true,
+            axMatched: true
+        ))
+        XCTAssertFalse(ScreenCaptureWindowQueryService.desktopPeekEligibility(
+            hasCaptureSource: true,
+            axMatched: false
+        ))
+        XCTAssertFalse(ScreenCaptureWindowQueryService.desktopPeekEligibility(
+            hasCaptureSource: false,
+            axMatched: true
         ))
     }
 }

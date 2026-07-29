@@ -11,10 +11,12 @@ final class PreviewSessionController {
     private let panelDisplay: PreviewPanelDisplaying
     private let settingsStore: DockWindowQuickLookSettingsStore
     private let targetTracker: AppTargetTracker
-    private let screenProvider: @MainActor () -> [WindowEnvironmentDescriptor.Screen]
+    private let windowPeekCoordinator: any WindowPeekCoordinating
     private let logger: ProbeLogger
 
     private var generation = 0
+    private var nextSessionEpoch: UInt64 = 0
+    private var currentSessionEpoch: UInt64?
     private var currentModel: PreviewPanelViewModel?
     private var currentWindowsByID: [PreviewWindowID: PreviewWindow] = [:]
     private var leaveTimerOwner: PreviewSessionLeaveTimerOwner?
@@ -22,6 +24,8 @@ final class PreviewSessionController {
     private var currentRetentionParameters = PanelRetentionMode.standard.parameters
     private var settingsObserverToken: UUID?
     private var contextMenuDepth = 0
+    private var currentWindowPeekScreens: [WindowPeekScreen] = []
+    private var screenSnapshotGeneration: UInt64 = 0
 
     init(
         permissionService: PermissionService,
@@ -32,7 +36,7 @@ final class PreviewSessionController {
         panelDisplay: PreviewPanelDisplaying,
         settingsStore: DockWindowQuickLookSettingsStore,
         targetTracker: AppTargetTracker,
-        screenProvider: @MainActor @escaping () -> [WindowEnvironmentDescriptor.Screen] = WindowEnvironmentDescriptor.currentScreens,
+        windowPeekCoordinator: any WindowPeekCoordinating,
         logger: ProbeLogger
     ) {
         self.permissionService = permissionService
@@ -43,11 +47,27 @@ final class PreviewSessionController {
         self.panelDisplay = panelDisplay
         self.settingsStore = settingsStore
         self.targetTracker = targetTracker
-        self.screenProvider = screenProvider
+        self.windowPeekCoordinator = windowPeekCoordinator
         self.logger = logger
     }
 
     func showPreview(for app: NSRunningApplication, anchor: PreviewPanelAnchor) async {
+        precondition(nextSessionEpoch < UInt64.max, "Preview session epoch overflow")
+        if currentSessionEpoch != nil {
+            windowPeekCoordinator.stop(reason: .sessionReplaced)
+        }
+        nextSessionEpoch += 1
+        let sessionEpoch = nextSessionEpoch
+        currentSessionEpoch = sessionEpoch
+        currentWindowPeekScreens = []
+        precondition(screenSnapshotGeneration < UInt64.max, "Screen snapshot generation overflow")
+        screenSnapshotGeneration += 1
+        let queryScreenSnapshotGeneration = screenSnapshotGeneration
+        generation += 1
+        contextMenuDepth = 0
+        let sessionGeneration = generation
+        windowPeekCoordinator.beginSession(epoch: sessionEpoch)
+
         let state = permissionService.refresh()
         guard state.screenRecordingGranted else {
             hide(reason: "screenRecording=false")
@@ -55,13 +75,18 @@ final class PreviewSessionController {
             return
         }
 
-        generation += 1
-        contextMenuDepth = 0
-        let sessionGeneration = generation
         let settings = settingsStore.dockWindowQuickLookSettingsSnapshot
         currentRetentionParameters = settings.panelRetentionParameters
-        let windows = await windowQueryService.windows(for: app, limit: settings.maxCardCount)
-        guard isCurrent(sessionGeneration) else { return }
+        let queryResult = await windowQueryService.query(for: app, limit: settings.maxCardCount)
+        guard
+            isCurrent(sessionGeneration, sessionEpoch: sessionEpoch),
+            screenSnapshotGeneration == queryScreenSnapshotGeneration
+        else {
+            return
+        }
+        currentWindowPeekScreens = queryResult.screens
+        windowPeekCoordinator.updateScreens(queryResult.screens, sessionEpoch: sessionEpoch)
+        let windows = queryResult.windows
         guard !windows.isEmpty else {
             hide(reason: "noWindows")
             logger.info("preview.session.noWindows app=\(app.localizedName ?? "unknown")")
@@ -70,7 +95,6 @@ final class PreviewSessionController {
 
         let appName = app.localizedName ?? app.bundleIdentifier ?? "Unknown App"
         let textProvider = AppTextProvider(language: settings.displayLanguage)
-        let screens = screenProvider()
         targetTracker.updateCurrentPreviewApp(AppTarget(app: app))
         let cards = windows.map { window in
             PreviewCardViewModel(
@@ -80,12 +104,12 @@ final class PreviewSessionController {
                 appIcon: window.appIcon,
                 thumbnail: nil,
                 isLoadingThumbnail: true,
-                sourceFrame: window.frame,
+                sourceFrame: window.captureFrame,
                 operationMenu: operationMenu(
                     for: window,
                     environmentDescription: WindowEnvironmentDescriptor.description(
-                        for: window.frame,
-                        screens: screens,
+                        forCaptureFrame: window.captureFrame,
+                        screens: currentWindowPeekScreens,
                         textProvider: textProvider
                     )
                 )
@@ -100,10 +124,12 @@ final class PreviewSessionController {
             operationMenuText: PreviewWindowOperationMenuText(textProvider: textProvider)
         )
         if let currentModel {
-            panelDisplay.show(model: currentModel, anchor: anchor) { [weak self] action in
-                Task { @MainActor in
-                    await self?.handle(action, expectedGeneration: sessionGeneration)
-                }
+            panelDisplay.show(model: currentModel, anchor: anchor, sessionEpoch: sessionEpoch) { [weak self] action in
+                self?.handle(
+                    action,
+                    expectedGeneration: sessionGeneration,
+                    expectedSessionEpoch: sessionEpoch
+                )
             }
         }
         currentDockItemFrame = anchor.dockItemFrame
@@ -112,11 +138,16 @@ final class PreviewSessionController {
 
         for window in windows {
             let image = await thumbnailService.thumbnail(for: window)
-            guard isCurrent(sessionGeneration) else { return }
+            guard isCurrent(sessionGeneration, sessionEpoch: sessionEpoch) else { return }
             currentModel?.updateThumbnail(image, for: window.id)
             if let currentModel {
                 panelDisplay.update(model: currentModel)
             }
+            windowPeekCoordinator.coarseImageDidBecomeAvailable(
+                image,
+                for: window.id,
+                sessionEpoch: sessionEpoch
+            )
             logger.info("preview.session.thumbnail id=\(window.cgWindowID) success=\(image != nil)")
         }
     }
@@ -141,16 +172,45 @@ final class PreviewSessionController {
         self.settingsObserverToken = nil
     }
 
-    func hide(reason: String) {
+    func hide(
+        reason: String,
+        expectedSessionEpoch: UInt64? = nil,
+        immediately: Bool = false,
+        shouldStopWindowPeek: Bool = true
+    ) {
+        guard expectedSessionEpoch == nil || expectedSessionEpoch == currentSessionEpoch else {
+            logger.warning("preview.session.staleHide reason=\(reason) epoch=\(expectedSessionEpoch.map(String.init) ?? "nil") current=\(currentSessionEpoch.map(String.init) ?? "nil")")
+            return
+        }
+        if shouldStopWindowPeek {
+            windowPeekCoordinator.stop(reason: .sessionHidden)
+        }
         generation += 1
+        currentSessionEpoch = nil
         leaveTimerOwner?.invalidate()
         leaveTimerOwner = nil
         currentDockItemFrame = nil
         currentModel = nil
         currentWindowsByID = [:]
+        currentWindowPeekScreens = []
         contextMenuDepth = 0
         targetTracker.updateCurrentPreviewApp(nil)
-        panelDisplay.hide(reason: reason)
+        if immediately {
+            panelDisplay.hideImmediately(reason: reason)
+        } else {
+            panelDisplay.hide(reason: reason)
+        }
+    }
+
+    func invalidateWindowPeekScreens(reason: WindowPeekStopReason) {
+        precondition(
+            reason == .activeSpaceChanged || reason == .screenParametersChanged,
+            "Only display lifecycle reasons can invalidate a screen snapshot"
+        )
+        precondition(screenSnapshotGeneration < UInt64.max, "Screen snapshot generation overflow")
+        screenSnapshotGeneration += 1
+        currentWindowPeekScreens = []
+        windowPeekCoordinator.stop(reason: reason)
     }
 
     func isMouseInsidePanel(_ point: CGPoint) -> Bool {
@@ -210,33 +270,69 @@ final class PreviewSessionController {
         )
     }
 
-    func activate(windowID: PreviewWindowID) async {
+    func activate(windowID: PreviewWindowID) {
         guard let window = currentWindowsByID[windowID] else {
             logger.warning("preview.session.activateMissing id=\(windowID.windowID)")
             hide(reason: "activateMissing")
             return
         }
+        windowPeekCoordinator.stop(reason: .primarySelection)
+        hide(reason: "activated", immediately: true, shouldStopWindowPeek: false)
         _ = activationService.activate(window: window)
-        hide(reason: "activated")
     }
 
-    private func handle(_ action: PreviewPanelAction, expectedGeneration: Int) async {
-        guard isCurrent(expectedGeneration) else {
-            logger.warning("preview.session.staleAction generation=\(expectedGeneration) current=\(generation)")
+    private func handle(
+        _ action: PreviewPanelAction,
+        expectedGeneration: Int,
+        expectedSessionEpoch: UInt64
+    ) {
+        guard isCurrent(expectedGeneration, sessionEpoch: expectedSessionEpoch) else {
+            logger.warning("preview.session.staleAction generation=\(expectedGeneration) epoch=\(expectedSessionEpoch) currentGeneration=\(generation) currentEpoch=\(currentSessionEpoch.map(String.init) ?? "nil")")
             return
         }
 
         switch action {
         case let .primarySelect(id):
-            await activate(windowID: id)
+            activate(windowID: id)
         case let .windowOperation(id, operation):
-            await performWindowOperation(operation, windowID: id)
+            performWindowOperation(operation, windowID: id)
+        case .contextMenuWillOpen:
+            windowPeekCoordinator.stop(reason: .contextMenu)
         case let .contextMenuBegan(id):
             contextMenuDepth += 1
             logger.info("preview.panel.contextMenuBegan id=\(id.windowID)")
         case let .contextMenuEnded(id):
             contextMenuDepth = max(0, contextMenuDepth - 1)
             logger.info("preview.panel.contextMenuEnded id=\(id.windowID)")
+        case let .hoverEntered(id, sessionEpoch, sequence):
+            guard sessionEpoch == expectedSessionEpoch else {
+                logger.warning("preview.session.staleHoverAction epoch=\(sessionEpoch) expected=\(expectedSessionEpoch)")
+                return
+            }
+            guard currentWindowsByID.count >= 2 else {
+                return
+            }
+            let coarseImage = currentModel?.cards.first { $0.id == id }?.thumbnail
+            windowPeekCoordinator.hoverEntered(
+                windowID: id,
+                window: currentWindowsByID[id],
+                coarseImage: coarseImage,
+                sessionEpoch: sessionEpoch,
+                sequence: sequence
+            )
+        case let .hoverExited(id, sessionEpoch, sequence):
+            guard sessionEpoch == expectedSessionEpoch else {
+                logger.warning("preview.session.staleHoverAction epoch=\(sessionEpoch) expected=\(expectedSessionEpoch)")
+                return
+            }
+            guard currentWindowsByID.count >= 2 else {
+                return
+            }
+            windowPeekCoordinator.hoverExited(
+                windowID: id,
+                sessionEpoch: sessionEpoch,
+                sequence: sequence
+            )
         }
     }
 
@@ -256,9 +352,9 @@ final class PreviewSessionController {
     private func performWindowOperation(
         _ operation: PreviewWindowOperation,
         windowID: PreviewWindowID
-    ) async {
+    ) {
         guard operation != .activate else {
-            await activate(windowID: windowID)
+            activate(windowID: windowID)
             return
         }
 
@@ -277,8 +373,8 @@ final class PreviewSessionController {
         }
     }
 
-    private func isCurrent(_ expectedGeneration: Int) -> Bool {
-        generation == expectedGeneration
+    private func isCurrent(_ expectedGeneration: Int, sessionEpoch: UInt64) -> Bool {
+        generation == expectedGeneration && currentSessionEpoch == sessionEpoch
     }
 
     private func startLeavePolling() {

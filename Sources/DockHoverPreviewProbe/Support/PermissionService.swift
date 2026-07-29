@@ -2,6 +2,7 @@ import AppKit
 @preconcurrency import ApplicationServices
 import CoreGraphics
 
+@MainActor
 protocol PermissionService: AnyObject {
     var currentState: PermissionState { get }
     func refresh() -> PermissionState
@@ -10,6 +11,7 @@ protocol PermissionService: AnyObject {
     func openScreenRecordingSettings()
 }
 
+@MainActor
 final class SystemPermissionService: PermissionService {
     private(set) var currentState: PermissionState
     private let logger: ProbeLogger

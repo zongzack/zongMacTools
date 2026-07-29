@@ -7,6 +7,11 @@ final class AppTextProviderTests: XCTestCase {
         let provider = AppTextProvider(language: .english)
 
         XCTAssertEqual(provider.string(.dockWindowQuickLook), "Dock Window Quick Look")
+        XCTAssertEqual(provider.string(.desktopWindowPeek), "Desktop Window Peek")
+        XCTAssertEqual(
+            provider.string(.desktopWindowPeekDescription),
+            "Show a high-resolution desktop mirror when hovering a window card"
+        )
         XCTAssertEqual(provider.string(.dockHoverPreviewStatusEnabled), "Dock Window Quick Look: Enabled")
         XCTAssertEqual(provider.string(.enableDockHoverPreview), "Enable Dock Window Quick Look")
         XCTAssertEqual(provider.string(.openSettings), "Open Settings...")
@@ -55,6 +60,11 @@ final class AppTextProviderTests: XCTestCase {
         let provider = AppTextProvider(language: .simplifiedChinese)
 
         XCTAssertEqual(provider.string(.dockWindowQuickLook), "Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}")
+        XCTAssertEqual(provider.string(.desktopWindowPeek), "\u{684C}\u{9762}\u{7A97}\u{53E3}\u{9884}\u{89C8}")
+        XCTAssertEqual(
+            provider.string(.desktopWindowPeekDescription),
+            "\u{60AC}\u{505C}\u{7A97}\u{53E3}\u{5361}\u{7247}\u{65F6}\u{5728}\u{684C}\u{9762}\u{663E}\u{793A}\u{9AD8}\u{6E05}\u{955C}\u{50CF}"
+        )
         XCTAssertEqual(provider.string(.dockHoverPreviewStatusEnabled), "Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}\u{FF1A}\u{5DF2}\u{542F}\u{7528}")
         XCTAssertEqual(provider.string(.disableDockHoverPreview), "\u{505C}\u{7528} Dock \u{7A97}\u{53E3}\u{901F}\u{89C8}")
         XCTAssertEqual(provider.string(.openSettings), "\u{6253}\u{5F00}\u{8BBE}\u{7F6E}...")

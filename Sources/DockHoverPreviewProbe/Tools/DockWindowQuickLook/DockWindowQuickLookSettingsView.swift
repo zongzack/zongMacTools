@@ -21,6 +21,23 @@ struct DockWindowQuickLookSettingsView: View {
                         }
                     )
                 )
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Toggle(
+                        text.string(.desktopWindowPeek),
+                        isOn: Binding(
+                            get: { viewModel.state.isDesktopWindowPeekEnabled },
+                            set: { viewModel.setDesktopWindowPeekEnabled($0) }
+                        )
+                    )
+                    .disabled(!viewModel.state.isDesktopWindowPeekControlEnabled)
+
+                    Text(text.string(.desktopWindowPeekDescription))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             SettingsGroup(title: text.string(.performanceAndFeel)) {

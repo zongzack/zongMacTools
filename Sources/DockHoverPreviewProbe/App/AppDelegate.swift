@@ -19,6 +19,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var diagnosticExportService: DiagnosticExportService!
     private var diagnosticExportPresenter: DiagnosticExportPresenter!
     private var excludedAppSelectionPresenter: ExcludedAppSelectionPresenting!
+    private var screenCaptureKitCaptureBroker: ScreenCaptureKitCaptureBroker!
+    private var windowPeekLifecycleObserver: WindowPeekLifecycleObserver!
+    private var windowPeekCoordinator: WindowPeekCoordinator!
     private var orchestrator: ProbeOrchestrator!
 
     @MainActor func applicationDidFinishLaunching(_ notification: Notification) {
@@ -69,13 +72,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             diagnosticExportPresenter: diagnosticExportPresenter
         )
         previewPanelController = PreviewPanelController(logger: logger)
+        screenCaptureKitCaptureBroker = ScreenCaptureKitCaptureBroker(logger: logger)
         let windowQueryService: WindowQueryService = ScreenCaptureWindowQueryService(logger: logger)
-        let thumbnailService: ThumbnailService = StaticThumbnailService(logger: logger)
+        let thumbnailService: ThumbnailService = StaticThumbnailService(
+            logger: logger,
+            captureBroker: screenCaptureKitCaptureBroker
+        )
+        let captureBackend = ScreenCaptureKitWindowPeekCaptureBackend(
+            logger: logger,
+            captureBroker: screenCaptureKitCaptureBroker
+        )
+        let captureService = DefaultWindowPeekCaptureService(
+            logger: logger,
+            backend: captureBackend
+        )
         let activationService: ActivationService = AXActivationService(logger: logger)
         let windowOperationService: WindowOperationService = AXWindowOperationService(
             activationService: activationService,
             logger: logger
         )
+        let lifecycleObserver = WindowPeekLifecycleObserver(
+            workspaceNotificationCenter: NSWorkspace.shared.notificationCenter,
+            applicationNotificationCenter: NotificationCenter.default,
+            targetDestroyedSubscriber: SystemWindowPeekTargetDestroyedSubscriber(logger: logger),
+            logger: logger
+        )
+        windowPeekLifecycleObserver = lifecycleObserver
+        let overlay = WindowPeekOverlayController(logger: logger)
+        let coordinator = WindowPeekCoordinator(
+            captureService: captureService,
+            overlay: overlay,
+            settingsStore: settingsStore,
+            permissionService: permissionService,
+            logger: logger,
+            permissionRefreshScheduler: MainRunLoopWindowPeekPermissionRefreshScheduler(),
+            onCurrentTargetChanged: { [weak lifecycleObserver] target in
+                lifecycleObserver?.observeTargetWindow(
+                    id: target?.id,
+                    element: target?.axElement
+                )
+            }
+        )
+        windowPeekCoordinator = coordinator
         previewSessionController = PreviewSessionController(
             permissionService: permissionService,
             windowQueryService: windowQueryService,
@@ -85,14 +123,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             panelDisplay: previewPanelController,
             settingsStore: settingsStore,
             targetTracker: targetTracker,
+            windowPeekCoordinator: coordinator,
             logger: logger
         )
         previewSessionController.startObservingSettings()
-        previewPanelController.onRequestHide = { [weak previewSessionController] reason in
-            Task { @MainActor in
-                previewSessionController?.hide(reason: reason)
+        previewPanelController.onRequestHide = { [weak previewSessionController] reason, epoch in
+            previewSessionController?.hide(reason: reason, expectedSessionEpoch: epoch)
+        }
+        lifecycleObserver.start { [weak coordinator, weak previewSessionController] event in
+            switch event {
+            case .activeSpaceChanged:
+                if let previewSessionController {
+                    previewSessionController.invalidateWindowPeekScreens(reason: .activeSpaceChanged)
+                } else {
+                    coordinator?.stop(reason: .activeSpaceChanged)
+                }
+            case .screenParametersChanged:
+                if let previewSessionController {
+                    previewSessionController.invalidateWindowPeekScreens(reason: .screenParametersChanged)
+                } else {
+                    coordinator?.stop(reason: .screenParametersChanged)
+                }
+            case let .applicationTerminated(pid):
+                coordinator?.targetApplicationTerminated(pid: pid)
+            case let .targetWindowDestroyed(id):
+                coordinator?.targetWindowDestroyed(id)
             }
         }
+        coordinator.startObservingSettings()
         orchestrator = ProbeOrchestrator(
             permissionService: permissionService,
             logger: logger,
@@ -113,8 +171,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @MainActor func applicationWillTerminate(_ notification: Notification) {
+        windowPeekCoordinator.stop(reason: .appTermination)
+        windowPeekLifecycleObserver.stop()
         previewSessionController.stopObservingSettings()
         orchestrator.stop()
+        windowPeekCoordinator.stopObservingSettings()
         targetTracker.stopWorkspaceObservation()
         logger.info("app.terminated")
     }

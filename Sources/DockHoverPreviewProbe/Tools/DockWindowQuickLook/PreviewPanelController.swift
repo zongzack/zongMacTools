@@ -3,11 +3,17 @@ import SwiftUI
 
 @MainActor
 protocol PreviewPanelDisplaying: AnyObject {
-    var onRequestHide: ((String) -> Void)? { get set }
+    var onRequestHide: ((String, UInt64) -> Void)? { get set }
 
-    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onAction: @escaping (PreviewPanelAction) -> Void)
+    func show(
+        model: PreviewPanelViewModel,
+        anchor: PreviewPanelAnchor,
+        sessionEpoch: UInt64,
+        onAction: @escaping (PreviewPanelAction) -> Void
+    )
     func update(model: PreviewPanelViewModel)
     func hide(reason: String)
+    func hideImmediately(reason: String)
     func isMouseInsidePanel(_ point: CGPoint) -> Bool
     func panelFrame() -> CGRect?
 }
@@ -42,8 +48,8 @@ protocol PanelAnimationControlling: AnyObject {
 }
 
 @MainActor
-final class PreviewPanelController: PreviewPanelDisplaying {
-    var onRequestHide: ((String) -> Void)?
+final class PreviewPanelController: PreviewPanelDisplaying, PreviewCardHoverIntentRouting {
+    var onRequestHide: ((String, UInt64) -> Void)?
 
     private let logger: ProbeLogger
     private let motionPreferences: MotionPreferenceProviding
@@ -55,6 +61,8 @@ final class PreviewPanelController: PreviewPanelDisplaying {
     private var logicalPanelFrame: CGRect?
     private var presentationGeneration = 0
     private var eventMonitorOwner: PreviewPanelEventMonitorOwner?
+    private var currentSessionEpoch: UInt64?
+    private var hoverSequence: UInt64 = 0
 
     init(
         logger: ProbeLogger,
@@ -66,12 +74,26 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         self.animator = animator
     }
 
-    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onAction: @escaping (PreviewPanelAction) -> Void) {
+    func show(
+        model: PreviewPanelViewModel,
+        anchor: PreviewPanelAnchor,
+        sessionEpoch: UInt64,
+        onAction: @escaping (PreviewPanelAction) -> Void
+    ) {
         currentOnAction = onAction
         currentAnchor = anchor
+        currentSessionEpoch = sessionEpoch
+        hoverSequence = 0
+        installEventMonitor(for: sessionEpoch)
 
         let panel = ensurePanel()
-        let frame = render(model: model, anchor: anchor, in: panel, onAction: onAction)
+        let frame = render(
+            model: model,
+            anchor: anchor,
+            sessionEpoch: sessionEpoch,
+            in: panel,
+            onAction: onAction
+        )
         logicalPanelFrame = frame
         presentationGeneration += 1
         let generation = presentationGeneration
@@ -95,19 +117,21 @@ final class PreviewPanelController: PreviewPanelDisplaying {
     }
 
     func update(model: PreviewPanelViewModel) {
-        guard let currentAnchor, let panel, let currentOnAction else { return }
-        let frame = render(model: model, anchor: currentAnchor, in: panel, onAction: currentOnAction)
+        guard let currentAnchor, let panel, let currentOnAction, let currentSessionEpoch else { return }
+        let frame = render(
+            model: model,
+            anchor: currentAnchor,
+            sessionEpoch: currentSessionEpoch,
+            in: panel,
+            onAction: currentOnAction
+        )
         logicalPanelFrame = frame
         logger.info("preview.panel.update app=\(model.appName) count=\(model.cards.count)")
     }
 
     func hide(reason: String) {
         guard let panel else { return }
-        logicalPanelFrame = nil
-        currentAnchor = nil
-        currentOnAction = nil
-        presentationGeneration += 1
-        let generation = presentationGeneration
+        let generation = invalidatePresentationState()
         let mode = animationMode()
         animator.cancelAnimations(for: panel)
         panel.ignoresMouseEvents = true
@@ -128,6 +152,17 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         logger.info("preview.panel.hide reason=\(reason)")
     }
 
+    func hideImmediately(reason: String) {
+        guard let panel else { return }
+        _ = invalidatePresentationState()
+        animator.cancelAnimations(for: panel)
+        panel.ignoresMouseEvents = true
+        panel.orderOut(nil)
+        panel.alphaValue = 1
+        panel.contentView?.layer?.setAffineTransform(.identity)
+        logger.info("preview.panel.hideImmediately reason=\(reason)")
+    }
+
     func isMouseInsidePanel(_ point: CGPoint) -> Bool {
         guard let frame = logicalPanelFrame else { return false }
         return GeometryHelpers.contains(point, in: frame, tolerance: 2)
@@ -137,14 +172,44 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         logicalPanelFrame
     }
 
+    func routeHoverIntent(
+        windowID: PreviewWindowID,
+        isInside: Bool,
+        sessionEpoch: UInt64
+    ) {
+        guard currentSessionEpoch == sessionEpoch else {
+            logger.info("preview.panel.staleHover epoch=\(sessionEpoch) current=\(currentSessionEpoch.map(String.init) ?? "nil")")
+            return
+        }
+        guard let currentOnAction else { return }
+        precondition(hoverSequence < UInt64.max, "Hover sequence overflow")
+        hoverSequence += 1
+        if isInside {
+            currentOnAction(.hoverEntered(windowID, sessionEpoch: sessionEpoch, sequence: hoverSequence))
+        } else {
+            currentOnAction(.hoverExited(windowID, sessionEpoch: sessionEpoch, sequence: hoverSequence))
+        }
+    }
+
+    func inspection() -> PreviewPanelInspection {
+        PreviewPanelInspection(panel: panel)
+    }
+
     private func render(
         model: PreviewPanelViewModel,
         anchor: PreviewPanelAnchor,
+        sessionEpoch: UInt64,
         in panel: NSPanel,
         onAction: @escaping (PreviewPanelAction) -> Void
     ) -> CGRect {
         let layout = PreviewPanelLayoutEngine.panelLayout(for: anchor)
-        let view = PreviewPanelView(model: model, layout: layout, onAction: onAction)
+        let view = PreviewPanelView(
+            model: model,
+            layout: layout,
+            sessionEpoch: sessionEpoch,
+            hoverIntentRouter: self,
+            onAction: onAction
+        )
 
         if let hostingController {
             hostingController.rootView = view
@@ -164,13 +229,13 @@ final class PreviewPanelController: PreviewPanelDisplaying {
     private func ensurePanel() -> NSPanel {
         if let panel { return panel }
 
-        let panel = NSPanel(
+        let panel = WindowPeekNonKeyPanel(
             contentRect: NSRect(x: 0, y: 0, width: 256, height: 180),
             styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        panel.level = .floating
+        panel.level = WindowPeekPanelLevels.preview
         panel.collectionBehavior = [.canJoinAllSpaces, .transient, .fullScreenAuxiliary]
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -178,9 +243,6 @@ final class PreviewPanelController: PreviewPanelDisplaying {
         panel.hidesOnDeactivate = false
         panel.ignoresMouseEvents = false
         panel.isReleasedWhenClosed = false
-        eventMonitorOwner = PreviewPanelEventMonitorOwner { [weak self] reason in
-            self?.onRequestHide?(reason)
-        }
         self.panel = panel
         return panel
     }
@@ -188,10 +250,55 @@ final class PreviewPanelController: PreviewPanelDisplaying {
     private func animationMode() -> PreviewPanelAnimationMode {
         motionPreferences.accessibilityDisplayShouldReduceMotion ? .reducedMotion : .standard
     }
+
+    private func invalidatePresentationState() -> Int {
+        logicalPanelFrame = nil
+        currentAnchor = nil
+        currentOnAction = nil
+        currentSessionEpoch = nil
+        hoverSequence = 0
+        eventMonitorOwner = nil
+        presentationGeneration += 1
+        return presentationGeneration
+    }
+
+    private func installEventMonitor(for sessionEpoch: UInt64) {
+        let relay = PreviewPanelEscapeIntentRelay(
+            sessionEpoch: sessionEpoch,
+            controller: self
+        )
+        eventMonitorOwner = PreviewPanelEventMonitorOwner { [relay] reason in
+            relay.emit(reason: reason)
+        }
+    }
+
+    fileprivate func routeEscapeIntent(reason: String, sessionEpoch: UInt64) {
+        onRequestHide?(reason, sessionEpoch)
+    }
 }
 
 @MainActor
-private struct SystemMotionPreferenceProvider: MotionPreferenceProviding {
+struct PreviewPanelInspection {
+    let panel: NSPanel?
+}
+
+@MainActor
+final class PreviewPanelEscapeIntentRelay {
+    private let sessionEpoch: UInt64
+    private weak var controller: PreviewPanelController?
+
+    init(sessionEpoch: UInt64, controller: PreviewPanelController) {
+        self.sessionEpoch = sessionEpoch
+        self.controller = controller
+    }
+
+    func emit(reason: String) {
+        controller?.routeEscapeIntent(reason: reason, sessionEpoch: sessionEpoch)
+    }
+}
+
+@MainActor
+struct SystemMotionPreferenceProvider: MotionPreferenceProviding {
     var accessibilityDisplayShouldReduceMotion: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
@@ -301,14 +408,16 @@ private final class PreviewPanelEventMonitorOwner {
         self.onRequestHide = onRequestHide
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [onRequestHide] event in
             guard event.keyCode == 53 else { return event }
-            Task { @MainActor in
+            precondition(Thread.isMainThread)
+            MainActor.assumeIsolated {
                 onRequestHide("escape")
             }
             return nil
         }
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [onRequestHide] event in
             guard event.keyCode == 53 else { return }
-            Task { @MainActor in
+            precondition(Thread.isMainThread)
+            MainActor.assumeIsolated {
                 onRequestHide("escape")
             }
         }

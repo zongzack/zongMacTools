@@ -5,6 +5,154 @@ import XCTest
 
 @MainActor
 final class PreviewSessionControllerTests: XCTestCase {
+    func testPrimarySelectionStopsPeekBeforeActivation() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.primarySelect(window.id))
+
+        XCTAssertEqual(harness.eventLog.events, [
+            .peekStopped(.primarySelection),
+            .panelDismissed,
+            .activated(window.id)
+        ])
+    }
+
+    func testContextMenuWillOpenStopsPeekBeforeMenuTracking() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.contextMenuWillOpen(window.id))
+
+        XCTAssertEqual(harness.eventLog.events, [.peekStopped(.contextMenu)])
+    }
+
+    func testShowPreviewBeginsEpochAndUpdatesQueryScreens() async {
+        let window = makeWindow(id: 1)
+        let screen = WindowPeekScreen(
+            identifier: 1,
+            localizedName: "Built-in Display",
+            captureFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+            appKitFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+            backingScaleFactor: 2
+        )
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window], screens: [screen])
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(Array(harness.eventLog.events.prefix(2)), [
+            .beganSession(1),
+            .screensUpdated(1, 1)
+        ])
+        XCTAssertEqual(harness.display.sessionEpoch, 1)
+    }
+
+    func testScreenChangeRejectsAnInFlightQueryResultForTheCurrentSession() async {
+        let window = makeWindow(id: 1)
+        let screen = WindowPeekScreen(
+            identifier: 1,
+            localizedName: "Built-in Display",
+            captureFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+            appKitFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+            backingScaleFactor: 2
+        )
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            screens: [screen]
+        )
+        harness.queryService.suspend = true
+
+        let showTask = Task { @MainActor in
+            await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        }
+        await harness.queryService.waitUntilSuspended()
+
+        harness.controller.invalidateWindowPeekScreens(reason: .screenParametersChanged)
+        harness.queryService.resume()
+        await showTask.value
+
+        XCTAssertEqual(harness.eventLog.events, [
+            .beganSession(1),
+            .peekStopped(.screenParametersChanged)
+        ])
+        XCTAssertEqual(harness.display.showCount, 0)
+    }
+
+    func testThumbnailAvailabilityIsForwardedToPeekCoordinatorWithSessionEpoch() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        harness.thumbnailService.images[window.id] = makeImage()
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertTrue(harness.eventLog.events.contains(.coarseAvailable(window.id, 1)))
+    }
+
+    func testReplacementStopsPreviousPeekAndOldEpochHideCannotHideNewSession() async {
+        let firstWindow = makeWindow(id: 1)
+        let secondWindow = makeWindow(id: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [firstWindow])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        let firstEpoch = try! XCTUnwrap(harness.display.sessionEpoch)
+        harness.queryService.windows = [secondWindow]
+        harness.eventLog.removeAll()
+
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(Array(harness.eventLog.events.prefix(2)), [
+            .peekStopped(.sessionReplaced),
+            .beganSession(2)
+        ])
+        let hideCountBeforeStaleRequest = harness.display.hideReasons.count
+        harness.display.onRequestHide?("escape", firstEpoch)
+        XCTAssertEqual(harness.display.hideReasons.count, hideCountBeforeStaleRequest)
+
+        harness.display.onRequestHide?("escape", 2)
+        XCTAssertEqual(harness.eventLog.events.last, .peekStopped(.sessionHidden))
+        XCTAssertEqual(harness.display.hideReasons.last, "escape")
+    }
+
+    func testSinglePreviewableWindowDoesNotForwardHoverIntentToDesktopPeekCoordinator() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.hoverEntered(window.id, sessionEpoch: 1, sequence: 1))
+
+        XCTAssertEqual(harness.eventLog.events, [])
+        XCTAssertEqual(harness.display.showCount, 1)
+    }
+
+    func testHoverIntentForMissingWindowIsForwardedToCoordinatorWhenMultipleWindowsArePreviewable() async {
+        let window = makeWindow(id: 1)
+        let secondWindow = makeWindow(id: 3)
+        let missingID = PreviewWindowID(pid: window.id.pid, windowID: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window, secondWindow])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.hoverEntered(missingID, sessionEpoch: 1, sequence: 1))
+
+        XCTAssertEqual(harness.eventLog.events, [.hoverEntered(missingID, 1, 1)])
+    }
+
+    func testHoverIntentWithStaleActionEpochIsIgnored() async {
+        let window = makeWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.hoverEntered(window.id, sessionEpoch: 99, sequence: 1))
+
+        XCTAssertEqual(harness.eventLog.events, [])
+    }
+
     func testScreenRecordingMissingSuppressesPanel() async {
         let harness = PreviewSessionHarness(screenRecordingGranted: false, windows: [makeWindow(id: 1)])
 
@@ -50,14 +198,14 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertEqual(harness.display.lastModel?.cards.first?.isLoadingThumbnail, false)
     }
 
-    func testPreviewSessionUsesWindowFrameForThumbnailDisplayMode() async {
+    func testPreviewSessionUsesCaptureFrameForThumbnailDisplayMode() async {
         let narrowWindow = makeWindow(
             id: 1,
-            frame: CGRect(x: 100, y: 100, width: 700, height: 700)
+            captureFrame: CGRect(x: 100, y: 100, width: 700, height: 700)
         )
         let wideWindow = makeWindow(
             id: 2,
-            frame: CGRect(x: 100, y: 100, width: 1600, height: 900)
+            captureFrame: CGRect(x: 100, y: 100, width: 1600, height: 900)
         )
         let harness = PreviewSessionHarness(
             screenRecordingGranted: true,
@@ -182,7 +330,8 @@ final class PreviewSessionControllerTests: XCTestCase {
         await Task.yield()
 
         XCTAssertEqual(harness.activationService.activatedIDs, [window.id])
-        XCTAssertEqual(harness.display.hideReasons, ["activated"])
+        XCTAssertEqual(harness.display.immediateHideReasons, ["activated"])
+        XCTAssertEqual(harness.display.hideReasons, [])
     }
 
     func testPreviewSessionInjectsWindowOperationAvailabilityIntoCards() async {
@@ -198,14 +347,17 @@ final class PreviewSessionControllerTests: XCTestCase {
     }
 
     func testPreviewSessionInjectsScreenEnvironmentDescriptionIntoCards() async {
-        let window = makeWindow(id: 1, frame: CGRect(x: 100, y: 100, width: 800, height: 600))
+        let window = makeWindow(id: 1, captureFrame: CGRect(x: 100, y: 100, width: 800, height: 600))
         let harness = PreviewSessionHarness(
             screenRecordingGranted: true,
             windows: [window],
             screens: [
-                WindowEnvironmentDescriptor.Screen(
-                    frame: CGRect(x: 0, y: 0, width: 1512, height: 982),
-                    localizedName: "Built-in Display"
+                WindowPeekScreen(
+                    identifier: 1,
+                    localizedName: "Built-in Display",
+                    captureFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                    appKitFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                    backingScaleFactor: 2
                 )
             ]
         )
@@ -225,7 +377,8 @@ final class PreviewSessionControllerTests: XCTestCase {
 
         XCTAssertEqual(harness.activationService.activatedIDs, [window.id])
         XCTAssertEqual(harness.windowOperationService.performedOperations, [])
-        XCTAssertEqual(harness.display.hideReasons, ["activated"])
+        XCTAssertEqual(harness.display.immediateHideReasons, ["activated"])
+        XCTAssertEqual(harness.display.hideReasons, [])
     }
 
     func testSuccessfulWindowOperationRoutesThroughServiceAndHidesPanel() async {
@@ -595,6 +748,7 @@ final class PreviewSessionControllerTests: XCTestCase {
     }
 }
 
+@MainActor
 private final class FakePermissionService: PermissionService {
     var currentState: PermissionState
 
@@ -611,17 +765,46 @@ private final class FakePermissionService: PermissionService {
     func openScreenRecordingSettings() {}
 }
 
-private final class FakeWindowQueryService: WindowQueryService, @unchecked Sendable {
+@MainActor
+private final class FakeWindowQueryService: WindowQueryService {
     var windows: [PreviewWindow]
+    var screens: [WindowPeekScreen]
+    var suspend = false
     private(set) var requestedLimits: [Int] = []
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var suspendedContinuation: CheckedContinuation<Void, Never>?
+    private var isSuspended = false
 
-    init(windows: [PreviewWindow]) {
+    init(windows: [PreviewWindow], screens: [WindowPeekScreen]) {
         self.windows = windows
+        self.screens = screens
     }
 
-    func windows(for app: NSRunningApplication, limit: Int) async -> [PreviewWindow] {
+    func query(for app: NSRunningApplication, limit: Int) async -> WindowQueryResult {
         requestedLimits.append(limit)
-        return Array(windows.prefix(limit))
+        if suspend {
+            await withCheckedContinuation {
+                isSuspended = true
+                continuation = $0
+                suspendedContinuation?.resume()
+                suspendedContinuation = nil
+            }
+        }
+        return WindowQueryResult(windows: Array(windows.prefix(limit)), screens: screens)
+    }
+
+    func waitUntilSuspended() async {
+        guard !isSuspended else { return }
+        await withCheckedContinuation {
+            suspendedContinuation = $0
+        }
+    }
+
+    func resume() {
+        suspend = false
+        isSuspended = false
+        continuation?.resume()
+        continuation = nil
     }
 }
 
@@ -678,7 +861,8 @@ private extension DockHoverPreviewSettings {
     }
 }
 
-private final class FakeThumbnailService: ThumbnailService, @unchecked Sendable {
+@MainActor
+private final class FakeThumbnailService: ThumbnailService {
     var images: [PreviewWindowID: CGImage] = [:]
     var suspend = false
     private var continuation: CheckedContinuation<Void, Never>?
@@ -716,9 +900,11 @@ private final class FakeThumbnailService: ThumbnailService, @unchecked Sendable 
 @MainActor
 private final class FakeActivationService: ActivationService {
     var activatedIDs: [PreviewWindowID] = []
+    var onActivate: ((PreviewWindowID) -> Void)?
 
     func activate(window: PreviewWindow) -> ActivationProbeResult {
         activatedIDs.append(window.id)
+        onActivate?(window.id)
         return ActivationProbeResult(
             windowID: window.cgWindowID,
             title: window.title,
@@ -731,21 +917,30 @@ private final class FakeActivationService: ActivationService {
 
 @MainActor
 private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
-    var onRequestHide: ((String) -> Void)?
+    var onRequestHide: ((String, UInt64) -> Void)?
 
     var showCount = 0
     var updateCount = 0
     var lastModel: PreviewPanelViewModel?
     var hideReasons: [String] = []
+    var immediateHideReasons: [String] = []
+    var onImmediateDismiss: (() -> Void)?
     var checkedPoints: [CGPoint] = []
     var isMouseInsidePanelResult = false
     var panelFrameResult: CGRect?
     var actionHandler: ((PreviewPanelAction) -> Void)?
+    var sessionEpoch: UInt64?
 
-    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onAction: @escaping (PreviewPanelAction) -> Void) {
+    func show(
+        model: PreviewPanelViewModel,
+        anchor: PreviewPanelAnchor,
+        sessionEpoch: UInt64,
+        onAction: @escaping (PreviewPanelAction) -> Void
+    ) {
         showCount += 1
         lastModel = model
         actionHandler = onAction
+        self.sessionEpoch = sessionEpoch
     }
 
     func update(model: PreviewPanelViewModel) {
@@ -755,6 +950,11 @@ private final class FakePreviewPanelDisplay: PreviewPanelDisplaying {
 
     func hide(reason: String) {
         hideReasons.append(reason)
+    }
+
+    func hideImmediately(reason: String) {
+        immediateHideReasons.append(reason)
+        onImmediateDismiss?()
     }
 
     func isMouseInsidePanel(_ point: CGPoint) -> Bool {
@@ -800,6 +1000,8 @@ private final class PreviewSessionHarness {
     let logger = ProbeLogger()
     let settingsStore: FakeSettingsStore
     let targetTracker: AppTargetTracker
+    let eventLog = SessionEventLog()
+    let windowPeekCoordinator: RecordingWindowPeekCoordinator
     let anchor: PreviewPanelAnchor
     let controller: PreviewSessionController
 
@@ -809,7 +1011,7 @@ private final class PreviewSessionHarness {
         settingsStore: FakeSettingsStore = FakeSettingsStore(),
         targetTracker: AppTargetTracker? = nil,
         app: NSRunningApplication = .current,
-        screens: [WindowEnvironmentDescriptor.Screen] = [],
+        screens: [WindowPeekScreen] = [],
         anchor: PreviewPanelAnchor = PreviewPanelAnchor(
             dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
             mouseLocation: CGPoint(x: 726, y: 24),
@@ -825,8 +1027,15 @@ private final class PreviewSessionHarness {
             accessibilityGranted: true,
             screenRecordingGranted: screenRecordingGranted
         )
-        queryService = FakeWindowQueryService(windows: windows)
-        controller = PreviewSessionController(
+        queryService = FakeWindowQueryService(windows: windows, screens: screens)
+        windowPeekCoordinator = RecordingWindowPeekCoordinator(eventLog: eventLog)
+        display.onImmediateDismiss = { [eventLog] in
+            eventLog.append(.panelDismissed)
+        }
+        activationService.onActivate = { [eventLog] id in
+            eventLog.append(.activated(id))
+        }
+        let controller = PreviewSessionController(
             permissionService: permissionService,
             windowQueryService: queryService,
             thumbnailService: thumbnailService,
@@ -835,26 +1044,99 @@ private final class PreviewSessionHarness {
             panelDisplay: display,
             settingsStore: settingsStore,
             targetTracker: self.targetTracker,
-            screenProvider: { screens },
+            windowPeekCoordinator: windowPeekCoordinator,
             logger: logger
         )
+        self.controller = controller
+        display.onRequestHide = { [weak controller] reason, epoch in
+            controller?.hide(reason: reason, expectedSessionEpoch: epoch)
+        }
+    }
+}
+
+@MainActor
+private enum SessionEvent: Equatable {
+    case beganSession(UInt64)
+    case screensUpdated(UInt64, Int)
+    case peekStopped(WindowPeekStopReason)
+    case hoverEntered(PreviewWindowID, UInt64, UInt64)
+    case hoverExited(PreviewWindowID, UInt64, UInt64)
+    case coarseAvailable(PreviewWindowID, UInt64)
+    case panelDismissed
+    case activated(PreviewWindowID)
+}
+
+@MainActor
+private final class SessionEventLog {
+    private(set) var events: [SessionEvent] = []
+
+    func append(_ event: SessionEvent) {
+        events.append(event)
+    }
+
+    func removeAll() {
+        events.removeAll()
+    }
+}
+
+@MainActor
+private final class RecordingWindowPeekCoordinator: WindowPeekCoordinating {
+    let eventLog: SessionEventLog
+
+    init(eventLog: SessionEventLog) {
+        self.eventLog = eventLog
+    }
+
+    func beginSession(epoch: UInt64) {
+        eventLog.append(.beganSession(epoch))
+    }
+
+    func updateScreens(_ screens: [WindowPeekScreen], sessionEpoch: UInt64) {
+        eventLog.append(.screensUpdated(sessionEpoch, screens.count))
+    }
+
+    func hoverEntered(
+        windowID: PreviewWindowID,
+        window: PreviewWindow?,
+        coarseImage: CGImage?,
+        sessionEpoch: UInt64,
+        sequence: UInt64
+    ) {
+        eventLog.append(.hoverEntered(windowID, sessionEpoch, sequence))
+    }
+
+    func hoverExited(windowID: PreviewWindowID, sessionEpoch: UInt64, sequence: UInt64) {
+        eventLog.append(.hoverExited(windowID, sessionEpoch, sequence))
+    }
+
+    func coarseImageDidBecomeAvailable(_ image: CGImage?, for windowID: PreviewWindowID, sessionEpoch: UInt64) {
+        eventLog.append(.coarseAvailable(windowID, sessionEpoch))
+    }
+
+    func targetWindowDestroyed(_ windowID: PreviewWindowID) {}
+
+    func targetApplicationTerminated(pid: pid_t) {}
+
+    func stop(reason: WindowPeekStopReason) {
+        eventLog.append(.peekStopped(reason))
     }
 }
 
 private func makeWindow(
     id: CGWindowID,
-    frame: CGRect = CGRect(x: 100, y: 100, width: 800, height: 600)
+    captureFrame: CGRect = CGRect(x: 100, y: 100, width: 800, height: 600)
 ) -> PreviewWindow {
     PreviewWindow(
         id: PreviewWindowID(pid: NSRunningApplication.current.processIdentifier, windowID: id),
         cgWindowID: id,
         app: NSRunningApplication.current,
         title: "Window \(id)",
-        frame: frame,
-        scWindow: nil,
+        captureFrame: captureFrame,
         axElement: nil,
         appIcon: NSImage(size: NSSize(width: 32, height: 32)),
-        thumbnailSource: nil
+        thumbnailSource: nil,
+        desktopPeekCaptureSource: nil,
+        desktopPeekEligible: false
     )
 }
 

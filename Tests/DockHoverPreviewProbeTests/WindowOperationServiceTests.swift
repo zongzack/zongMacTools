@@ -280,10 +280,11 @@ private func makeWindow(id: CGWindowID = 1) -> PreviewWindow {
         cgWindowID: id,
         app: NSRunningApplication.current,
         title: "Window \(id)",
-        frame: CGRect(x: 100, y: 100, width: 800, height: 600),
-        scWindow: nil,
+        captureFrame: CGRect(x: 100, y: 100, width: 800, height: 600),
         axElement: AXUIElementCreateApplication(getpid()),
         appIcon: NSImage(size: NSSize(width: 32, height: 32)),
-        thumbnailSource: nil
+        thumbnailSource: nil,
+        desktopPeekCaptureSource: nil,
+        desktopPeekEligible: false
     )
 }

@@ -115,6 +115,7 @@
 
 ## 当前待验收
 
+- Desktop Window Peek implementation and automated verification are complete. Single-display manual validation is currently blocked because the local Mac session was locked during the validation attempt; see `docs/verification/dock-window-desktop-peek-manual-checklist.md`. Multiple-display validation remains `blocked / not available` until compatible hardware is connected.
 - P3 窗口操作真实 app 人工验收。
 - P4 正式应用化人工验收，包括 release artifact、TCC、关于与状态和诊断导出。
 - 多工具设置窗口人工 smoke test。

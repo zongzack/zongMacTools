@@ -266,8 +266,25 @@ final class ProbeOrchestratorPreviewTests: XCTestCase {
         XCTAssertEqual(harness.display.hideReasons, ["appExcluded"])
         XCTAssertEqual(harness.display.showCount, 0)
     }
+
+    func testOrchestratorStopStopsPeekWithoutChangingIndependentPeekSetting() {
+        var settings = DockHoverPreviewSettings.defaults
+        settings.isDesktopWindowPeekEnabled = false
+        let settingsStore = OrchestratorFakeSettingsStore(snapshot: settings)
+        let harness = ProbeOrchestratorPreviewHarness(
+            accessibilityGranted: false,
+            screenRecordingGranted: true,
+            settingsStore: settingsStore
+        )
+
+        harness.orchestrator.stop()
+
+        XCTAssertEqual(harness.windowPeekCoordinator.stopReasons, [.sessionHidden])
+        XCTAssertFalse(settingsStore.snapshot.isDesktopWindowPeekEnabled)
+    }
 }
 
+@MainActor
 private final class OrchestratorFakePermissionService: PermissionService {
     var currentState: PermissionState
 
@@ -284,11 +301,15 @@ private final class OrchestratorFakePermissionService: PermissionService {
     func openScreenRecordingSettings() {}
 }
 
-private final class OrchestratorFakeWindowQueryService: WindowQueryService, @unchecked Sendable {
-    func windows(for app: NSRunningApplication, limit: Int) async -> [PreviewWindow] { [] }
+@MainActor
+private final class OrchestratorFakeWindowQueryService: WindowQueryService {
+    func query(for app: NSRunningApplication, limit: Int) async -> WindowQueryResult {
+        WindowQueryResult(windows: [], screens: [])
+    }
 }
 
-private final class OrchestratorFakeThumbnailService: ThumbnailService, @unchecked Sendable {
+@MainActor
+private final class OrchestratorFakeThumbnailService: ThumbnailService {
     func thumbnail(for window: PreviewWindow) async -> CGImage? { nil }
 }
 
@@ -323,18 +344,27 @@ private final class OrchestratorFakeWindowOperationService: WindowOperationServi
 
 @MainActor
 private final class OrchestratorFakePreviewDisplay: PreviewPanelDisplaying {
-    var onRequestHide: ((String) -> Void)?
+    var onRequestHide: ((String, UInt64) -> Void)?
 
     var showCount = 0
     var hideReasons: [String] = []
 
-    func show(model: PreviewPanelViewModel, anchor: PreviewPanelAnchor, onAction: @escaping (PreviewPanelAction) -> Void) {
+    func show(
+        model: PreviewPanelViewModel,
+        anchor: PreviewPanelAnchor,
+        sessionEpoch: UInt64,
+        onAction: @escaping (PreviewPanelAction) -> Void
+    ) {
         showCount += 1
     }
 
     func update(model: PreviewPanelViewModel) {}
 
     func hide(reason: String) {
+        hideReasons.append(reason)
+    }
+
+    func hideImmediately(reason: String) {
         hideReasons.append(reason)
     }
 
@@ -392,6 +422,7 @@ private final class ProbeOrchestratorPreviewHarness {
     let settingsStore: OrchestratorFakeSettingsStore
     let frontmostProvider: OrchestratorFakeFrontmostApplicationProvider
     let targetTracker: AppTargetTracker
+    let windowPeekCoordinator = OrchestratorRecordingWindowPeekCoordinator()
     let orchestrator: ProbeOrchestrator
 
     init(
@@ -419,6 +450,7 @@ private final class ProbeOrchestratorPreviewHarness {
             panelDisplay: display,
             settingsStore: settingsStore,
             targetTracker: self.targetTracker,
+            windowPeekCoordinator: windowPeekCoordinator,
             logger: logger
         )
         orchestrator = ProbeOrchestrator(
@@ -430,6 +462,35 @@ private final class ProbeOrchestratorPreviewHarness {
             hoverDelayScheduler: scheduler,
             frontmostApplicationProvider: frontmostProvider
         )
+    }
+}
+
+@MainActor
+private final class OrchestratorRecordingWindowPeekCoordinator: WindowPeekCoordinating {
+    private(set) var stopReasons: [WindowPeekStopReason] = []
+
+    func beginSession(epoch: UInt64) {}
+
+    func updateScreens(_ screens: [WindowPeekScreen], sessionEpoch: UInt64) {}
+
+    func hoverEntered(
+        windowID: PreviewWindowID,
+        window: PreviewWindow?,
+        coarseImage: CGImage?,
+        sessionEpoch: UInt64,
+        sequence: UInt64
+    ) {}
+
+    func hoverExited(windowID: PreviewWindowID, sessionEpoch: UInt64, sequence: UInt64) {}
+
+    func coarseImageDidBecomeAvailable(_ image: CGImage?, for windowID: PreviewWindowID, sessionEpoch: UInt64) {}
+
+    func targetWindowDestroyed(_ windowID: PreviewWindowID) {}
+
+    func targetApplicationTerminated(pid: pid_t) {}
+
+    func stop(reason: WindowPeekStopReason) {
+        stopReasons.append(reason)
     }
 }
 

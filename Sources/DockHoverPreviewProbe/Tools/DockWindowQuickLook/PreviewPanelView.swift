@@ -1,9 +1,56 @@
 import AppKit
 import SwiftUI
 
+@MainActor
+protocol PreviewCardHoverIntentRouting: AnyObject {
+    func routeHoverIntent(
+        windowID: PreviewWindowID,
+        isInside: Bool,
+        sessionEpoch: UInt64
+    )
+}
+
+@MainActor
+final class PreviewCardHoverIntentRelay {
+    private let windowID: PreviewWindowID
+    private let sessionEpoch: UInt64
+    private weak var router: (any PreviewCardHoverIntentRouting)?
+
+    init(
+        windowID: PreviewWindowID,
+        sessionEpoch: UInt64,
+        router: any PreviewCardHoverIntentRouting
+    ) {
+        self.windowID = windowID
+        self.sessionEpoch = sessionEpoch
+        self.router = router
+    }
+
+    func emit(isInside: Bool) {
+        router?.routeHoverIntent(
+            windowID: windowID,
+            isInside: isInside,
+            sessionEpoch: sessionEpoch
+        )
+    }
+}
+
+enum PreviewCardContextMenuEventOrder {
+    static func emitBeforeMenuTracking(
+        for windowID: PreviewWindowID,
+        onAction: (PreviewPanelAction) -> Void
+    ) {
+        onAction(.contextMenuWillOpen(windowID))
+        onAction(.contextMenuBegan(windowID))
+    }
+}
+
+@MainActor
 struct PreviewPanelView: View {
     let model: PreviewPanelViewModel
     let layout: PreviewPanelLayout
+    let sessionEpoch: UInt64
+    let hoverIntentRouter: any PreviewCardHoverIntentRouting
     let onAction: (PreviewPanelAction) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
@@ -45,6 +92,8 @@ struct PreviewPanelView: View {
                         card: card,
                         thumbnailUnavailableText: model.thumbnailUnavailableText,
                         operationMenuText: model.operationMenuText,
+                        sessionEpoch: sessionEpoch,
+                        hoverIntentRouter: hoverIntentRouter,
                         onAction: onAction
                     )
                 }
@@ -61,6 +110,8 @@ struct PreviewPanelView: View {
                         card: card,
                         thumbnailUnavailableText: model.thumbnailUnavailableText,
                         operationMenuText: model.operationMenuText,
+                        sessionEpoch: sessionEpoch,
+                        hoverIntentRouter: hoverIntentRouter,
                         onAction: onAction
                     )
                 }
@@ -70,14 +121,35 @@ struct PreviewPanelView: View {
     }
 }
 
+@MainActor
 struct PreviewCardView: View {
     let card: PreviewCardViewModel
     let thumbnailUnavailableText: String
     let operationMenuText: PreviewWindowOperationMenuText
+    let hoverIntentRelay: PreviewCardHoverIntentRelay
     let onAction: (PreviewPanelAction) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var isHovered = false
+
+    init(
+        card: PreviewCardViewModel,
+        thumbnailUnavailableText: String,
+        operationMenuText: PreviewWindowOperationMenuText,
+        sessionEpoch: UInt64,
+        hoverIntentRouter: any PreviewCardHoverIntentRouting,
+        onAction: @escaping (PreviewPanelAction) -> Void
+    ) {
+        self.card = card
+        self.thumbnailUnavailableText = thumbnailUnavailableText
+        self.operationMenuText = operationMenuText
+        hoverIntentRelay = PreviewCardHoverIntentRelay(
+            windowID: card.id,
+            sessionEpoch: sessionEpoch,
+            router: hoverIntentRouter
+        )
+        self.onAction = onAction
+    }
 
     var body: some View {
         Button {
@@ -111,7 +183,10 @@ struct PreviewCardView: View {
             .contentShape(RoundedRectangle(cornerRadius: PreviewPanelMetrics.cardCornerRadius, style: .continuous))
         }
         .buttonStyle(.plain)
-        .onHover { isHovered = $0 }
+        .onHover { isInside in
+            isHovered = isInside
+            hoverIntentRelay.emit(isInside: isInside)
+        }
         .accessibilityLabel(card.accessibilityLabel)
         .help(card.title)
         .overlay {
@@ -280,7 +355,7 @@ private final class PreviewCardContextMenuView: NSView {
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        onAction(.contextMenuBegan(card.id))
+        PreviewCardContextMenuEventOrder.emitBeforeMenuTracking(for: card.id, onAction: onAction)
         NSMenu.popUpContextMenu(makeMenu(), with: event, for: self)
         onAction(.contextMenuEnded(card.id))
     }

@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct SettingsRootView: View {
     @ObservedObject var viewModel: SettingsViewModel
     @ObservedObject var selection: SettingsWindowSelection

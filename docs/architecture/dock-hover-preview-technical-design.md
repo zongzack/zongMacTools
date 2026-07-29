@@ -174,6 +174,20 @@ Dock 恢复：
 - 每次 ad-hoc 重新签名 app 后，macOS TCC 可能需要重新授权，系统权限列表显示名称应为 `zongMacTools`。
 - Launch at Login 自动测试覆盖服务构造和 fake-driven menu tests；真实状态已通过签名后的 `build/zongMacTools.app` 和系统 Login Items 人工验证。
 
+## Desktop Window Peek
+
+Desktop Window Peek extends the existing card preview with a two-stage, static mirror of the hovered eligible window at its desktop location. It remains strictly observational: the app uses public ScreenCaptureKit and Accessibility APIs only, does not raise a target window, does not activate the target application while hovering, does not change a target level, and never makes the dimming or mirror overlay interactive.
+
+- `ScreenCaptureKitCaptureBroker` is the single app-wide MainActor gate for both thumbnail and desktop-peek `SCScreenshotManager.captureImage` work. It allows one physical capture at a time, keeps thumbnail work FIFO, and retains only the most recent queued desktop-peek request. A worker that has entered the public ScreenCaptureKit API is never cancelled.
+- The coordinator revalidates a logical request token immediately before it submits to the capture service. A stop or replacement that wins before that point releases the logical slot without adding a ScreenCaptureKit request. Every stop also discards the paired screen snapshot, so a later desktop peek requires a fresh query/session rather than reusing pre-change display geometry.
+- `WindowPeekGeometry` pairs `SCDisplay.frame` with `NSScreen.frame` by display identifier from one `SCShareableContent` result. Capture-space crop geometry is then converted to AppKit-space panel geometry; `CGDisplayBounds` is diagnostic-only.
+- The initial coarse thumbnail can be shown immediately. A high-resolution image is captured through the broker, cropped from its returned pixel size, and accepted only when its `(sessionEpoch, peekGeneration, windowID)` token remains current.
+- `WindowPeekOverlayController` owns non-key dimming and mirror panels. Their ordering is `dimming < mirror < preview panel < Dock`; the dimming and mirror panels ignore mouse events and use `orderFront(nil)`, while the interactive preview panel keeps its established `orderFrontRegardless()` behavior.
+- `PreviewPanelView` uses one hover emitter, SwiftUI `.onHover`. Its relay carries the session epoch to `PreviewPanelController`, which supplies a monotonic sequence number and rejects stale relays. Context-menu preflight stops the mirror before AppKit begins menu tracking.
+- `PreviewSessionController` starts a new epoch before permission refresh or window query, forwards the query's paired screen snapshots to the coordinator, and routes selection, menu, thumbnail, and hover actions synchronously on the MainActor.
+- `WindowPeekLifecycleObserver` listens on `NSWorkspace.shared.notificationCenter` for active-Space and application-termination events, on the application notification center for screen changes, and maintains a single public AX destroyed subscription for the current target. All paths stop the mirror before clearing the corresponding state.
+- Capability probe evidence is recorded in `docs/verification/dock-window-desktop-peek-capability-probe.md`. The 2026-07-28 manual checklist records the currently blocked runtime validation separately rather than treating automated evidence as a manual pass.
+
 ## 验收标准
 
 MVP/P1/P2 当前验收标准：

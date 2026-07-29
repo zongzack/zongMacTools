@@ -3,6 +3,8 @@ import Foundation
 
 struct DockWindowQuickLookSettingsViewState: Equatable {
     let isDockWindowQuickLookEnabled: Bool
+    let isDesktopWindowPeekEnabled: Bool
+    let isDesktopWindowPeekControlEnabled: Bool
     let hoverDelayMilliseconds: Int
     let hoverDelaySliderIndex: Double
     let panelRetentionMode: PanelRetentionMode
@@ -78,6 +80,12 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
     func toggleDockWindowQuickLook() {
         settingsStore.updateDockWindowQuickLookSettings { settings in
             settings.isDockHoverPreviewEnabled.toggle()
+        }
+    }
+
+    func setDesktopWindowPeekEnabled(_ isEnabled: Bool) {
+        settingsStore.updateDockWindowQuickLookSettings { settings in
+            settings.isDesktopWindowPeekEnabled = isEnabled
         }
     }
 
@@ -213,6 +221,8 @@ final class DockWindowQuickLookSettingsViewModel: ObservableObject {
 
         return DockWindowQuickLookSettingsViewState(
             isDockWindowQuickLookEnabled: snapshot.isDockHoverPreviewEnabled,
+            isDesktopWindowPeekEnabled: snapshot.isDesktopWindowPeekEnabled,
+            isDesktopWindowPeekControlEnabled: snapshot.isDockHoverPreviewEnabled,
             hoverDelayMilliseconds: hoverDelay,
             hoverDelaySliderIndex: sliderIndex(for: hoverDelay, presets: hoverDelayPresets),
             panelRetentionMode: panelRetentionMode,

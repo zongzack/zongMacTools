@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- Dock Window Desktop Peek: hovering an eligible preview card can show a two-stage static desktop mirror in the original window frame, with an independent setting to disable the mirror while preserving Dock window preview.
 - P4 正式应用化：新增稳定签名配置、app bundle 验证脚本、release packaging 脚本。
 - P4 正式应用化：新增 About / Status、Copy Status 和 Export Diagnostics 菜单入口。
 - P4 正式应用化：新增本地诊断导出，包含状态快照、签名摘要、bundle 验证摘要和最近本工具统一日志。
@@ -21,7 +22,8 @@ Validation commands:
 
 Known limitations:
 
-- Manual validation: not run.
+- Desktop Window Peek automated verification is complete. The 2026-07-28 manual run was blocked because the local Mac session was locked; the checklist records each unverified scenario. Multiple displays remain blocked / not available on the available hardware.
+- P4 manual validation: not run.
 - Stable Developer ID signing, notarization, and TCC stability across repeated signed builds require local developer credentials and real macOS permission checks.
 - Multiple displays remain blocked / not available on single-display hardware.
 - Diagnostic logs may include local app names, window titles, bundle identifiers, and environment details because the user explicitly exports recent unified logs for local troubleshooting.

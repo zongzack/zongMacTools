@@ -3,6 +3,7 @@ import Foundation
 
 struct DockHoverPreviewSettings: Equatable, Sendable {
     var isDockHoverPreviewEnabled: Bool
+    var isDesktopWindowPeekEnabled: Bool
     var hoverDelayMilliseconds: Int
     var panelRetentionMode: PanelRetentionMode
     var maxCardCount: Int
@@ -11,6 +12,7 @@ struct DockHoverPreviewSettings: Equatable, Sendable {
 
     static let defaults = DockHoverPreviewSettings(
         isDockHoverPreviewEnabled: true,
+        isDesktopWindowPeekEnabled: true,
         hoverDelayMilliseconds: 250,
         panelRetentionMode: .standard,
         maxCardCount: 8,
@@ -56,6 +58,7 @@ enum DisplayLanguage: String, CaseIterable, Sendable {
 
 enum SettingsKey: String, CaseIterable, Sendable {
     case isEnabled = "DockHoverPreview.isEnabled"
+    case desktopWindowPeekEnabled = "DockHoverPreview.desktopWindowPeekEnabled"
     case hoverDelayMilliseconds = "DockHoverPreview.hoverDelayMilliseconds"
     case panelRetentionMode = "DockHoverPreview.panelRetentionMode"
     case maxCardCount = "DockHoverPreview.maxCardCount"

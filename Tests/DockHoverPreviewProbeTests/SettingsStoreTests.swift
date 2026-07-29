@@ -20,6 +20,82 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot.panelRetentionParameters.bridgeInset, 24)
     }
 
+    func testDesktopWindowPeekDefaultsToEnabledAndUsesDedicatedKey() {
+        let (defaults, suiteName) = makeTemporaryDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = UserDefaultsSettingsStore(userDefaults: defaults, logger: ProbeLogger())
+
+        XCTAssertTrue(store.snapshot.isDesktopWindowPeekEnabled)
+        XCTAssertEqual(
+            SettingsKey.desktopWindowPeekEnabled.rawValue,
+            "DockHoverPreview.desktopWindowPeekEnabled"
+        )
+    }
+
+    func testDesktopWindowPeekInvalidTypeFallsBackToEnabled() {
+        let (defaults, suiteName) = makeTemporaryDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set("false", forKey: SettingsKey.desktopWindowPeekEnabled.rawValue)
+
+        let store = UserDefaultsSettingsStore(userDefaults: defaults, logger: ProbeLogger())
+
+        XCTAssertTrue(store.snapshot.isDesktopWindowPeekEnabled)
+    }
+
+    func testUpdatingOtherDockSettingsPreservesDesktopWindowPeek() {
+        let (defaults, suiteName) = makeTemporaryDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = UserDefaultsSettingsStore(userDefaults: defaults, logger: ProbeLogger())
+        store.update { $0.isDesktopWindowPeekEnabled = false }
+
+        store.updateDockWindowQuickLookSettings { $0.maxCardCount = 12 }
+
+        XCTAssertFalse(store.snapshot.isDesktopWindowPeekEnabled)
+        XCTAssertEqual(store.snapshot.maxCardCount, 12)
+    }
+
+    func testDesktopWindowPeekImmediateReadbackFailurePublishesEnabledFallback() {
+        let logger = ProbeLogger()
+        let persistence = RejectingDesktopPeekPersistence()
+        let store = UserDefaultsSettingsStore(persistence: persistence, logger: logger)
+        var observed: [DockHoverPreviewSettings] = []
+        _ = store.addObserver { observed.append($0) }
+
+        store.update { $0.isDesktopWindowPeekEnabled = false }
+
+        XCTAssertTrue(store.snapshot.isDesktopWindowPeekEnabled)
+        XCTAssertEqual(observed, [store.snapshot])
+        XCTAssertTrue(logger.snapshot().contains {
+            $0.contains("settings.persistFailed key=DockHoverPreview.desktopWindowPeekEnabled")
+        })
+    }
+
+    func testDesktopWindowPeekWrongTypeReadbackPublishesEnabledFallback() {
+        let logger = ProbeLogger()
+        let persistence = WrongTypeDesktopPeekPersistence()
+        let store = UserDefaultsSettingsStore(persistence: persistence, logger: logger)
+
+        store.update { $0.isDesktopWindowPeekEnabled = false }
+
+        XCTAssertTrue(store.snapshot.isDesktopWindowPeekEnabled)
+        XCTAssertTrue(logger.snapshot().contains {
+            $0.contains("settings.persistFailed key=DockHoverPreview.desktopWindowPeekEnabled")
+        })
+    }
+
+    func testDesktopWindowPeekMismatchedReadbackPublishesEnabledFallback() {
+        let logger = ProbeLogger()
+        let persistence = InvertingDesktopPeekPersistence()
+        let store = UserDefaultsSettingsStore(persistence: persistence, logger: logger)
+
+        store.update { $0.isDesktopWindowPeekEnabled = false }
+
+        XCTAssertTrue(store.snapshot.isDesktopWindowPeekEnabled)
+        XCTAssertTrue(logger.snapshot().contains {
+            $0.contains("settings.persistFailed key=DockHoverPreview.desktopWindowPeekEnabled")
+        })
+    }
+
     func testInvalidValuesFallBackWithoutPersistingDefaults() {
         let (defaults, suiteName) = makeTemporaryDefaults()
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -181,4 +257,48 @@ final class SettingsStoreTests: XCTestCase {
         return (defaults, suiteName)
     }
 
+}
+
+private final class RejectingDesktopPeekPersistence: SettingsKeyValueStoring {
+    private var values: [String: Any] = [:]
+
+    func object(forKey defaultName: String) -> Any? {
+        values[defaultName]
+    }
+
+    func set(_ value: Any?, forKey defaultName: String) {
+        guard defaultName != SettingsKey.desktopWindowPeekEnabled.rawValue else { return }
+        values[defaultName] = value
+    }
+}
+
+private final class WrongTypeDesktopPeekPersistence: SettingsKeyValueStoring {
+    private var values: [String: Any] = [:]
+
+    func object(forKey defaultName: String) -> Any? {
+        values[defaultName]
+    }
+
+    func set(_ value: Any?, forKey defaultName: String) {
+        values[defaultName] = defaultName == SettingsKey.desktopWindowPeekEnabled.rawValue
+            ? NSNumber(value: 0)
+            : value
+    }
+}
+
+private final class InvertingDesktopPeekPersistence: SettingsKeyValueStoring {
+    private var values: [String: Any] = [:]
+
+    func object(forKey defaultName: String) -> Any? {
+        values[defaultName]
+    }
+
+    func set(_ value: Any?, forKey defaultName: String) {
+        if defaultName == SettingsKey.desktopWindowPeekEnabled.rawValue,
+           let requested = value as? Bool {
+            values[defaultName] = !requested
+        } else {
+            values[defaultName] = value
+        }
+    }
 }

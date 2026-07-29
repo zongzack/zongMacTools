@@ -27,8 +27,11 @@ enum PreviewWindowOperation: String, CaseIterable, Sendable {
 enum PreviewPanelAction: Equatable, Sendable {
     case primarySelect(PreviewWindowID)
     case windowOperation(PreviewWindowID, PreviewWindowOperation)
+    case contextMenuWillOpen(PreviewWindowID)
     case contextMenuBegan(PreviewWindowID)
     case contextMenuEnded(PreviewWindowID)
+    case hoverEntered(PreviewWindowID, sessionEpoch: UInt64, sequence: UInt64)
+    case hoverExited(PreviewWindowID, sessionEpoch: UInt64, sequence: UInt64)
 }
 
 struct WindowOperationAvailability: Equatable, Sendable {

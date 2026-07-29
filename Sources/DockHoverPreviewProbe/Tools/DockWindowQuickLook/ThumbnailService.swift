@@ -3,11 +3,13 @@ import CoreMedia
 import Foundation
 import ScreenCaptureKit
 
-protocol ThumbnailService: Sendable {
+@MainActor
+protocol ThumbnailService: AnyObject {
     func thumbnail(for window: PreviewWindow) async -> CGImage?
 }
 
-final class StaticThumbnailService: ThumbnailService, @unchecked Sendable {
+@MainActor
+final class StaticThumbnailService: ThumbnailService {
     private struct CacheEntry {
         let image: CGImage
         let capturedAt: CFAbsoluteTime
@@ -20,14 +22,15 @@ final class StaticThumbnailService: ThumbnailService, @unchecked Sendable {
 
     private let logger: ProbeLogger
     private let now: () -> CFAbsoluteTime
-    private let captureWithScreenCaptureKitOverride: ((PreviewWindow) async -> CGImage?)?
-    private let captureWithCoreGraphicsOverride: ((PreviewWindow) -> CGImage?)?
-    private let cacheLock = NSLock()
+    private let captureBroker: ScreenCaptureKitCaptureBroker?
+    private let captureWithScreenCaptureKitOverride: (@MainActor (PreviewWindow) async -> CGImage?)?
+    private let captureWithCoreGraphicsOverride: (@MainActor (PreviewWindow) -> CGImage?)?
     private var cache: [ThumbnailCacheKey: CacheEntry] = [:]
 
-    init(logger: ProbeLogger) {
+    init(logger: ProbeLogger, captureBroker: ScreenCaptureKitCaptureBroker) {
         self.logger = logger
         self.now = CFAbsoluteTimeGetCurrent
+        self.captureBroker = captureBroker
         self.captureWithScreenCaptureKitOverride = nil
         self.captureWithCoreGraphicsOverride = nil
     }
@@ -35,17 +38,18 @@ final class StaticThumbnailService: ThumbnailService, @unchecked Sendable {
     init(
         logger: ProbeLogger,
         now: @escaping () -> CFAbsoluteTime = CFAbsoluteTimeGetCurrent,
-        captureWithScreenCaptureKit: ((PreviewWindow) async -> CGImage?)? = nil,
-        captureWithCoreGraphics: ((PreviewWindow) -> CGImage?)? = nil
+        captureWithScreenCaptureKit: (@MainActor (PreviewWindow) async -> CGImage?)? = nil,
+        captureWithCoreGraphics: (@MainActor (PreviewWindow) -> CGImage?)? = nil
     ) {
         self.logger = logger
         self.now = now
+        self.captureBroker = nil
         self.captureWithScreenCaptureKitOverride = captureWithScreenCaptureKit
         self.captureWithCoreGraphicsOverride = captureWithCoreGraphics
     }
 
     func thumbnail(for window: PreviewWindow) async -> CGImage? {
-        let key = ThumbnailCacheKey(id: window.id, frame: window.frame, title: window.title)
+        let key = ThumbnailCacheKey(id: window.id, captureFrame: window.captureFrame, title: window.title)
         if let cached = cachedImage(for: key, now: now()) {
             logger.info("thumbnail.cacheHit id=\(window.cgWindowID)")
             return cached
@@ -63,8 +67,6 @@ final class StaticThumbnailService: ThumbnailService, @unchecked Sendable {
     }
 
     private func cachedImage(for key: ThumbnailCacheKey, now: CFAbsoluteTime) -> CGImage? {
-        cacheLock.lock()
-        defer { cacheLock.unlock() }
         guard let entry = cache[key] else { return nil }
         guard now - entry.capturedAt < 10 else {
             cache[key] = nil
@@ -74,8 +76,6 @@ final class StaticThumbnailService: ThumbnailService, @unchecked Sendable {
     }
 
     private func cacheImage(_ image: CGImage, for key: ThumbnailCacheKey, capturedAt: CFAbsoluteTime) {
-        cacheLock.lock()
-        defer { cacheLock.unlock() }
         cache[key] = CacheEntry(image: image, capturedAt: capturedAt)
     }
 
@@ -106,8 +106,16 @@ final class StaticThumbnailService: ThumbnailService, @unchecked Sendable {
         case .coreGraphics, nil:
             return nil
         }
+        guard let captureBroker else {
+            preconditionFailure("ScreenCaptureKit thumbnail capture requires the app-wide broker")
+        }
         do {
-            return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
+            return try await captureBroker.captureThumbnail {
+                try await SCScreenshotManager.captureImage(
+                    contentFilter: filter,
+                    configuration: configuration
+                )
+            }
         } catch {
             logger.warning("thumbnail.sckFailed id=\(window.cgWindowID) error=\(error)")
             return nil

@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct SupportSettingsView: View {
     let text: AppTextProvider
     let permissionService: PermissionService

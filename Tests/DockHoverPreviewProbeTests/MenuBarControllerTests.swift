@@ -267,6 +267,7 @@ private final class MenuHarness {
     }
 }
 
+@MainActor
 private final class FakePermissionService: PermissionService {
     var currentState = PermissionState(accessibilityGranted: true, screenRecordingGranted: true)
 
