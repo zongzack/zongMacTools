@@ -75,7 +75,7 @@ Finder 菜单只显示一个“在 Terminal 中打开”。`zongMacTools` 设置
 - `New Terminal at Folder`
 - `New Terminal Tab at Folder`
 
-Terminal 2.15 将它们注册为两个独立服务，系统没有供第三方稳定读取的统一“目录应在窗口还是标签页打开”偏好。因此本工具不声称跟随 Terminal 自身设置，也不请求自动化权限。服务不可用或调用失败时显示明确错误，不退回 Apple Events。
+在当前可观察到的 Terminal 版本中，这两个服务分别对应新窗口和新标签页。系统没有供第三方稳定读取的统一“目录应在窗口还是标签页打开”偏好，因此本工具不声称跟随 Terminal 自身设置，也不请求自动化权限。服务不可用或调用失败时显示明确错误，不退回 Apple Events。
 
 ## 3. 范围外
 
@@ -485,7 +485,7 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 - `newWindow` -> `New Terminal at Folder`
 - `newTab` -> `New Terminal Tab at Folder`
 
-首版默认值是“新窗口”；设置缺失或非法时也回退为“新窗口”。如果选择“新标签页”但 Terminal 当前没有窗口，实际结果由 Terminal Service 决定，通常会创建可承载标签页的窗口，本工具不伪造窗口状态。
+首版默认值是“新窗口”；设置缺失或非法时也回退为“新窗口”。如果选择“新标签页”但 Terminal 当前没有窗口，实际结果由 Terminal Service 决定，通常会创建可承载标签页的窗口。本工具不伪造窗口状态，也不尝试反向读取或覆盖 Terminal 自己的偏好。
 
 ## 12. 设置界面
 
