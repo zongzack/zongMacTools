@@ -105,7 +105,7 @@ final class AppKitExcludedAppSelectionPresenter: ExcludedAppSelectionPresenting 
         let bundle = Bundle(url: url)
         return ExcludedAppSelection(
             bundleIdentifier: bundle?.bundleIdentifier ?? "",
-            displayName: displayName(from: bundle, url: url)
+            displayName: AppBundleDisplayNameResolver.displayName(for: bundle, at: url)
         )
     }
 
@@ -119,17 +119,4 @@ final class AppKitExcludedAppSelectionPresenter: ExcludedAppSelectionPresenting 
         panel.allowedContentTypes = [.applicationBundle]
     }
 
-    private static func displayName(from bundle: Bundle?, url: URL) -> String {
-        let candidates = [
-            bundle?.localizedInfoDictionary?["CFBundleDisplayName"] as? String,
-            bundle?.localizedInfoDictionary?["CFBundleName"] as? String,
-            bundle?.infoDictionary?["CFBundleDisplayName"] as? String,
-            bundle?.infoDictionary?["CFBundleName"] as? String
-        ]
-
-        return candidates
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .first { !$0.isEmpty }
-            ?? url.deletingPathExtension().lastPathComponent
-    }
 }

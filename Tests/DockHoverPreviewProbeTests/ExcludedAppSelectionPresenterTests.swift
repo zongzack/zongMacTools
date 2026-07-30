@@ -30,6 +30,21 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
         )
     }
 
+    func testWorkspaceResolverPrefersLocalizedDisplayNameForExcludedApp() throws {
+        let appURL = try makeTemporaryAppBundle(
+            bundleIdentifier: "com.bot.neotix.doubao",
+            displayName: "Doubao",
+            localizedDisplayName: "豆包"
+        )
+        defer { try? FileManager.default.removeItem(at: appURL.deletingLastPathComponent()) }
+        let resolver = WorkspaceAppNameResolver(applicationURLProvider: { _ in appURL })
+
+        XCTAssertEqual(
+            resolver.displayName(forBundleIdentifier: "com.bot.neotix.doubao"),
+            "豆包"
+        )
+    }
+
     func testOpenPanelCancelReturnsNilSelection() throws {
         let appURL = try makeTemporaryAppBundle(
             bundleIdentifier: "com.example.Cancelled",
@@ -67,6 +82,7 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
     private func makeTemporaryAppBundle(
         bundleIdentifier: String,
         displayName: String,
+        localizedDisplayName: String? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws -> URL {
@@ -79,10 +95,25 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
             "CFBundleIdentifier": bundleIdentifier,
             "CFBundleDisplayName": displayName,
             "CFBundleName": "Fallback Name",
+            "CFBundleDevelopmentRegion": "en",
             "CFBundlePackageType": "APPL"
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
         try data.write(to: contentsURL.appendingPathComponent("Info.plist"))
+
+        if let localizedDisplayName {
+            let localizationURL = contentsURL
+                .appendingPathComponent("Resources", isDirectory: true)
+                .appendingPathComponent("en.lproj", isDirectory: true)
+            try FileManager.default.createDirectory(at: localizationURL, withIntermediateDirectories: true)
+            let localizedInfo: [String: String] = ["CFBundleDisplayName": localizedDisplayName]
+            let localizedData = try PropertyListSerialization.data(
+                fromPropertyList: localizedInfo,
+                format: .xml,
+                options: 0
+            )
+            try localizedData.write(to: localizationURL.appendingPathComponent("InfoPlist.strings"))
+        }
 
         XCTAssertTrue(
             FileManager.default.fileExists(atPath: appURL.path),

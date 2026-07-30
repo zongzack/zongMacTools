@@ -12,23 +12,22 @@ final class NoopSettingsWindowPresenter: SettingsWindowPresenting {
 
 @MainActor
 final class WorkspaceAppNameResolver: AppNameResolving {
+    private let applicationURLProvider: @MainActor (String) -> URL?
+
+    init(
+        applicationURLProvider: @escaping @MainActor (String) -> URL? = {
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
+        }
+    ) {
+        self.applicationURLProvider = applicationURLProvider
+    }
+
     func displayName(forBundleIdentifier bundleIdentifier: String) -> String? {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
+        guard let url = applicationURLProvider(bundleIdentifier) else {
             return nil
         }
 
-        if let bundle = Bundle(url: url),
-           let displayName = [
-               bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String,
-               bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
-           ]
-            .compactMap({ $0?.trimmingCharacters(in: .whitespacesAndNewlines) })
-            .first(where: { !$0.isEmpty }) {
-            return displayName
-        }
-
-        let filename = url.deletingPathExtension().lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
-        return filename.isEmpty ? nil : filename
+        return AppBundleDisplayNameResolver.displayName(for: Bundle(url: url), at: url)
     }
 }
 
