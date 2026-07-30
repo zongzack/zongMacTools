@@ -45,6 +45,21 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
         )
     }
 
+    func testWorkspaceResolverFallsBackToAppFilenameWhenBundleNamesAreBlankOrMissing() throws {
+        let appURL = try makeTemporaryAppBundle(
+            bundleIdentifier: "com.example.FilenameFallback",
+            displayName: " \n ",
+            bundleName: nil
+        )
+        defer { try? FileManager.default.removeItem(at: appURL.deletingLastPathComponent()) }
+        let resolver = WorkspaceAppNameResolver(applicationURLProvider: { _ in appURL })
+
+        XCTAssertEqual(
+            resolver.displayName(forBundleIdentifier: "com.example.FilenameFallback"),
+            "Example"
+        )
+    }
+
     func testOpenPanelCancelReturnsNilSelection() throws {
         let appURL = try makeTemporaryAppBundle(
             bundleIdentifier: "com.example.Cancelled",
@@ -81,7 +96,8 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
 
     private func makeTemporaryAppBundle(
         bundleIdentifier: String,
-        displayName: String,
+        displayName: String?,
+        bundleName: String? = "Fallback Name",
         localizedDisplayName: String? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
@@ -91,13 +107,17 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
         let appURL = rootURL.appendingPathComponent("Example.app", isDirectory: true)
         let contentsURL = appURL.appendingPathComponent("Contents", isDirectory: true)
         try FileManager.default.createDirectory(at: contentsURL, withIntermediateDirectories: true)
-        let info: [String: Any] = [
+        var info: [String: Any] = [
             "CFBundleIdentifier": bundleIdentifier,
-            "CFBundleDisplayName": displayName,
-            "CFBundleName": "Fallback Name",
             "CFBundleDevelopmentRegion": "en",
             "CFBundlePackageType": "APPL"
         ]
+        if let displayName {
+            info["CFBundleDisplayName"] = displayName
+        }
+        if let bundleName {
+            info["CFBundleName"] = bundleName
+        }
         let data = try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
         try data.write(to: contentsURL.appendingPathComponent("Info.plist"))
 
