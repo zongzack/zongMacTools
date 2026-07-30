@@ -8,7 +8,8 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
     func testOpenPanelAllowsOnlySingleApplicationBundleAndResolvesSelection() throws {
         let appURL = try makeTemporaryAppBundle(
             bundleIdentifier: "com.example.Editor",
-            displayName: "Example Editor"
+            displayName: "Example Editor",
+            appBundleName: "Example Editor"
         )
         defer { try? FileManager.default.removeItem(at: appURL.deletingLastPathComponent()) }
         let panel = FakeExcludedAppOpenPanel(response: .OK, url: appURL)
@@ -34,7 +35,23 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
         let appURL = try makeTemporaryAppBundle(
             bundleIdentifier: "com.bot.neotix.doubao",
             displayName: "Doubao",
-            localizedDisplayName: "豆包"
+            localizedDisplayName: "豆包",
+            appBundleName: "豆包"
+        )
+        defer { try? FileManager.default.removeItem(at: appURL.deletingLastPathComponent()) }
+        let resolver = WorkspaceAppNameResolver(applicationURLProvider: { _ in appURL })
+
+        XCTAssertEqual(
+            resolver.displayName(forBundleIdentifier: "com.bot.neotix.doubao"),
+            "豆包"
+        )
+    }
+
+    func testWorkspaceResolverPrefersApplicationDisplayNameOverBundleMetadata() throws {
+        let appURL = try makeTemporaryAppBundle(
+            bundleIdentifier: "com.bot.neotix.doubao",
+            displayName: "Doubao",
+            appBundleName: "豆包"
         )
         defer { try? FileManager.default.removeItem(at: appURL.deletingLastPathComponent()) }
         let resolver = WorkspaceAppNameResolver(applicationURLProvider: { _ in appURL })
@@ -99,12 +116,13 @@ final class ExcludedAppSelectionPresenterTests: XCTestCase {
         displayName: String?,
         bundleName: String? = "Fallback Name",
         localizedDisplayName: String? = nil,
+        appBundleName: String = "Example",
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws -> URL {
         let rootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("ExcludedAppSelectionPresenterTests-\(UUID().uuidString)", isDirectory: true)
-        let appURL = rootURL.appendingPathComponent("Example.app", isDirectory: true)
+        let appURL = rootURL.appendingPathComponent("\(appBundleName).app", isDirectory: true)
         let contentsURL = appURL.appendingPathComponent("Contents", isDirectory: true)
         try FileManager.default.createDirectory(at: contentsURL, withIntermediateDirectories: true)
         var info: [String: Any] = [

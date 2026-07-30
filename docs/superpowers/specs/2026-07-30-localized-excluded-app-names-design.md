@@ -20,15 +20,18 @@ and removed by bundle identifier.
 installed application. Once it has a bundle URL, it will resolve the first
 non-empty name in this order:
 
-1. `Bundle.localizedInfoDictionary["CFBundleDisplayName"]`
-2. `Bundle.localizedInfoDictionary["CFBundleName"]`
-3. `Bundle.infoDictionary["CFBundleDisplayName"]`
-4. `Bundle.infoDictionary["CFBundleName"]`
-5. The `.app` bundle file name without its extension
+1. The application bundle's Finder display name without its `.app` suffix
+2. `Bundle.localizedInfoDictionary["CFBundleDisplayName"]`
+3. `Bundle.localizedInfoDictionary["CFBundleName"]`
+4. `Bundle.infoDictionary["CFBundleDisplayName"]`
+5. `Bundle.infoDictionary["CFBundleName"]`
+6. The `.app` bundle file name without its extension
 
-The same order is already used when the user chooses an application with the
-manual Add control. The implementation will consolidate that ordering into one
-internal helper so the two entry points cannot diverge.
+The Finder display name is first because it is the name shown to the user in
+Applications and does not depend on Foundation matching the system's language
+tag to the app's available `.lproj` folders. The implementation consolidates
+this ordering into one internal helper so the saved-rule and manual-Add entry
+points cannot diverge.
 
 If the application cannot be found, or every candidate is absent or blank, the
 resolver returns `nil`. The existing settings view then presents the bundle
@@ -43,11 +46,11 @@ uses public AppKit and Foundation APIs.
 
 ## Tests
 
-Add a focused XCTest that builds a temporary application bundle with both an
-unlocalized display name and a localized `InfoPlist.strings` display name. It
-must verify that the shared resolver chooses the localized value. Existing tests
-continue to cover the normal unlocalized display-name path and the filename
-fallback.
+Add focused XCTest coverage for a temporary application bundle with both an
+unlocalized display name and a localized `InfoPlist.strings` display name, and
+for an app bundle whose visible filename differs from its bundle metadata. The
+tests must verify that the resolver chooses the name displayed in Applications
+and retains filename fallback when metadata is missing.
 
 ## Non-Goals
 
