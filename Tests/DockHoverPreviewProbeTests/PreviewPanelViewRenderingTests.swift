@@ -64,9 +64,79 @@ final class PreviewPanelViewRenderingTests: XCTestCase {
         )
         XCTAssertEqual(
             PreviewPanelMetrics.titleTextWidth,
-            PreviewPanelMetrics.titleRowWidth - PreviewPanelMetrics.iconSize - PreviewPanelMetrics.titleIconSpacing,
+            PreviewPanelMetrics.titleRowWidth
+                - PreviewPanelMetrics.iconSize
+                - PreviewPanelMetrics.titleIconSpacing
+                - PreviewPanelMetrics.closeButtonSpacing
+                - PreviewPanelMetrics.closeButtonSize,
             accuracy: 0.001
         )
+    }
+
+    func testCloseControlPlanShowsOnlyDuringHoverAndPreservesAvailability() {
+        let enabledCard = makeCard()
+        let disabledCard = makeCard(operationMenu: .init(
+            activate: .enabled(.activate),
+            hideApplication: .enabled(.hideApplication),
+            closeWindow: .disabled(.closeWindow, reason: "Missing close button"),
+            minimizeWindow: .enabled(.minimizeWindow),
+            environmentDescription: "Screen: Built-in Display"
+        ))
+
+        XCTAssertEqual(
+            PreviewCardCloseControlPlan.plan(for: enabledCard, isHovered: false),
+            .init(isVisible: false, isEnabled: true)
+        )
+        XCTAssertEqual(
+            PreviewCardCloseControlPlan.plan(for: enabledCard, isHovered: true),
+            .init(isVisible: true, isEnabled: true)
+        )
+        XCTAssertEqual(
+            PreviewCardCloseControlPlan.plan(for: disabledCard, isHovered: true),
+            .init(isVisible: true, isEnabled: false)
+        )
+    }
+
+    func testCloseActionDispatcherEmitsDedicatedCloseIntentOnlyWhenEnabled() {
+        let id = PreviewWindowID(pid: 100, windowID: 7)
+        let enabledCard = makeCard(id: id)
+        let disabledCard = makeCard(id: id, operationMenu: .init(
+            activate: .enabled(.activate),
+            hideApplication: .enabled(.hideApplication),
+            closeWindow: .disabled(.closeWindow, reason: "Missing close button"),
+            minimizeWindow: .enabled(.minimizeWindow),
+            environmentDescription: "Screen: Built-in Display"
+        ))
+        var actions: [PreviewPanelAction] = []
+
+        PreviewCardCloseActionDispatcher.dispatch(for: enabledCard) { actions.append($0) }
+        PreviewCardCloseActionDispatcher.dispatch(for: disabledCard) { actions.append($0) }
+
+        XCTAssertEqual(actions, [.closePreviewCard(id)])
+    }
+
+    func testTitleMetricsReserveTheCloseControlWithoutChangingCardGeometry() {
+        XCTAssertEqual(PreviewPanelMetrics.cardWidth, 232, accuracy: 0.001)
+        XCTAssertEqual(PreviewPanelMetrics.cardHeight, 172, accuracy: 0.001)
+        XCTAssertEqual(
+            PreviewPanelMetrics.titleTextWidth,
+            PreviewPanelMetrics.titleRowWidth
+                - PreviewPanelMetrics.iconSize
+                - PreviewPanelMetrics.titleIconSpacing
+                - PreviewPanelMetrics.closeButtonSpacing
+                - PreviewPanelMetrics.closeButtonSize,
+            accuracy: 0.001
+        )
+    }
+
+    func testRemovingCardKeepsOtherCardsAndReturnsWhetherModelChanged() {
+        let first = makeCard(id: .init(pid: 100, windowID: 1))
+        let second = makeCard(id: .init(pid: 100, windowID: 2))
+        var model = PreviewPanelViewModel(appName: "Code", cards: [first, second], maxCardCount: 8)
+
+        XCTAssertTrue(model.removeCard(for: first.id))
+        XCTAssertEqual(model.cards.map(\.id), [second.id])
+        XCTAssertFalse(model.removeCard(for: first.id))
     }
 
     func testOperationMenuPlanIncludesFourOperationsAndEnvironmentHint() {

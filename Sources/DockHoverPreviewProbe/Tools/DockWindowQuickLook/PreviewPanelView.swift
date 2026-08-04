@@ -449,8 +449,14 @@ enum PreviewPanelMetrics {
     static let thumbnailCornerRadius: CGFloat = 6
     static let iconSize: CGFloat = 18
     static let titleIconSpacing: CGFloat = 6
+    static let closeButtonSize: CGFloat = 22
+    static let closeButtonSpacing: CGFloat = 4
     static let titleRowWidth: CGFloat = cardWidth - cardPadding * 2
-    static let titleTextWidth: CGFloat = titleRowWidth - iconSize - titleIconSpacing
+    static let titleTextWidth: CGFloat = titleRowWidth
+        - iconSize
+        - titleIconSpacing
+        - closeButtonSpacing
+        - closeButtonSize
 
     static func panelSize(cardCount: Int, layout: PreviewPanelLayout) -> CGSize {
         let safeCardCount = max(cardCount, 1)

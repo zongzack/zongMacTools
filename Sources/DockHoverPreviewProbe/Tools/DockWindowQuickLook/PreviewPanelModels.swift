@@ -26,12 +26,35 @@ enum PreviewWindowOperation: String, CaseIterable, Sendable {
 
 enum PreviewPanelAction: Equatable, Sendable {
     case primarySelect(PreviewWindowID)
+    case closePreviewCard(PreviewWindowID)
     case windowOperation(PreviewWindowID, PreviewWindowOperation)
     case contextMenuWillOpen(PreviewWindowID)
     case contextMenuBegan(PreviewWindowID)
     case contextMenuEnded(PreviewWindowID)
     case hoverEntered(PreviewWindowID, sessionEpoch: UInt64, sequence: UInt64)
     case hoverExited(PreviewWindowID, sessionEpoch: UInt64, sequence: UInt64)
+}
+
+struct PreviewCardCloseControlPlan: Equatable {
+    let isVisible: Bool
+    let isEnabled: Bool
+
+    static func plan(for card: PreviewCardViewModel, isHovered: Bool) -> Self {
+        Self(
+            isVisible: isHovered,
+            isEnabled: card.operationMenu.closeWindow.isEnabled
+        )
+    }
+}
+
+enum PreviewCardCloseActionDispatcher {
+    static func dispatch(
+        for card: PreviewCardViewModel,
+        onAction: (PreviewPanelAction) -> Void
+    ) {
+        guard card.operationMenu.closeWindow.isEnabled else { return }
+        onAction(.closePreviewCard(card.id))
+    }
 }
 
 struct WindowOperationAvailability: Equatable, Sendable {
@@ -209,5 +232,12 @@ struct PreviewPanelViewModel {
         guard let index = cards.firstIndex(where: { $0.id == id }) else { return }
         cards[index].thumbnail = thumbnail
         cards[index].isLoadingThumbnail = false
+    }
+
+    @discardableResult
+    mutating func removeCard(for id: PreviewWindowID) -> Bool {
+        guard let index = cards.firstIndex(where: { $0.id == id }) else { return false }
+        cards.remove(at: index)
+        return true
     }
 }
