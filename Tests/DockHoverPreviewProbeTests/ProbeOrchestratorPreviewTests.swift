@@ -451,6 +451,7 @@ private final class ProbeOrchestratorPreviewHarness {
             settingsStore: settingsStore,
             targetTracker: self.targetTracker,
             windowPeekCoordinator: windowPeekCoordinator,
+            windowDestroyedObserver: OrchestratorFakeWindowDestroyedObserver(),
             logger: logger
         )
         orchestrator = ProbeOrchestrator(
@@ -462,6 +463,17 @@ private final class ProbeOrchestratorPreviewHarness {
             hoverDelayScheduler: scheduler,
             frontmostApplicationProvider: frontmostProvider
         )
+    }
+}
+
+@MainActor
+private final class OrchestratorFakeWindowDestroyedObserver: WindowDestroyedObserving {
+    func observeWindow(
+        id: PreviewWindowID,
+        element: AXUIElement?,
+        onDestroyed: @escaping @MainActor (PreviewWindowID) -> Void
+    ) -> (any WindowDestroyedObservation)? {
+        nil
     }
 }
 
@@ -492,6 +504,8 @@ private final class OrchestratorRecordingWindowPeekCoordinator: WindowPeekCoordi
     func stop(reason: WindowPeekStopReason) {
         stopReasons.append(reason)
     }
+
+    func completePrimarySelectionHandoff() {}
 }
 
 @MainActor

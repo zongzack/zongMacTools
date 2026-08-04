@@ -35,6 +35,8 @@
 - 不使用全局鼠标监听，不实现 Finder 之外的第二套自定义右键菜单。
 - Finder 上下文在 `menu(for:)` 构造菜单时冻结。每个可点击菜单项持有同一次菜单构造得到的不可变上下文快照；动作回调不得重新读取 Finder 当前选择来替换它。
 - Finder package，包括 `.app`，按文件处理；符号链接和 Finder alias 不跟随目标，也按文件处理。卷根按文件夹处理。VS Code 和自定义工具仍收到原始 URL，不收到解析后的替代 URL。
+- `FIMenuKind.contextualMenuForContainer` 只使用 `targetedURL()` 作为当前目录；`selectedItemURLs()` 必须为空或被忽略。没有单一、有效的本机 `file:` 目录 URL 时返回单一禁用状态项。
+- `FIMenuKind.contextualMenuForItems` 只使用 `selectedItemURLs()` 作为选择数组；`targetedURL()` 不得替代该数组。数组为空、包含非本机 `file:` URL 或原始项目数超过 256 时返回单一禁用状态项。扩展必须记录阶段 0 中 Finder 实际返回的两套 API 组合；未记录的组合按无效上下文处理。
 
 ### 2.2 文件创建
 
@@ -91,7 +93,7 @@ Finder 菜单只显示一个“在 Terminal 中打开”。`zongMacTools` 设置
 - `New Terminal at Folder`
 - `New Terminal Tab at Folder`
 
-这两个名称只是阶段 0 的验证候选，不是正式实现可以无条件硬编码的跨版本/跨语言契约；正式映射只在第 2.5、5.5 和 15.3 节的公开发现与实测记录稳定通过后才成立。
+这两个名称只是阶段 0 的验证候选，不是正式实现可以无条件硬编码的跨版本/跨语言契约；正式映射只在第 2.5、5.5 和 15.3 节的公开发现与实测记录稳定通过后才成立。探针通过后，正式规格必须回填一个版本化的静态 Terminal Service descriptor 表，键为支持的 macOS build 范围和系统语言，值为公开调用 API、精确 Service 名称和 pasteboard 类型；运行时只能选择表中完全匹配的 descriptor，不能枚举或猜测本地化字符串。没有匹配 descriptor 时 Terminal 菜单项保留但禁用，并显示“当前系统上的 Terminal 服务不可用”。
 
 在当前可观察到的 Terminal 版本中，这两个服务分别对应新窗口和新标签页。系统没有供第三方稳定读取的统一“目录应在窗口还是标签页打开”偏好，因此本工具不声称跟随 Terminal 自身设置，也不请求自动化权限。服务不可用或调用失败时显示明确错误，不退回 Apple Events。
 
@@ -258,6 +260,8 @@ zongMacTools.app/
           MacOS/RightClickFinderExtension
 ```
 
+上面的目录是正式发布 Bundle；当前主 executable 固定为 `DockHoverPreviewProbe`，外层 `Info.plist` 的 `CFBundleExecutable` 和 SwiftPM 最终 product name 必须与它完全一致。阶段 0 的最小 probe host 可以复用该主 executable，但只能启用第 15.3 节限定的 probe 行为，不能因名称相同而带入正式业务能力。外层 `Info.plist` 还必须声明一个 `CFBundleURLTypes` 项，包含稳定的 `CFBundleURLName`、`CFBundleTypeRole` 和唯一的 `CFBundleURLSchemes = ["zongmactools"]`；15.2 的自动检查必须验证这些字段与当前 Bundle identifier 一致。
+
 ### 6.3 签名顺序
 
 打包脚本必须：
@@ -307,9 +311,9 @@ zongMacTools
 
 内置模板只允许在所属固定分组内排序，不能跨分组移动。TXT、Markdown、JSON、XML、YAML、Python、HTML、CSS、JavaScript 和 TypeScript 属于“文本与代码”；Word、Excel、PowerPoint 和 RTF 属于“Office 与富文本”。某一分组没有启用项目时不显示该分组，也不留下相邻或尾部分隔线。自定义模板只在自定义模板域内排序，始终位于内置模板之后。
 
-Terminal 和 Visual Studio Code 是固定顺序的一级工具项，允许分别启用或停用，但不允许与自定义工具混排。自定义工具只在“使用开发工具打开”子菜单内排序；没有启用的自定义工具时隐藏该子菜单。用户停用的模板或工具不出现在菜单中。多选时“新建文件”保留但禁用；Terminal 目标不唯一时保留但禁用，使菜单结构稳定且状态可理解。
+Terminal 和 Visual Studio Code 是固定顺序的一级工具项，允许分别启用或停用，但不允许与自定义工具混排。自定义工具只在“使用开发工具打开”子菜单内排序；没有启用的自定义工具时隐藏该子菜单。用户停用的模板或工具不出现在菜单中。用户启用 Terminal 但当前系统没有匹配的 Terminal Service descriptor 时，Terminal 一级项保留为禁用的“当前系统上的 Terminal 服务不可用”，它不计为可点击业务动作；若没有其他可点击动作，根菜单只保留这个单一状态项。多选时“新建文件”保留但禁用；Terminal 目标不唯一时保留但禁用，使菜单结构稳定且状态可理解。
 
-至少有一个模板启用时才显示“新建文件”：单选/空白上下文正常启用，多选时保留但禁用。没有任何模板启用时隐藏整个“新建文件”项，不创建空子菜单。Terminal、VS Code 和自定义工具按各自启用状态过滤；过滤后没有任何可见业务动作时仍保留 `zongMacTools` 根项，根菜单只包含一个禁用的“没有已启用的操作”状态项。上下文无效、选择超过上限或快照尚未初始化时使用各自的单一禁用状态项，不同时混入可点击业务项。
+至少有一个模板启用时才显示“新建文件”：单选/空白上下文正常启用，多选时保留但禁用。没有任何模板启用时隐藏整个“新建文件”项，不创建空子菜单。Terminal、VS Code 和自定义工具按各自启用状态过滤；过滤后没有任何可见业务动作时仍保留 `zongMacTools` 根项，根菜单只包含一个禁用的“没有已启用的操作”状态项，唯一例外是第 2.5 节定义的 `terminalDescriptorUnavailable` 状态项。上下文无效、选择超过上限或快照尚未初始化时使用各自的单一禁用状态项，不同时混入可点击业务项。
 
 ### 7.2 Finder API 上下文
 
@@ -331,7 +335,7 @@ Finder 工具栏、侧边栏等其他菜单类型返回 `nil`。扩展通过 `FI
 `menu(for:)` 必须只做：
 
 - 读取 Finder 已提供的少量 URL。
-- 去重前先检查 256 项上限；不超过上限时，为每个 URL 有界读取分类所需的 `isDirectory`、`isPackage`、`isSymbolicLink`、`isAliasFile` 和 `volumeURL` 等公开 resource values，不读取文件内容、不跟随链接或 alias。
+- 去重前先检查 Finder 原始 URL 数组的 256 项上限；不超过上限时，为每个 URL 有界读取分类所需的 `isDirectory`、`isPackage`、`isSymbolicLink`、`isAliasFile` 和 `volumeURL` 等公开 resource values，并用不跟随最终符号链接的 `lstat` 读取 `st_dev`/`st_ino` 作为短生命周期对象 identity；不读取文件内容、不跟随链接或 alias。
 - 运行其余纯内存目标解析。
 - 使用内存中的最后一份有效菜单快照创建 `NSMenu`。
 
@@ -339,7 +343,7 @@ Finder 工具栏、侧边栏等其他菜单类型返回 `nil`。扩展通过 `FI
 
 ## 8. 目标解析规则
 
-目标解析是共享的纯领域逻辑，由自动测试覆盖。URL 使用路径标准化但不得解析符号链接或 Finder alias，然后按标准化 URL 去重，同时保留 Finder 首次提供的顺序。扩展在构造菜单时把 `FIMenuKind`、冻结后的 URL 数组、分类结果和菜单快照语言组成不可变上下文；动作回调只序列化这份上下文。
+目标解析是共享的纯领域逻辑，由自动测试覆盖。URL 使用路径标准化但不得解析符号链接或 Finder alias，然后按标准化 URL 去重，同时保留 Finder API 返回的首次顺序。原始数组已经通过 256 项上限后，去重后的数组不得再超过 256 项。对象 identity 是不跟随最终符号链接的 `lstat` 返回的 `(st_dev, st_ino)`，以无符号十进制字符串编码；扩展在构造菜单时把 `FIMenuKind`、冻结后的 URL 数组、分类结果、对象 identity 和菜单快照语言组成不可变上下文；动作回调只序列化这份上下文。
 
 | Finder 上下文 | 创建文件目标目录 | Terminal 目标 | VS Code / 自定义工具目标 |
 | --- | --- | --- | --- |
@@ -359,7 +363,7 @@ Finder 工具栏、侧边栏等其他菜单类型返回 `nil`。扩展通过 `FI
 - 空白处没有有效的目标目录。
 - 项目在动作执行前被移走、删除或所属卷被弹出。
 - Terminal 多选不能归一到一个目录。
-- 去重后选择超过 256 项。此时文件创建本来就因多选禁用，Terminal、VS Code 和自定义工具也禁用，并显示“选择项目过多”的禁用状态，不生成命令文件。
+- 原始 Finder URL 数组超过 256 项。此时文件创建本来就因多选禁用，Terminal、VS Code 和自定义工具也禁用，并显示“选择项目过多”的禁用状态，不生成命令文件。
 
 扩展不在菜单构建路径中执行昂贵的可写性检查。主程序在真正执行时重新验证目录存在、是目录并可创建文件；失败时给出错误，不覆盖任何已有项目。
 
@@ -393,6 +397,8 @@ Finder 工具栏、侧边栏等其他菜单类型返回 `nil`。扩展通过 `FI
 
 主程序是 `configuration.json`、菜单快照、模板库和 result 记录的唯一写入者。`configuration.json` 只保存本 Finder 右键功能的状态，不迁移或替换现有 Dock 预览等其他工具的设置存储。它是 schema 版本化、最大 2 MiB、原子替换的主状态，持久化模板事务状态、工具普通书签、Terminal 设置和排序/启停；扩展不得读取它。每个受管理的 JSON 原子发布都必须遵循同一顺序：完整编码到同目录临时文件，执行 `write loop -> 设置权限和必要属性 -> fsync(fd) -> close 并检查错误`，重新打开并做有界完整性校验，最后才 `rename` 到目标名称；rename 前后的崩溃恢复必须保留至少一个可验证副本。对配置更新，新的编码结果在整个 previous 保存过程结束前始终保持为临时文件；先把仍在 current 目标名下的旧有效配置复制到独立 previous 临时文件，按上述写入/校验顺序原子替换 `configuration.previous.json`，只有成功后才把新的临时文件原子 rename 为 `configuration.json`。不能先发布新 current、让 previous 捕获新版本，也不能先删除唯一有效副本。
 
+配置 schema 只向前兼容已明确支持的旧版本。启动发现旧但可迁移的 schema 时，主程序在独立迁移事务中先保留原 current 副本，再生成当前 schema 的完整副本，重新校验模板记录、工具书签和排序域，成功后按 current/previous 原子发布顺序替换；迁移必须幂等，失败时保留旧副本并进入恢复错误。未知未来 schema 不得按默认值覆盖，也不得猜测字段含义。
+
 首次初始化是唯一可创建默认配置的例外。只有 `configuration.json`、`configuration.previous.json` 和 `initialization.json` 都不存在，且除固定空目录和阶段 0 的 `probe/` 记录外没有任何受管持久化内容（`menu-catalog.json` 不存在，`templates/`、`commands/staging`、`commands/pending`、`commands/processing` 和 `commands/results` 均为空）时，主程序才可以开始初始化。它先按上述 JSON 契约发布 `initialization.json`，状态为 `starting` 并包含首份默认配置的 schema 与 SHA-256；再发布首份 `configuration.json`，其中 14 个内置模板全部启用并按第 7.1 节的固定组内默认顺序排列，Terminal 与 VS Code 启用、Terminal 为 `newWindow`，且没有自定义模板或工具；最后把 marker 原子更新为 `complete` 并记录 current 的 SHA-256。首次发布不要求 `configuration.previous.json`。若进程在 marker 为 `starting` 时终止，启动恢复只可在 current/previous 均不存在且仍无其他受管内容时重新发布同一首份默认配置；若 current 已存在且哈希匹配，则只完成 marker。只要任一配置文件、marker、菜单快照、模板目录或命令状态已经存在但无法满足上述预期，均视为已有状态或损坏配置：不发布默认值、不删除数据，进入恢复错误。
 
 启动时先验证 current，失败时只回退到 schema 可读且校验通过的 previous；两个副本都无效时不发布业务菜单，并显示配置恢复错误，不猜测字段。使用 previous 回退或两个副本都无效时，主程序不得根据不完整状态删除任何 staging、模板最终目录或工具记录，只能停用无法证明有效的菜单项并提示恢复。扩展只读取 `menu-catalog.json`，不读取模板正文或其他设置文件。扩展是 pending 命令的写入者，主程序通过原子移动领取命令。result 只保存命令 ID、动作类型、完成时间、`succeeded`、`failed` 或 `unknown` 状态、错误分类和可选的 `feedbackClaimedAt`；`action` 只允许 `createFile`、`openTool` 或 `unknown`，其中 `unknown` 仅用于文件名含规范 UUID 但内容无法解码出动作的协议损坏。result 不保存 URL、模板内容或工具路径，用于阻止重复执行和最多一次地领取错误反馈。
@@ -423,13 +429,14 @@ Finder 工具栏、侧边栏等其他菜单类型返回 `nil`。扩展通过 `FI
       "kind": "terminal",
       "placement": "builtinPrimary",
       "enabled": true,
+      "availability": "available",
       "sortOrder": 10
     }
   ]
 }
 ```
 
-快照只包含构造菜单所需的稳定 ID、显示名称、类型、启用状态、固定分组和分组内排序，不包含自定义工具书签、应用完整路径或模板正文。主程序在启动、相关设置变化和模板导入删除后，按上述 JSON 发布顺序通过同目录临时文件加原子替换发布新 revision；旧 revision 或新 revision 至少有一个始终可验证。
+快照只包含构造菜单所需的稳定 ID、显示名称、类型、启用状态、可用性、固定分组和分组内排序，不包含自定义工具书签、应用完整路径或模板正文。`availability` 只允许 `available` 或 `terminalDescriptorUnavailable`；后者只适用于内置 Terminal 且要求扩展渲染为禁用状态。菜单排序先按 `sortOrder` 升序，再按稳定 ID 的字节序升序解决并列；配置中允许并列但不得产生非确定顺序。主程序在启动、相关设置变化和模板导入删除后，按上述 JSON 发布顺序通过同目录临时文件加原子替换发布新 revision；旧 revision 或新 revision 至少有一个始终可验证。
 
 菜单快照有以下硬限制：UTF-8 JSON 最大 512 KiB；`language` 只允许 `zh-Hans` 或 `en`，其他有效系统语言使用 `en`；内置模板固定为 14 个；自定义模板最多 32 个；自定义工具最多 16 个；用户可编辑显示名称去除首尾空白后必须为 1 至 80 个扩展字素，不能包含换行或其他控制字符。超过限制的设置操作在主程序中被拒绝，主程序不得发布超过限制的快照；扩展遇到超限快照时视为损坏并沿用最后有效版本。系统或应用语言变化只影响主程序下一次发布的快照，已经构造的菜单和命令继续使用冻结语言。
 
@@ -447,11 +454,15 @@ Finder 工具栏、侧边栏等其他菜单类型返回 `nil`。扩展通过 `FI
   "language": "zh-Hans",
   "context": "singleFile",
   "urls": ["file:///Users/example/Project/README.md"],
-  "itemKinds": ["file"]
+  "itemKinds": ["file"],
+  "itemIdentities": [
+    { "device": "16777232", "inode": "123456789" }
+  ],
+  "targetDirectoryIdentity": { "device": "16777232", "inode": "123456700" }
 }
 ```
 
-`action` 首版只有 `createFile` 和 `openTool`。`subjectID` 引用主程序管理的模板或工具记录。`language` 只允许 `zh-Hans` 或 `en`，来自构造该菜单的快照，用于冻结本次文件名语言；`openTool` 虽然也携带该字段，但不使用它决定行为。`itemKinds` 与 `urls` 一一对应，只允许 `file` 或 `directory`，保存菜单构造时按第 8 节得到的冻结分类；空白处仍包含当前目录 URL 和一个 `directory`。扩展不把任意输出文件名、命令行或可执行路径写入命令。
+`action` 首版只有 `createFile` 和 `openTool`。`subjectID` 引用主程序管理的模板或工具记录。`context` 只允许 `container`、`singleFolder`、`singleFile` 或 `multipleItems`；`container` 对应 Finder 空白处，其他值对应 `contextualMenuForItems`。`language` 只允许 `zh-Hans` 或 `en`，来自构造该菜单的快照，用于冻结本次文件名语言；`openTool` 虽然也携带该字段，但不使用它决定行为。`itemKinds`、`itemIdentities` 与 `urls` 三者一一对应，只允许 `file` 或 `directory`；identity 固定为菜单构造时不跟随最终符号链接的 `lstat` 返回的 `{ device, inode }` 无符号十进制值，不得由路径字符串替代。空白处仍包含当前目录 URL、一个 `directory` 和该目录的 identity。`createFile` 与 Terminal 命令必须额外携带 `targetDirectoryIdentity`；VS Code/自定义工具命令在目标为目录时也携带该 identity。扩展不把任意输出文件名、命令行或可执行路径写入命令。
 
 命令不能在 pending 目录中写临时文件。主程序和扩展统一用公开的 BSD `flock(2)` 作为锁原语，不能一边使用 `flock`、另一边使用 `fcntl` record lock。`state/host.lock` 和 `commands/queue.lock` 都以 `O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW`、模式 `0600` 打开并经 `fstat` 确认是预期普通文件；对各自 file descriptor 调用 `flock(fd, LOCK_EX | LOCK_NB)`。锁由持有该 descriptor 的进程在 close 或退出时释放。扩展取得 queue lock 失败时立即以 `queueBusy` 失败并发出系统提示音，不能在 Finder 回调中等待；主程序取得失败时延后 drainer/清理。阶段 0 必须用真实沙盒扩展和非沙盒主程序证明两边对同一个 queue lock inode 互斥。
 
@@ -485,6 +496,7 @@ drainer 解码所有有效 pending 文件，按 `createdAt` 升序、UUID 字符
 - 创建时间早于当前墙上时间 5 分钟以上，或晚于当前墙上时间 1 分钟以上。
 - 非本机 `file:` URL。host 只允许为空或 `localhost`，不能接受远程 file host。
 - 非法 `language`、未知 `context`，或主程序从冻结 URL 重新推导的上下文、数量和项目分类与命令不一致。
+- 缺少、无法解析或与命令不一致的 `itemIdentities`、`targetDirectoryIdentity`；主程序必须用不跟随最终符号链接的 `lstat` 重新读取 identity，并在卷、文件或目录身份变化时拒绝动作，即使路径和类型仍然相同。
 - 不存在、已禁用或类型不匹配的模板和工具 ID。
 - `createFile` 不是单一空白处、单文件夹或单文件上下文；`openTool` 的 URL 数量或 Terminal 唯一目录规则不符合第 8 节矩阵。
 
@@ -528,12 +540,14 @@ Office 模板至少进行以下真实应用人工验证：
 
 1. 拒绝目录、符号链接和其他特殊文件。
 2. 为模板生成稳定 UUID。
-3. 使用 `O_NOFOLLOW` 打开源文件并以 `fstat` 确认是最大 64 MiB 的普通文件；记录 device、inode、类型、大小、mtime 和 ctime，从该文件描述符按声明大小有界复制并确认随后是 EOF，同时计算 SHA-256。完成后再次核对同一描述符的上述身份和修改信息，任一变化则失败。
+3. 使用 `O_NOFOLLOW` 打开源文件并以 `fstat` 确认是最大 64 MiB 的普通文件；记录 device、inode、类型、大小、mtime 和 ctime，从该文件描述符按声明大小有界复制并确认随后是 EOF，同时计算 SHA-256。随后把同一描述符重置到偏移 0 做第二次有界读取，只计算并确认第二个 SHA-256、大小和 EOF；两次内容摘要或身份/修改信息不一致则失败。该双读规则用于拒绝复制过程中产生的非稳定内容，不把一次读取的结果宣称为源文件快照。
 4. 把文件内容复制到 App Group 的模板目录，而不是保存对原文件的依赖。
 5. 不复制原文件的执行位、ACL、资源 fork 或扩展属性；托管内容和创建出的文件使用 `0666 & ~umask`，不得包含执行位。目标目录自身的继承 ACL 可以生效，但不能从模板源复制 ACL。无法满足这些属性约束时导入失败。
 6. 保存原文件最后一个 path extension 的原始大小写。扩展名不含前导点，必须为 1 至 32 个扩展字素，不得包含 `/`、`:`、控制字符或路径分隔符；不符合限制时拒绝导入。
 7. 对没有 path extension 的文件不附加扩展名。`.env` 这类只有前导点的 dotfile 视为“无扩展名”，默认显示名称保留 `.env`。
 8. 默认显示名称使用原文件名去掉最后一个扩展名；去除后为空时使用完整文件名。用户修改后的名称仍受第 9.2 节限制。
+
+默认显示名称在导入事务开始前就使用第 9.2 节的同一验证器检查：去除首尾空白后必须为 1 至 80 个扩展字素，不能包含换行或其他控制字符。默认值不做截断或隐式替换；不符合限制时拒绝导入并不创建 `importing` 记录。
 
 所有自定义模板创建出的目标文件仍使用本地化 `未命名` / `Untitled` 作为基础名称，再附加模板记录中的扩展名。修改模板显示名称只影响菜单，不改变创建文件名称规则。
 
@@ -543,9 +557,9 @@ Office 模板至少进行以下真实应用人工验证：
 
 ### 10.3 创建文件的原子性
 
-主程序使用 `O_DIRECTORY | O_NOFOLLOW` 打开已经按第 8 节重新验证的目标目录最终路径分量，并用 `fstat` 确认目录身份；之后的临时创建、属性设置、名称限制查询和最终提交全部相对该 directory file descriptor 执行，不能重新使用可能发生竞态替换的绝对目标路径。主程序先以包含命令 UUID、随机后缀和固定应用前缀的隐藏临时名称独占创建一个普通文件，只把模板内容写入一次，并严格执行 `write loop -> 设置普通文档权限和必要属性 -> fsync(fd) -> close 并检查错误`。只有这些步骤全部成功才使用创建命令冻结的语言依次生成候选名称，通过 `fpathconf(directoryFD, _PC_NAME_MAX)` 拒绝 UTF-8 文件名超过目标卷限制的候选，最多尝试第 2.2 节规定的 10,000 个候选。
+主程序使用命令中的 `targetDirectoryIdentity` 和不跟随最终符号链接的 `lstat` 重新验证目标目录，并逐级以不会跟随符号链接的方式打开路径分量；只对最终分量使用 `O_DIRECTORY | O_NOFOLLOW` 不足以满足本规格。打开后用 `fstat` 确认 directory file descriptor 与 `targetDirectoryIdentity` 相同。之后的临时创建、属性设置、名称限制查询和最终提交全部相对该 directory file descriptor 执行，不能重新使用可能发生竞态替换的绝对目标路径。主程序先以包含命令 UUID、随机后缀和固定应用前缀的隐藏临时名称独占创建一个普通文件，只把模板内容写入一次，并严格执行 `write loop -> 设置普通文档权限和必要属性 -> fsync(fd) -> close 并检查错误`。所有正式创建文件使用 `0666 & ~umask`，不得带执行位。只有这些步骤全部成功才使用创建命令冻结的语言依次生成候选名称，通过 `fpathconf(directoryFD, _PC_NAME_MAX)` 拒绝 UTF-8 文件名超过目标卷限制的候选，最多尝试第 2.2 节规定的 10,000 个候选。
 
-每次提交使用 SDK 自 macOS 10.12 公开声明的 `renameatx_np(directoryFD, temporaryName, directoryFD, candidateName, RENAME_EXCL)`；可以先用公开的 `URLResourceKey.volumeSupportsExclusiveRenamingKey` 快速判断卷能力，但最终以实际系统调用结果为准。候选冲突时原临时文件必须保持不变，以便直接尝试下一个候选。不能先检查候选存在再调用允许覆盖的 rename/move，也不提供语义更弱的回退。
+每次提交使用 SDK 自 macOS 10.12 公开声明的 `renameatx_np(directoryFD, temporaryName, directoryFD, candidateName, RENAME_EXCL)`；可以先用公开的 `URLResourceKey.volumeSupportsExclusiveRenamingKey` 快速判断卷能力，但最终以实际系统调用结果为准。`EEXIST` 只表示候选冲突，原临时文件必须保持不变并继续尝试下一个编号；`ENOTSUP`、`EINVAL` 或等价的“不支持不覆盖提交”错误直接映射为 `atomicCommitUnsupported`，其他错误映射为 `atomicCommitFailed`，都不得回退为允许覆盖的 rename/move。若 `_PC_NAME_MAX` 返回不可用或无法确定名称上限，也必须以 `nameLimitUnknown` 失败，不能猜测限制。
 
 候选已存在时保留本次临时文件并尝试下一个编号；成功提交或耗尽候选后不再复用它。写入、同步、文件名限制或提交发生其他错误时删除临时文件并报告；删除也失败时错误必须包含“目标目录中可能留有隐藏临时文件”的可执行清理提示，但日志仍不记录完整路径。恢复 processing 时，主程序只在该命令冻结的目标目录内清理同时匹配固定前缀、该命令 UUID 和合法临时名语法的文件；它不遍历其他用户目录。无法从 processing 安全推导目标目录时不执行自动删除，只报告可能残留。
 
@@ -589,14 +603,23 @@ Finder 选择是文件创建成功后的独立 UI 动作。公开 API 没有提�
 
 Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPasteboard`，然后调用对应的公开 Service 名称。返回失败时不使用 AppleScript、`osascript` 或辅助功能补救。
 
-正式实现只能使用阶段 0 已记录通过的公开 Service 调用 API 和 pasteboard 类型；若探针表明 Service 名称或输入随系统语言变化，则以探针验证的公开服务发现结果为准并更新本节，不能在实现中猜测本地化字符串。调用 API 返回成功只表示 Service 接受请求；人工验收必须另行观察窗口/标签页结果。
+正式实现只能使用阶段 0 已回填到版本化 Terminal Service descriptor 表的公开调用 API、精确 Service 名称和 pasteboard 类型；运行时根据当前 macOS build 与系统语言精确查表，不提供未验证的动态服务发现，也不能猜测本地化字符串。descriptor 缺失时菜单构造即可禁用 Terminal；Service 被用户禁用或调用失败只能在执行阶段判定并产生明确错误，菜单构造不得为此查询或等待。调用 API 返回成功只表示 Service 接受请求；人工验收必须另行观察窗口/标签页结果。
 
 设置值是版本化枚举：
 
-- `newWindow` -> `New Terminal at Folder`
-- `newTab` -> `New Terminal Tab at Folder`
+- `newWindow` -> 当前 descriptor 中语义为 `newWindow` 的 Service
+- `newTab` -> 当前 descriptor 中语义为 `newTab` 的 Service
 
 首版默认值是“新窗口”；设置缺失或非法时也回退为“新窗口”。如果选择“新标签页”但 Terminal 当前没有窗口，实际结果由 Terminal Service 决定，通常会创建可承载标签页的窗口。本工具不伪造窗口状态，也不尝试反向读取或覆盖 Terminal 自己的偏好。
+
+### 11.4 外部工具副作用完成契约
+
+VS Code、Terminal 和自定义 `.app` 的成功边界统一定义为“公开 API 接受 URL 交付请求”：
+
+- `NSWorkspace` 调用有同步失败结果时，返回失败即写入 `failed`；异步 completion 明确报告错误时写入 `failed`，无错误完成时写入 `succeeded`。
+- Terminal Service 的公开调用返回成功即表示 Service 接受请求并写入 `succeeded`；窗口是否出现、是否复用窗口以及标签页是否实际建立不纳入本工具的成功保证。
+- 调用 API 没有可观察 completion，或主程序在调用返回与 completion 之间终止时，恢复流程写入 `unknown`，不得自动重试。实现不得用固定睡眠时间猜测第三方应用状态。
+- 外部 API 调用必须在主程序状态协调器之外的受控执行队列中运行，并向协调器返回一次性完成事件；完成事件丢失、超时或重复到达都不能导致第二次外部调用。阶段 2 测试必须覆盖这些边界。
 
 ## 12. 设置界面
 
@@ -607,6 +630,7 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 - 内置文件类型列表：排序和启用/停用。
 - 自定义模板列表：添加、修改显示名称、排序、启用/停用和删除。
 - Terminal 打开方式分段控件：新窗口 / 新标签页。
+- Terminal 当前没有匹配的 Service descriptor 时显示不可用状态；用户仍可保留其启用偏好，但不能从设置页绕过 descriptor 直接提交调用。
 - 开发工具列表：Terminal、Visual Studio Code 和用户添加的应用。
 - Terminal 和 Visual Studio Code：分别启用/停用，顺序固定。
 - 自定义工具操作：添加、重新绑定、修改显示名称、排序、启用/停用和删除；排序只作用于自定义工具子菜单。
@@ -655,6 +679,8 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 - 文件创建永不覆盖已有文件。
 - 模板导入不保留执行权限，避免“创建文件”隐式产生可执行程序。
 
+本版本的安全前提是“同一登录用户下的其他非沙盒进程属于可信环境”。App Group、普通持久书签和 URL Scheme 都不能证明命令来自 Finder Sync 扩展；能够写入共享容器的进程理论上可以伪造合法 schema、URL 和登记 ID。下载说明和安全评审必须明确这一威胁模型；如果产品要求抵抗同用户恶意进程，当前方案不得发布，必须另行设计带调用方认证的 IPC 或签名命令。
+
 ## 14. 生命周期和恢复
 
 - 主程序启动时只通过 App Group API 取得容器，并以不会跟随符号链接的方式创建固定子目录后按第 9.3 节规定的 `flock(fd, LOCK_EX | LOCK_NB)` 契约锁定 `state/host.lock`，在进程生命周期内持续持有 descriptor。已有实例持锁时，当前实例不读取或修改其他共享状态并直接退出；持锁实例通过第 9.4 节的 pending 目录观察器领取扩展已经写入的命令。取得锁后先按第 9.1 节验证 current/previous 配置，再恢复 processing、处理过期命令和验证内置模板；只有 current 完整有效时才执行模板 staging/孤儿目录的破坏性清理。命令 staging 只按第 9.3 节的 10 分钟规则在 queue lock 内回收，不受配置回退驱动；最后发布菜单快照。
@@ -673,14 +699,14 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 
 共享领域测试：
 
-- 空白处、单文件夹、单文件和多选目标解析矩阵。
+- 空白处、单文件夹、单文件和多选目标解析矩阵；分别覆盖 `contextualMenuForContainer`/`targetedURL()`、`contextualMenuForItems`/`selectedItemURLs()`、空值、两个 API 同时有值和未记录的 API 组合。
 - 多选 Terminal 相同目录、不同目录、文件夹加子文件和重复 URL。
 - package、`.app`、普通目录、卷根、符号链接、Finder alias 和链接目标变化；VS Code/自定义工具始终收到冻结的原始 URL。
-- 菜单构造后 Finder 选择变化、项目移动、类型变化或所属卷弹出；动作不得改用新选择，类型变化必须拒绝。
+- 菜单构造后 Finder 选择变化、项目移动、类型变化、同路径同类型对象替换、目标目录替换、中间路径分量变成符号链接或所属卷弹出；动作不得改用新选择，identity 或类型变化必须拒绝。
 - 非文件 URL、远程 file host、缺少父目录、目标消失、未来时间和无效上下文。
-- 256 项边界、257 项禁用、重复 URL 去重、单 URL 16 KiB 和命令 1 MiB 限制。
-- 菜单快照 schema、512 KiB 限制、语言白名单/英文回退、固定分组、分组内排序、停用过滤、分隔线消除、全部模板/工具停用空状态和损坏快照回退。
-- 命令编码解码、UUID/文件名匹配、5 分钟有效期、语言冻结和未知 action 拒绝；规范 UUID 但无法解码 action 的命令必须产生 `action = unknown` 的 `failed` result。
+- 原始数组 256/257 项边界、重复 URL 去重后的稳定顺序、单 URL 16 KiB 和命令 1 MiB 限制。
+- 菜单快照 schema、512 KiB 限制、语言白名单/英文回退、Terminal `availability` 合法值与 descriptor 缺失禁用状态、固定分组、分组内排序、并列 `sortOrder` 的 ID tie-break、停用过滤、分隔线消除、全部模板/工具停用空状态和损坏快照回退。
+- 命令编码解码、UUID/文件名匹配、5 分钟有效期、语言冻结、上下文枚举、item/target directory identity 冻结与未知 action 拒绝；规范 UUID 但无法解码 action 的命令必须产生 `action = unknown` 的 `failed` result。
 - URL 丢失、合并、重复和乱序时，合法唤醒排空全部 pending；正常冷启动的独立 startup scan 能排空既有 pending，运行中收到非法 URL 不额外调度扫描。
 - pending observer 先 arm 再 scan 的窗口、事件合并、事件丢失和 source 重建；每种情况都必须 full rescan 并 drain 到 quiescent。
 - 多个扩展进程并发“计数加预留”时使用同一 queue lock，`staging + pending + processing` 的 255/256 边界不能超额；分别覆盖 `queueBusy`、`queueFull` 和预留成功。
@@ -700,19 +726,19 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 - 大小写敏感与不敏感真实卷各至少验证一种；硬件/卷格式不可用时明确记录未覆盖。
 - 同目录临时写入和不覆盖原子提交；竞争期间候选被抢占时继续编号，不覆盖已有文件。
 - 写入失败、`fsync` 失败、close 失败、磁盘满、提交 rename 不支持和临时文件删除失败的结果与提示。
-- 在临时创建、写入、设置属性、`fsync`、close 和最终 rename 各边界注入终止；非空模板不得留下零字节/截断最终文件，清理不得删除未知文件。
+- 在临时创建、写入、设置属性、`fsync`、close 和最终 rename 各边界注入终止；非空模板不得留下零字节/截断最终文件，清理不得删除未知文件。覆盖 `_PC_NAME_MAX` 未知、`EEXIST` 冲突、`ENOTSUP`/`EINVAL` 不支持和其他提交错误的结果分类。
 - 14 个内置模板的扩展名和基础内容验证。
 - DOCX、XLSX、PPTX 是无路径穿越和重复规范化条目的可解析 ZIP，content types、根 relationship、主部件及 worksheet/slide 关系闭包有效，资源 SHA-256 与发布记录一致。
 - RTF、JSON、XML、HTML 和 YAML 的最小格式有效性；RTF 另做 TextEdit 人工打开验证。
 - 自定义模板导入后删除原文件仍可创建。
-- 拒绝目录、符号链接、特殊文件、超过 64 MiB 和导入期间 device/inode/大小/mtime/ctime 变化或提前/延后 EOF 的文件；复制流 SHA-256 与重新打开的 staging 内容必须一致，不复制执行位、ACL、xattr 和资源 fork。
+- 拒绝目录、符号链接、特殊文件、超过 64 MiB 和导入期间 device/inode/大小/mtime/ctime、双读 SHA-256 或提前/延后 EOF 变化的文件；复制流 SHA-256 与重新打开的 staging 内容必须一致，不复制执行位、ACL、xattr 和资源 fork。覆盖默认显示名称含控制字符、超长或空白的拒绝路径。
 - 导入在 `importing`/摘要持久化/staging/不覆盖 rename/最终目录/`active` 每个边界终止后的恢复；最终 UUID 目录冲突不得覆盖，删除 tombstone 重试、孤儿 staging/最终目录回收和 active 内容缺失停用。
 
 工具测试：
 
-- Terminal 设置到两个 Service 名称的精确映射。
+- Terminal 设置到阶段 0 回填的版本化 Service descriptor 表的精确映射；覆盖 English/简体中文和支持的最低/当前系统版本，以及 descriptor 缺失时菜单禁用和错误文案。
 - Terminal 只接收一个解析后的目录。
-- VS Code 单文件、文件夹和多选 URL 转发。
+- VS Code 单文件、文件夹和多选 URL 转发；覆盖 synchronous failure、异步 completion 成功/失败、completion 丢失、超时和主程序终止后的 `unknown` 恢复。
 - 自定义工具普通书签成功、stale 刷新、内容失效、bundle ID 变化、同 bundle ID 多副本、无 bundle ID 和用户确认重新绑定。
 - 拒绝 alias、符号链接、非 `APPL`、缺少可执行文件和不可打开 Bundle。
 - 未登记 tool ID、已停用工具和重复工具记录拒绝。
@@ -729,19 +755,20 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 - 设置变化触发菜单 snapshot revision 增加。
 - 模板/工具数量和显示名称边界；超限设置不写入 `configuration.json` 或快照。
 - 干净 App Group 的首次初始化默认配置、`initialization.json` 的 `starting`/`complete` 恢复、首份 current rename 前后和 marker 更新前后崩溃；保留既有 App Group 数据重新安装、marker/菜单快照/模板/命令任一既有状态或两个配置副本损坏时均不得写入默认值。
-- `configuration.json` schema/2 MiB 限制、current/previous 回退、两个副本都损坏时不覆盖旧状态，以及后续配置更新各原子替换边界的崩溃恢复。
+- `configuration.json` schema/2 MiB 限制、current/previous 回退、两个副本都损坏时不覆盖旧状态、旧 schema 幂等迁移和未知未来 schema 拒绝，以及后续配置更新各原子替换边界的崩溃恢复。
 
 ### 15.2 Bundle 与签名自动检查
 
 - 主程序包含 `Contents/PlugIns/RightClickFinderExtension.appex`。
 - 主程序、扩展 executable 和 Info.plist 均存在且合法。
+- 外层 `CFBundleExecutable` 必须为 `DockHoverPreviewProbe`，并与实际主 executable、SwiftPM product name 一致；阶段 0 Bundle 不得因此启用正式业务能力。
 - SwiftPM、主程序 Info.plist 和扩展 deployment target 均为 macOS 14.0。
 - 外层主程序 Info.plist 包含非空的 `NSDesktopFolderUsageDescription`、`NSDocumentsFolderUsageDescription`、`NSDownloadsFolderUsageDescription` 和 `NSRemovableVolumesUsageDescription`，`en` 与 `zh-Hans` 的 `InfoPlist.strings` 都能为四项解析出非空本地化文案。
 - 主程序和扩展 bundle identifier 精确匹配设计值。
 - 两者实际签名 entitlements 包含同一个 App Group。
 - 主程序实际 entitlements 不包含 `com.apple.security.app-sandbox`；扩展实际 entitlements 包含 App Sandbox。
 - 扩展声明正确的 Finder Sync extension point 和 principal class。
-- 主程序注册 `zongmactools` URL Scheme。
+- 外层 `CFBundleURLTypes` 包含稳定 URL name、合法 bundle type role 和唯一的 `zongmactools` scheme；注册项与当前主程序 bundle identifier 一致。
 - 先签扩展、后签主程序后通过 `codesign --verify --deep --strict`。
 - release ZIP 包含已签名的完整 `.appex`，解压后再次通过检查。
 - `lipo -archs` 或等价检查记录主程序和扩展实际架构且两者一致；发布元数据和下载页只承诺产物实际包含的架构。
@@ -755,7 +782,7 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 以下全部阶段 0 强制项必须分别在 macOS 14 的最新可用小版本和发布时当前支持的最新 macOS 上执行；同一个系统版本不能同时充当最低与当前版本证据。每份记录必须包含 OS build、硬件与 CPU 架构、主程序/扩展实际签名和 entitlements。Terminal 子矩阵还必须在 English 与简体中文系统语言下各执行一次，记录实际 Service 名称、发现方式和 pasteboard 类型，不能只在一种语言下推断另一种语言。
 
 1. 导出实际 entitlements，确认非沙盒主程序与沙盒 Finder 扩展通过 App Group 双向往返。
-2. Finder 空白、单选文件夹、单选文件、多选、package、`.app`、符号链接、alias 和卷根上下文读取；菜单打开后改变选择不能改变冻结命令。
+2. Finder 空白、单选文件夹、单选文件、多选、package、`.app`、符号链接、alias 和卷根上下文读取；分别记录两种 `FIMenuKind` 的 `targetedURL()`/`selectedItemURLs()` 实际组合，验证 API 空值、同时有值和原始数组 256/257 边界；菜单打开后改变选择、替换同路径对象或改变 resource identity 不能改变或重新解释冻结命令。
 3. URL Scheme 在主程序运行和未运行时都能唤醒；连续写入多条命令后模拟一个 URL 丢失、重复和乱序，主程序仍只执行一次并排空全部 pending。
 4. 验证 URL Scheme 在开发目录副本、`/Applications` 发布候选、旧副本和替换安装场景中的实际解析目标；发布环境不能保留可争用同一 scheme 的副本。
 5. 验证 `/` 或明确卷根注册能覆盖用户主目录、桌面、文稿和普通项目目录。
@@ -780,10 +807,10 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 
 阶段 2，开发工具：
 
-1. Terminal 新窗口和新标签页各验证一次。
-2. Terminal 未运行/已运行、有窗口/无窗口、Service 启用/禁用，以及单文件、文件夹、相同目录多选和不同目录多选的状态正确。
-3. VS Code 收到单文件、文件夹和多个选中项。
-4. 添加另一款 `.app`，验证添加、排序、停用、移动、stale bookmark、同 bundle ID 多副本、用户确认重新绑定和删除；验收只声称系统接受 URL 交付，不声称任意应用处理了全部 URL。
+1. Terminal 新窗口和新标签页各验证一次，并记录公开 Service 调用返回的接受/失败状态；不以窗口可见性替代该状态。
+2. Terminal 未运行/已运行、有窗口/无窗口、Service 启用/禁用，以及单文件、文件夹、相同目录多选和不同目录多选的状态正确；新标签页但无窗口时按第 11.4 节记录，不把不可观察的窗口结果伪造为失败。
+3. VS Code 收到单文件、文件夹和多个选中项；分别验证 API 同步失败、completion 成功/失败、completion 超时和调用边界进程终止后的 result 状态。
+4. 添加另一款 `.app`，验证添加、排序、停用、移动、stale bookmark、同 bundle ID 多副本、用户确认重新绑定和删除；分别验证 API 接受/拒绝、completion 超时和 `unknown` 恢复。验收只声称系统接受 URL 交付，不声称任意应用处理了全部 URL。
 
 阶段 3，覆盖范围：
 
@@ -791,6 +818,7 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 2. Desktop、Documents 和 Downloads 分别在重置过 TCC 状态的干净用户/VM 中验证首次允许、首次拒绝和允许后撤销访问时的主程序行为及中英文用途说明；每个状态都以真实文件操作结果判定，不能从缓存配置推断。Finder 命令冷启动不无故显示主设置窗口或抢占焦点。
 3. 正常挂载的外置磁盘在重置过 TCC 状态的干净用户/VM 中分别验证首次允许、首次拒绝和允许后撤销访问时的 `NSRemovableVolumesUsageDescription` 文案、菜单覆盖、读写权限和不覆盖原子提交；硬件不可用时记录 `blocked / not available`，且在验证完成前下载页不得承诺外置卷支持。
 4. iCloud、OneDrive、Dropbox 和文件提供程序目录只记录观察结果，不据此扩大支持承诺。
+5. 自定义 `.app` 位于 Desktop、Documents、Downloads 或外置卷时，分别验证普通书签解析、Bundle 校验、`NSWorkspace` 打开请求和 TCC 拒绝/撤销后的错误路径；不得把目标目录访问的授权假定为对应用 Bundle 位置的授权。
 
 ### 15.4 网站技术预览分发验证
 
@@ -802,12 +830,12 @@ Terminal launcher 根据设置把目标目录作为文件 URL 写入专用 `NSPa
 4. 使用系统当时提供的 Control-点击“打开”或“隐私与安全性”中的“仍要打开”处理首次 Gatekeeper 提示，不指导关闭 Gatekeeper。
 5. 首次启动主程序并打开系统 Finder 扩展管理界面。
 6. 用户手动启用扩展后，重新执行 App Group、菜单、文件创建和 Terminal 最小流程。
-7. 替换为下一 build 后验证扩展注册和设置/模板保留行为。
+7. 替换为下一 build 后验证扩展注册和设置/模板保留行为；若该 build 提升 configuration schema，必须在真实旧 schema 数据上验证幂等迁移、失败回退和未知未来 schema 拒绝。
 8. 至少在 macOS 14 的最新可用小版本和发布时当前支持的最新 macOS 各验证一次；同一版本不能同时充当最低系统与当前系统证据。
 9. 记录主程序和扩展的实际 CPU 架构。首版产物由固定构建机器决定，不默认声称 Universal 2；仅在主程序、扩展和所有嵌入二进制都同时包含 `arm64` 与 `x86_64` 且两类机器完成 smoke test 后，才可宣传为 Universal。
 10. 验证主程序因 Dock 预览能力产生的系统辅助功能/屏幕录制提示与 Finder 文件创建的目标目录访问提示在下载说明中被准确区分；不得声称 Finder 功能本身需要前两项权限。
 
-技术预览下载页必须明确：未使用 Developer ID、未公证、首次打开和扩展启用需要用户操作、仅承诺经过上述矩阵验证的 macOS 14 或更新版本与 CPU 架构，以及云盘、未验证外置卷、未验证 Microsoft Office 等实际限制。
+技术预览下载页必须明确：未使用 Developer ID、未公证、首次打开和扩展启用需要用户操作、仅承诺经过上述矩阵验证的 macOS 14 或更新版本与 CPU 架构、同一登录用户下其他非沙盒进程属于可信环境，以及云盘、未验证外置卷、未验证 Microsoft Office 等实际限制。
 
 ## 16. 实施顺序和停止条件
 

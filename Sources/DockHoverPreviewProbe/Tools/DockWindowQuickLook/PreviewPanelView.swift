@@ -152,43 +152,33 @@ struct PreviewCardView: View {
     }
 
     var body: some View {
-        Button {
-            onAction(.primarySelect(card.id))
-        } label: {
-            VStack(alignment: .leading, spacing: PreviewPanelMetrics.cardContentSpacing) {
-                thumbnailView
-
-                HStack(spacing: PreviewPanelMetrics.titleIconSpacing) {
-                    Image(nsImage: card.appIcon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: PreviewPanelMetrics.iconSize, height: PreviewPanelMetrics.iconSize)
-
-                    Text(card.title)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .frame(width: PreviewPanelMetrics.titleTextWidth, alignment: .leading)
+        ZStack(alignment: .topTrailing) {
+            Button {
+                onAction(.primarySelect(card.id))
+            } label: {
+                VStack(alignment: .leading, spacing: PreviewPanelMetrics.cardContentSpacing) {
+                    titleBar
+                    thumbnailView
                 }
-                .frame(width: PreviewPanelMetrics.titleRowWidth, height: 28, alignment: .leading)
+                .padding(PreviewPanelMetrics.cardPadding)
+                .frame(width: PreviewPanelMetrics.cardWidth, height: PreviewPanelMetrics.cardHeight, alignment: .topLeading)
+                .background(cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: PreviewPanelMetrics.cardCornerRadius, style: .continuous)
+                        .stroke(Color.primary.opacity(isHovered ? style.cardHoverBorderOpacity : style.cardBorderOpacity), lineWidth: 1)
+                }
+                .contentShape(RoundedRectangle(cornerRadius: PreviewPanelMetrics.cardCornerRadius, style: .continuous))
             }
-            .padding(PreviewPanelMetrics.cardPadding)
-            .frame(width: PreviewPanelMetrics.cardWidth, height: PreviewPanelMetrics.cardHeight, alignment: .topLeading)
-            .background(cardBackground)
-            .overlay {
-                RoundedRectangle(cornerRadius: PreviewPanelMetrics.cardCornerRadius, style: .continuous)
-                    .stroke(Color.primary.opacity(isHovered ? style.cardHoverBorderOpacity : style.cardBorderOpacity), lineWidth: 1)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: PreviewPanelMetrics.cardCornerRadius, style: .continuous))
+            .buttonStyle(.plain)
+            .accessibilityLabel(card.accessibilityLabel)
+            .help(card.title)
+
+            closeButton
         }
-        .buttonStyle(.plain)
         .onHover { isInside in
             isHovered = isInside
             hoverIntentRelay.emit(isInside: isInside)
         }
-        .accessibilityLabel(card.accessibilityLabel)
-        .help(card.title)
         .overlay {
             PreviewCardContextMenuBridge(
                 card: card,
@@ -204,6 +194,56 @@ struct PreviewCardView: View {
 
     private var thumbnailPlan: PreviewThumbnailRenderPlan {
         PreviewThumbnailRenderPlan.plan(for: card, unavailableText: thumbnailUnavailableText)
+    }
+
+    private var titleBar: some View {
+        HStack(spacing: 0) {
+            Image(nsImage: card.appIcon)
+                .resizable()
+                .scaledToFit()
+                .frame(width: PreviewPanelMetrics.iconSize, height: PreviewPanelMetrics.iconSize)
+                .padding(.trailing, PreviewPanelMetrics.titleIconSpacing)
+
+            Text(card.title)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(width: PreviewPanelMetrics.titleTextWidth, alignment: .leading)
+                .padding(.trailing, PreviewPanelMetrics.closeButtonSpacing)
+
+            Color.clear.frame(
+                width: PreviewPanelMetrics.closeButtonSize,
+                height: PreviewPanelMetrics.closeButtonSize
+            )
+        }
+        .frame(width: PreviewPanelMetrics.titleRowWidth, height: 28, alignment: .leading)
+    }
+
+    private var closeButton: some View {
+        let plan = PreviewCardCloseControlPlan.plan(for: card, isHovered: isHovered)
+        let label = "\(operationMenuText.title(for: .closeWindow)), \(card.title)"
+
+        return Button {
+            PreviewCardCloseActionDispatcher.dispatch(for: card, onAction: onAction)
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 10, weight: .semibold))
+                .frame(
+                    width: PreviewPanelMetrics.closeButtonSize,
+                    height: PreviewPanelMetrics.closeButtonSize
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!plan.isEnabled)
+        .opacity(plan.isVisible ? (plan.isEnabled ? 1 : 0.38) : 0)
+        .allowsHitTesting(plan.isVisible && plan.isEnabled)
+        .accessibilityHidden(!plan.isVisible)
+        .accessibilityLabel(label)
+        .help(label)
+        .padding(.top, PreviewPanelMetrics.cardPadding + 3)
+        .padding(.trailing, PreviewPanelMetrics.cardPadding)
     }
 
     private var thumbnailView: some View {

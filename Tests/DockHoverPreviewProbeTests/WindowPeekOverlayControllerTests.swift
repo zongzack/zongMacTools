@@ -84,6 +84,27 @@ final class WindowPeekOverlayControllerTests: XCTestCase {
         XCTAssertNil(layer.animation(forKey: "dockWindowPeekMirrorAppearance"))
     }
 
+    func testPrimarySelectionHandoffFadesMirrorBeforeOrderingItOut() throws {
+        let controller = WindowPeekOverlayController(
+            logger: ProbeLogger(),
+            motionPreferences: OverlayMotionPreferences(shouldReduceMotion: false)
+        )
+        controller.show(image: makeImage(), layout: makeLayout(), quality: .highResolution)
+        defer { controller.hide() }
+
+        controller.hideAfterPrimarySelectionHandoff()
+
+        let mirror = try XCTUnwrap(controller.inspection().mirrorPanel)
+        let layer = try XCTUnwrap(mirror.contentView?.layer)
+        let animation = try XCTUnwrap(
+            layer.animation(forKey: "dockWindowPeekMirrorDisappearance") as? CABasicAnimation
+        )
+        XCTAssertTrue(mirror.isVisible)
+        XCTAssertEqual(animation.keyPath, "opacity")
+        XCTAssertEqual(animation.duration, 0.16, accuracy: 0.001)
+        XCTAssertEqual(layer.opacity, 0, accuracy: 0.001)
+    }
+
     func testUpdateOnlyReplacesImageAndHideClearsReferences() {
         let controller = WindowPeekOverlayController(logger: ProbeLogger())
         let layout = makeLayout()

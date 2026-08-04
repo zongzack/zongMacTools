@@ -129,6 +129,17 @@ final class PreviewPanelViewRenderingTests: XCTestCase {
         )
     }
 
+    func testCloseControlKeepsTheSameTitleWidthAcrossHoverStates() {
+        let card = makeCard()
+        let resting = PreviewCardCloseControlPlan.plan(for: card, isHovered: false)
+        let hovered = PreviewCardCloseControlPlan.plan(for: card, isHovered: true)
+
+        XCTAssertFalse(resting.isVisible)
+        XCTAssertTrue(hovered.isVisible)
+        XCTAssertEqual(PreviewPanelMetrics.titleTextWidth, 170, accuracy: 0.001)
+        XCTAssertEqual(PreviewPanelMetrics.cardHeight, 172, accuracy: 0.001)
+    }
+
     func testRemovingCardKeepsOtherCardsAndReturnsWhetherModelChanged() {
         let first = makeCard(id: .init(pid: 100, windowID: 1))
         let second = makeCard(id: .init(pid: 100, windowID: 2))

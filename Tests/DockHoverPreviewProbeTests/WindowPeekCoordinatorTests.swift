@@ -139,6 +139,30 @@ final class WindowPeekCoordinatorTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(harness.permissionScheduler.stopCount, 1)
     }
 
+    func testPrimarySelectionStopsCaptureWithoutHidingVisibleMirror() async {
+        let harness = WindowPeekCoordinatorHarness()
+        let window = harness.window(id: 1)
+        harness.coordinator.hoverEntered(
+            windowID: window.id,
+            window: window,
+            coarseImage: image(),
+            sessionEpoch: 1,
+            sequence: 1
+        )
+        await harness.capture.waitUntilStarted(id: 1)
+        harness.capture.finish(id: 1, result: .image(image(width: 800, height: 600)))
+        await harness.overlay.waitUntilHighResolution()
+
+        harness.coordinator.stop(reason: .primarySelection)
+
+        XCTAssertFalse(harness.overlay.events.contains(.hide))
+        XCTAssertNil(harness.currentTarget)
+
+        harness.coordinator.completePrimarySelectionHandoff()
+
+        XCTAssertEqual(harness.overlay.events.last, .primarySelectionHandoff)
+    }
+
     func testStopBeforeCaptureWorkerStartsDoesNotSubmitStaleCapture() async {
         let harness = WindowPeekCoordinatorHarness()
         let window = harness.window(id: 1)
@@ -250,12 +274,13 @@ private final class GatedWindowPeekCaptureService: WindowPeekCaptureService {
 
 @MainActor
 private final class RecordingWindowPeekOverlay: WindowPeekOverlayDisplaying {
-    enum Event: Equatable { case show(WindowPeekImageQuality), update(WindowPeekImageQuality), hide }
+    enum Event: Equatable { case show(WindowPeekImageQuality), update(WindowPeekImageQuality), hide, primarySelectionHandoff }
     private(set) var events: [Event] = []
     private var highResolutionWaiters: [CheckedContinuation<Void, Never>] = []
     func show(image: CGImage, layout: WindowPeekLayout, quality: WindowPeekImageQuality) { events.append(.show(quality)); resume(quality) }
     func update(image: CGImage, quality: WindowPeekImageQuality) { events.append(.update(quality)); resume(quality) }
     func hide() { events.append(.hide) }
+    func hideAfterPrimarySelectionHandoff() { events.append(.primarySelectionHandoff) }
     func waitUntilHighResolution() async {
         guard !events.contains(where: { $0 == .show(.highResolution) || $0 == .update(.highResolution) }) else { return }
         await withCheckedContinuation { highResolutionWaiters.append($0) }

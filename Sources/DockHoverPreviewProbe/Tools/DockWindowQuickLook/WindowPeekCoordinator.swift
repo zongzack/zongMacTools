@@ -11,6 +11,7 @@ protocol WindowPeekCoordinating: AnyObject {
     func targetWindowDestroyed(_ windowID: PreviewWindowID)
     func targetApplicationTerminated(pid: pid_t)
     func stop(reason: WindowPeekStopReason)
+    func completePrimarySelectionHandoff()
 }
 
 @MainActor
@@ -87,6 +88,7 @@ final class WindowPeekCoordinator: WindowPeekCoordinating {
     private var pendingExit: (UInt64, PreviewWindowID, UInt64, UInt64)?
     private var exitFlushScheduled = false
     private var permissionRefreshRunning = false
+    private var primarySelectionVisualHandoffPending = false
 
     init(captureService: any WindowPeekCaptureService, overlay: any WindowPeekOverlayDisplaying, settingsStore: any DockWindowQuickLookSettingsStore, permissionService: any PermissionService, logger: ProbeLogger, exitScheduler: any WindowPeekExitScheduling = MainRunLoopWindowPeekExitScheduler(), permissionRefreshScheduler: any WindowPeekPermissionRefreshScheduling = MainRunLoopWindowPeekPermissionRefreshScheduler(), onCurrentTargetChanged: @escaping @MainActor (PreviewWindow?) -> Void = { _ in }) {
         self.captureService = captureService; self.overlay = overlay; self.settingsStore = settingsStore; self.permissionService = permissionService; self.logger = logger; self.exitScheduler = exitScheduler; self.permissionRefreshScheduler = permissionRefreshScheduler; self.onCurrentTargetChanged = onCurrentTargetChanged
@@ -102,8 +104,8 @@ final class WindowPeekCoordinator: WindowPeekCoordinating {
 
     func beginSession(epoch: UInt64) {
         guard epoch > greatestSessionEpoch else { logger.info("peek.session.stale epoch=\(epoch)"); return }
-        let hadTarget = currentTarget != nil || currentQuality != nil
-        invalidateActiveCapture(); stopPermissionRefresh(); currentTarget = nil; currentQuality = nil; pendingExit = nil
+        let hadTarget = currentTarget != nil || currentQuality != nil || primarySelectionVisualHandoffPending
+        invalidateActiveCapture(); stopPermissionRefresh(); currentTarget = nil; currentQuality = nil; pendingExit = nil; primarySelectionVisualHandoffPending = false
         if case let .capturing(active, _) = captureSlot { captureSlot = .capturing(active: active, pendingLatest: nil) }
         if hadTarget { overlay.hide(); onCurrentTargetChanged(nil) }
         greatestSessionEpoch = epoch; activeSessionEpoch = epoch; lastHoverSequence = 0; currentScreens = []
@@ -140,8 +142,25 @@ final class WindowPeekCoordinator: WindowPeekCoordinating {
     func targetWindowDestroyed(_ windowID: PreviewWindowID) { if currentTarget?.window.id == windowID { stop(reason: .targetWindowDestroyed) } }
     func targetApplicationTerminated(pid: pid_t) { if currentTarget?.window.id.pid == pid { stop(reason: .applicationTerminated) } }
     func stop(reason: WindowPeekStopReason) {
-        stopPermissionRefresh(); peekGeneration += 1; pendingExit = nil; invalidateActiveCapture(); currentTarget = nil; currentQuality = nil; currentScreens = []; onCurrentTargetChanged(nil); overlay.hide(); logger.info("peek.hide reason=\(reason.rawValue)")
+        let retainVisibleMirror = reason == .primarySelection && (
+            currentTarget != nil || currentQuality != nil || primarySelectionVisualHandoffPending
+        )
+        stopPermissionRefresh(); peekGeneration += 1; pendingExit = nil; invalidateActiveCapture(); currentTarget = nil; currentQuality = nil; currentScreens = []; onCurrentTargetChanged(nil)
         if case let .capturing(active, _) = captureSlot { captureSlot = .capturing(active: active, pendingLatest: nil) }
+        primarySelectionVisualHandoffPending = retainVisibleMirror
+        guard retainVisibleMirror else {
+            overlay.hide()
+            logger.info("peek.hide reason=\(reason.rawValue)")
+            return
+        }
+        logger.info("peek.handoff.begin reason=\(reason.rawValue)")
+    }
+
+    func completePrimarySelectionHandoff() {
+        guard primarySelectionVisualHandoffPending else { return }
+        primarySelectionVisualHandoffPending = false
+        overlay.hideAfterPrimarySelectionHandoff()
+        logger.info("peek.handoff.complete")
     }
 
     private func flushExit() {

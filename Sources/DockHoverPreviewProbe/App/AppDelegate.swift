@@ -91,10 +91,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             activationService: activationService,
             logger: logger
         )
+        let destroyedObserver = SystemWindowDestroyedObserver(logger: logger)
         let lifecycleObserver = WindowPeekLifecycleObserver(
             workspaceNotificationCenter: NSWorkspace.shared.notificationCenter,
             applicationNotificationCenter: NotificationCenter.default,
-            destroyedObserver: SystemWindowDestroyedObserver(logger: logger),
+            destroyedObserver: destroyedObserver,
             logger: logger
         )
         windowPeekLifecycleObserver = lifecycleObserver
@@ -124,6 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsStore: settingsStore,
             targetTracker: targetTracker,
             windowPeekCoordinator: coordinator,
+            windowDestroyedObserver: destroyedObserver,
             logger: logger
         )
         previewSessionController.startObservingSettings()
@@ -146,6 +148,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             case let .applicationTerminated(pid):
                 coordinator?.targetApplicationTerminated(pid: pid)
+                previewSessionController?.targetApplicationTerminated(pid: pid)
             case let .targetWindowDestroyed(id):
                 coordinator?.targetWindowDestroyed(id)
             }

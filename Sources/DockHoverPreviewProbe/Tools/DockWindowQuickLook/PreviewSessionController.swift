@@ -12,6 +12,9 @@ final class PreviewSessionController {
     private let settingsStore: DockWindowQuickLookSettingsStore
     private let targetTracker: AppTargetTracker
     private let windowPeekCoordinator: any WindowPeekCoordinating
+    private let windowDestroyedObserver: any WindowDestroyedObserving
+    private let workspaceNotificationCenter: NotificationCenter
+    private let isApplicationActive: @MainActor (NSRunningApplication) -> Bool
     private let logger: ProbeLogger
 
     private var generation = 0
@@ -26,6 +29,15 @@ final class PreviewSessionController {
     private var contextMenuDepth = 0
     private var currentWindowPeekScreens: [WindowPeekScreen] = []
     private var screenSnapshotGeneration: UInt64 = 0
+    private var activationHandoffObservers: [NSObjectProtocol] = []
+    private var activationHandoffTargetPID: pid_t?
+    private var pendingCloses: [PreviewWindowID: PendingClose] = [:]
+
+    private struct PendingClose {
+        let generation: Int
+        let sessionEpoch: UInt64
+        let observation: (any WindowDestroyedObservation)?
+    }
 
     init(
         permissionService: PermissionService,
@@ -37,6 +49,9 @@ final class PreviewSessionController {
         settingsStore: DockWindowQuickLookSettingsStore,
         targetTracker: AppTargetTracker,
         windowPeekCoordinator: any WindowPeekCoordinating,
+        windowDestroyedObserver: any WindowDestroyedObserving,
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        isApplicationActive: @escaping @MainActor (NSRunningApplication) -> Bool = { $0.isActive },
         logger: ProbeLogger
     ) {
         self.permissionService = permissionService
@@ -48,10 +63,15 @@ final class PreviewSessionController {
         self.settingsStore = settingsStore
         self.targetTracker = targetTracker
         self.windowPeekCoordinator = windowPeekCoordinator
+        self.windowDestroyedObserver = windowDestroyedObserver
+        self.workspaceNotificationCenter = workspaceNotificationCenter
+        self.isApplicationActive = isApplicationActive
         self.logger = logger
     }
 
     func showPreview(for app: NSRunningApplication, anchor: PreviewPanelAnchor) async {
+        cancelAllPendingCloses()
+        clearActivationHandoff()
         precondition(nextSessionEpoch < UInt64.max, "Preview session epoch overflow")
         if currentSessionEpoch != nil {
             windowPeekCoordinator.stop(reason: .sessionReplaced)
@@ -159,7 +179,12 @@ final class PreviewSessionController {
 
         currentRetentionParameters = settingsStore.dockWindowQuickLookSettingsSnapshot.panelRetentionParameters
         settingsObserverToken = settingsStore.addDockWindowQuickLookSettingsObserver { [weak self] settings in
-            self?.currentRetentionParameters = settings.panelRetentionParameters
+            guard let self else { return }
+            self.currentRetentionParameters = settings.panelRetentionParameters
+            guard settings.isDockHoverPreviewEnabled, settings.isDesktopWindowPeekEnabled else {
+                self.clearActivationHandoff()
+                return
+            }
         }
     }
 
@@ -182,6 +207,8 @@ final class PreviewSessionController {
             logger.warning("preview.session.staleHide reason=\(reason) epoch=\(expectedSessionEpoch.map(String.init) ?? "nil") current=\(currentSessionEpoch.map(String.init) ?? "nil")")
             return
         }
+        cancelAllPendingCloses()
+        clearActivationHandoff()
         if shouldStopWindowPeek {
             windowPeekCoordinator.stop(reason: .sessionHidden)
         }
@@ -207,10 +234,16 @@ final class PreviewSessionController {
             reason == .activeSpaceChanged || reason == .screenParametersChanged,
             "Only display lifecycle reasons can invalidate a screen snapshot"
         )
+        clearActivationHandoff()
         precondition(screenSnapshotGeneration < UInt64.max, "Screen snapshot generation overflow")
         screenSnapshotGeneration += 1
         currentWindowPeekScreens = []
         windowPeekCoordinator.stop(reason: reason)
+    }
+
+    func targetApplicationTerminated(pid: pid_t) {
+        let matchingIDs = pendingCloses.keys.filter { $0.pid == pid }
+        matchingIDs.forEach(cancelPendingClose(for:))
     }
 
     func isMouseInsidePanel(_ point: CGPoint) -> Bool {
@@ -276,9 +309,17 @@ final class PreviewSessionController {
             hide(reason: "activateMissing")
             return
         }
+        clearActivationHandoff()
+        let targetWasAlreadyActive = isApplicationActive(window.app)
         windowPeekCoordinator.stop(reason: .primarySelection)
         hide(reason: "activated", immediately: true, shouldStopWindowPeek: false)
-        _ = activationService.activate(window: window)
+        if !targetWasAlreadyActive {
+            observeActivationHandoff(for: window.app)
+        }
+        let activationResult = activationService.activate(window: window)
+        if targetWasAlreadyActive || !activationResult.appActivateRequestSucceeded {
+            completeActivationHandoff()
+        }
     }
 
     private func handle(
@@ -294,6 +335,12 @@ final class PreviewSessionController {
         switch action {
         case let .primarySelect(id):
             activate(windowID: id)
+        case let .closePreviewCard(id):
+            closePreviewCard(
+                windowID: id,
+                expectedGeneration: expectedGeneration,
+                expectedSessionEpoch: expectedSessionEpoch
+            )
         case let .windowOperation(id, operation):
             performWindowOperation(operation, windowID: id)
         case .contextMenuWillOpen:
@@ -309,9 +356,6 @@ final class PreviewSessionController {
                 logger.warning("preview.session.staleHoverAction epoch=\(sessionEpoch) expected=\(expectedSessionEpoch)")
                 return
             }
-            guard currentWindowsByID.count >= 2 else {
-                return
-            }
             let coarseImage = currentModel?.cards.first { $0.id == id }?.thumbnail
             windowPeekCoordinator.hoverEntered(
                 windowID: id,
@@ -323,9 +367,6 @@ final class PreviewSessionController {
         case let .hoverExited(id, sessionEpoch, sequence):
             guard sessionEpoch == expectedSessionEpoch else {
                 logger.warning("preview.session.staleHoverAction epoch=\(sessionEpoch) expected=\(expectedSessionEpoch)")
-                return
-            }
-            guard currentWindowsByID.count >= 2 else {
                 return
             }
             windowPeekCoordinator.hoverExited(
@@ -373,8 +414,141 @@ final class PreviewSessionController {
         }
     }
 
+    private func closePreviewCard(
+        windowID: PreviewWindowID,
+        expectedGeneration: Int,
+        expectedSessionEpoch: UInt64
+    ) {
+        guard let window = currentWindowsByID[windowID] else {
+            logger.warning("closePreviewCard.missingWindow id=\(windowID.windowID)")
+            return
+        }
+        guard currentModel?.cards.first(where: { $0.id == windowID })?.operationMenu.closeWindow.isEnabled == true else {
+            logger.info("closePreviewCard.unavailable id=\(windowID.windowID)")
+            return
+        }
+        guard pendingCloses[windowID] == nil else {
+            logger.info("closePreviewCard.duplicate id=\(windowID.windowID)")
+            return
+        }
+
+        let observation = windowDestroyedObserver.observeWindow(id: windowID, element: window.axElement) { [weak self] id in
+            self?.confirmedClosedWindow(
+                id,
+                expectedGeneration: expectedGeneration,
+                expectedSessionEpoch: expectedSessionEpoch
+            )
+        }
+        if observation == nil {
+            logger.warning("closePreviewCard.destroyObservationUnavailable id=\(windowID.windowID)")
+        }
+        pendingCloses[windowID] = .init(
+            generation: expectedGeneration,
+            sessionEpoch: expectedSessionEpoch,
+            observation: observation
+        )
+
+        let result = windowOperationService.perform(.closeWindow, on: window)
+        guard !result.requestSucceeded else { return }
+        cancelPendingClose(for: windowID)
+        logger.warning(
+            "closePreviewCard.requestFailed id=\(windowID.windowID) reason=\(result.failure?.reason.rawValue ?? "none") stage=\(result.failure?.stage.rawValue ?? "none") axCode=\(result.failure?.axErrorCode.map(String.init) ?? "none")"
+        )
+    }
+
+    private func confirmedClosedWindow(
+        _ id: PreviewWindowID,
+        expectedGeneration: Int,
+        expectedSessionEpoch: UInt64
+    ) {
+        guard isCurrent(expectedGeneration, sessionEpoch: expectedSessionEpoch) else {
+            logger.warning("closePreviewCard.staleDestroyed id=\(id.windowID)")
+            return
+        }
+        guard let pendingClose = pendingCloses[id],
+              pendingClose.generation == expectedGeneration,
+              pendingClose.sessionEpoch == expectedSessionEpoch else {
+            logger.warning("closePreviewCard.unexpectedDestroyed id=\(id.windowID)")
+            return
+        }
+        guard var model = currentModel, model.removeCard(for: id) else {
+            cancelPendingClose(for: id)
+            logger.warning("closePreviewCard.missingCard id=\(id.windowID)")
+            return
+        }
+
+        cancelPendingClose(for: id)
+        currentWindowsByID.removeValue(forKey: id)
+        windowPeekCoordinator.targetWindowDestroyed(id)
+        currentModel = model
+        if model.cards.isEmpty {
+            hide(reason: "closePreviewCard.lastCardClosed")
+        } else {
+            panelDisplay.update(model: model)
+        }
+    }
+
+    private func cancelPendingClose(for id: PreviewWindowID) {
+        let pendingClose = pendingCloses.removeValue(forKey: id)
+        pendingClose?.observation?.cancel()
+    }
+
+    private func cancelAllPendingCloses() {
+        let pendingCloseIDs = Array(pendingCloses.keys)
+        pendingCloseIDs.forEach(cancelPendingClose(for:))
+    }
+
     private func isCurrent(_ expectedGeneration: Int, sessionEpoch: UInt64) -> Bool {
         generation == expectedGeneration && currentSessionEpoch == sessionEpoch
+    }
+
+    private func observeActivationHandoff(for app: NSRunningApplication) {
+        let targetPID = app.processIdentifier
+        activationHandoffTargetPID = targetPID
+        activationHandoffObservers = [
+            workspaceNotificationCenter.addObserver(
+                forName: NSWorkspace.didActivateApplicationNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                let activatedPID = (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?
+                    .processIdentifier
+                precondition(Thread.isMainThread)
+                MainActor.assumeIsolated {
+                    guard activatedPID == self?.activationHandoffTargetPID else { return }
+                    self?.completeActivationHandoff()
+                }
+            },
+            workspaceNotificationCenter.addObserver(
+                forName: NSWorkspace.didTerminateApplicationNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                let terminatedPID = (notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?
+                    .processIdentifier
+                precondition(Thread.isMainThread)
+                MainActor.assumeIsolated {
+                    guard terminatedPID == self?.activationHandoffTargetPID else { return }
+                    self?.abortActivationHandoff()
+                }
+            }
+        ]
+    }
+
+    private func completeActivationHandoff() {
+        clearActivationHandoff()
+        windowPeekCoordinator.completePrimarySelectionHandoff()
+    }
+
+    private func abortActivationHandoff() {
+        clearActivationHandoff()
+        windowPeekCoordinator.stop(reason: .applicationTerminated)
+    }
+
+    private func clearActivationHandoff() {
+        activationHandoffObservers.forEach(workspaceNotificationCenter.removeObserver)
+        activationHandoffObservers.removeAll()
+        activationHandoffTargetPID = nil
     }
 
     private func startLeavePolling() {

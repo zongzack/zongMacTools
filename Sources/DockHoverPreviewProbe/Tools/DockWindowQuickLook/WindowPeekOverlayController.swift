@@ -6,6 +6,7 @@ protocol WindowPeekOverlayDisplaying: AnyObject {
     func show(image: CGImage, layout: WindowPeekLayout, quality: WindowPeekImageQuality)
     func update(image: CGImage, quality: WindowPeekImageQuality)
     func hide()
+    func hideAfterPrimarySelectionHandoff()
 }
 
 @MainActor
@@ -23,6 +24,8 @@ struct WindowPeekOverlayInspection {
 final class WindowPeekOverlayController: WindowPeekOverlayDisplaying {
     private static let mirrorAppearanceAnimationKey = "dockWindowPeekMirrorAppearance"
     private static let mirrorAppearanceDuration: TimeInterval = 0.14
+    private static let mirrorDisappearanceAnimationKey = "dockWindowPeekMirrorDisappearance"
+    private static let mirrorDisappearanceDuration: TimeInterval = 0.16
 
     private let logger: ProbeLogger
     private let motionPreferences: any MotionPreferenceProviding
@@ -31,6 +34,7 @@ final class WindowPeekOverlayController: WindowPeekOverlayDisplaying {
     private var currentLayout: WindowPeekLayout?
     private var currentQuality: WindowPeekImageQuality?
     private var currentImagePixelSize: WindowPeekPixelSize?
+    private var visualTransitionGeneration: UInt64 = 0
 
     init(
         logger: ProbeLogger,
@@ -42,6 +46,7 @@ final class WindowPeekOverlayController: WindowPeekOverlayDisplaying {
 
     func show(image: CGImage, layout: WindowPeekLayout, quality: WindowPeekImageQuality) {
         let mirrorPanel = ensureMirrorPanel()
+        cancelMirrorAnimations()
         mirrorPanel.setFrame(layout.mirrorFrame, display: true)
         currentLayout = layout
         apply(image: image, quality: quality, layout: layout)
@@ -57,13 +62,48 @@ final class WindowPeekOverlayController: WindowPeekOverlayDisplaying {
     }
 
     func hide() {
-        cancelMirrorAppearanceAnimation()
+        cancelMirrorAnimations()
         imageView?.image = nil
         mirrorPanel?.orderOut(nil)
         currentLayout = nil
         currentQuality = nil
         currentImagePixelSize = nil
         logger.info("peek.overlay.hide")
+    }
+
+    func hideAfterPrimarySelectionHandoff() {
+        guard
+            let mirrorPanel,
+            mirrorPanel.isVisible,
+            let layer = mirrorPanel.contentView?.layer
+        else {
+            hide()
+            return
+        }
+
+        cancelMirrorAnimations()
+        guard !motionPreferences.accessibilityDisplayShouldReduceMotion else {
+            hide()
+            return
+        }
+
+        let transitionGeneration = visualTransitionGeneration
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [weak self] in
+            precondition(Thread.isMainThread)
+            MainActor.assumeIsolated {
+                self?.finishPrimarySelectionHandoff(transitionGeneration: transitionGeneration)
+            }
+        }
+        let animation = CABasicAnimation(keyPath: "opacity")
+        animation.fromValue = 1
+        animation.toValue = 0
+        animation.duration = Self.mirrorDisappearanceDuration
+        animation.timingFunction = CAMediaTimingFunction(name: .easeIn)
+        layer.opacity = 0
+        layer.add(animation, forKey: Self.mirrorDisappearanceAnimationKey)
+        CATransaction.commit()
+        logger.info("peek.overlay.handoffFade")
     }
 
     func inspection() -> WindowPeekOverlayInspection {
@@ -138,9 +178,16 @@ final class WindowPeekOverlayController: WindowPeekOverlayDisplaying {
         layer.add(animation, forKey: Self.mirrorAppearanceAnimationKey)
     }
 
-    private func cancelMirrorAppearanceAnimation() {
+    private func finishPrimarySelectionHandoff(transitionGeneration: UInt64) {
+        guard transitionGeneration == visualTransitionGeneration else { return }
+        hide()
+    }
+
+    private func cancelMirrorAnimations() {
         guard let layer = mirrorPanel?.contentView?.layer else { return }
+        visualTransitionGeneration &+= 1
         layer.removeAnimation(forKey: Self.mirrorAppearanceAnimationKey)
+        layer.removeAnimation(forKey: Self.mirrorDisappearanceAnimationKey)
         layer.opacity = 1
     }
 

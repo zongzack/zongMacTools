@@ -1,11 +1,12 @@
 import AppKit
+@preconcurrency import ApplicationServices
 import CoreGraphics
 import XCTest
 @testable import DockHoverPreviewProbe
 
 @MainActor
 final class PreviewSessionControllerTests: XCTestCase {
-    func testPrimarySelectionStopsPeekBeforeActivation() async {
+    func testPrimarySelectionKeepsMirrorForActivationHandoff() async {
         let window = makeWindow(id: 1)
         let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
         await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
@@ -14,10 +15,109 @@ final class PreviewSessionControllerTests: XCTestCase {
         harness.display.actionHandler?(.primarySelect(window.id))
 
         XCTAssertEqual(harness.eventLog.events, [
-            .peekStopped(.primarySelection),
+            .peekPrimarySelectionHandoffBegan,
+            .panelDismissed,
+            .activated(window.id),
+            .peekPrimarySelectionHandoffCompleted
+        ])
+    }
+
+    func testInactiveTargetCompletesPeekHandoffOnlyAfterActivationNotification() async {
+        let window = makeWindow(id: 1)
+        let notificationCenter = NotificationCenter()
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            workspaceNotificationCenter: notificationCenter,
+            isApplicationActive: { _ in false }
+        )
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.primarySelect(window.id))
+
+        XCTAssertEqual(harness.eventLog.events, [
+            .peekPrimarySelectionHandoffBegan,
             .panelDismissed,
             .activated(window.id)
         ])
+
+        notificationCenter.post(
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            userInfo: [NSWorkspace.applicationUserInfoKey: window.app]
+        )
+
+        XCTAssertEqual(harness.eventLog.events.last, .peekPrimarySelectionHandoffCompleted)
+    }
+
+    func testInactiveTargetTerminationClearsPeekHandoffImmediately() async {
+        let window = makeWindow(id: 1)
+        let notificationCenter = NotificationCenter()
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            workspaceNotificationCenter: notificationCenter,
+            isApplicationActive: { _ in false }
+        )
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.primarySelect(window.id))
+        notificationCenter.post(
+            name: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            userInfo: [NSWorkspace.applicationUserInfoKey: window.app]
+        )
+
+        XCTAssertEqual(harness.eventLog.events.last, .peekStopped(.applicationTerminated))
+    }
+
+    func testScreenChangeCancelsInactiveTargetActivationHandoff() async {
+        let window = makeWindow(id: 1)
+        let notificationCenter = NotificationCenter()
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            workspaceNotificationCenter: notificationCenter,
+            isApplicationActive: { _ in false }
+        )
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.primarySelect(window.id))
+        harness.controller.invalidateWindowPeekScreens(reason: .screenParametersChanged)
+        notificationCenter.post(
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            userInfo: [NSWorkspace.applicationUserInfoKey: window.app]
+        )
+
+        XCTAssertEqual(harness.eventLog.events.last, .peekStopped(.screenParametersChanged))
+    }
+
+    func testDisablingDesktopPeekCancelsInactiveTargetActivationHandoff() async {
+        let window = makeWindow(id: 1)
+        let notificationCenter = NotificationCenter()
+        let harness = PreviewSessionHarness(
+            screenRecordingGranted: true,
+            windows: [window],
+            workspaceNotificationCenter: notificationCenter,
+            isApplicationActive: { _ in false }
+        )
+        harness.controller.startObservingSettings()
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.eventLog.removeAll()
+
+        harness.display.actionHandler?(.primarySelect(window.id))
+        harness.settingsStore.update { $0.isDesktopWindowPeekEnabled = false }
+        notificationCenter.post(
+            name: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            userInfo: [NSWorkspace.applicationUserInfoKey: window.app]
+        )
+
+        XCTAssertFalse(harness.eventLog.events.contains(.peekPrimarySelectionHandoffCompleted))
     }
 
     func testContextMenuWillOpenStopsPeekBeforeMenuTracking() async {
@@ -117,15 +217,19 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertEqual(harness.display.hideReasons.last, "escape")
     }
 
-    func testSinglePreviewableWindowDoesNotForwardHoverIntentToDesktopPeekCoordinator() async {
+    func testSinglePreviewableWindowForwardsHoverIntentToDesktopPeekCoordinator() async {
         let window = makeWindow(id: 1)
         let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
         await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
         harness.eventLog.removeAll()
 
         harness.display.actionHandler?(.hoverEntered(window.id, sessionEpoch: 1, sequence: 1))
+        harness.display.actionHandler?(.hoverExited(window.id, sessionEpoch: 1, sequence: 2))
 
-        XCTAssertEqual(harness.eventLog.events, [])
+        XCTAssertEqual(harness.eventLog.events, [
+            .hoverEntered(window.id, 1, 1),
+            .hoverExited(window.id, 1, 2)
+        ])
         XCTAssertEqual(harness.display.showCount, 1)
     }
 
@@ -746,6 +850,201 @@ final class PreviewSessionControllerTests: XCTestCase {
         XCTAssertEqual(DockHoverPreviewSettings.defaults.displayLanguage, .english)
         XCTAssertFalse(SettingsKey.allCases.contains { $0.rawValue.contains("thumbnailDisplayMode") })
     }
+
+    func testClosePreviewCardSubscribesBeforeRequestingCloseAndWaitsForDestroyedNotification() async {
+        let first = makeCloseObservableWindow(id: 1)
+        let second = makeCloseObservableWindow(id: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [first, second])
+        var trace: [CloseRequestEvent] = []
+        harness.windowDestroyedObserver.onObserve = { trace.append(.observe($0)) }
+        harness.windowOperationService.onPerform = { operation, id in
+            trace.append(.perform(operation, id))
+        }
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        harness.display.actionHandler?(.closePreviewCard(first.id))
+
+        XCTAssertEqual(trace, [.observe(first.id), .perform(.closeWindow, first.id)])
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [.closeWindow])
+        XCTAssertEqual(harness.windowOperationService.performedWindowIDs, [first.id])
+        XCTAssertEqual(harness.activationService.activatedIDs, [])
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [first.id, second.id])
+        XCTAssertEqual(harness.display.hideReasons, [])
+    }
+
+    func testDestroyedCloseTargetRemovesOnlyThatCardAndUpdatesPanel() async {
+        let first = makeCloseObservableWindow(id: 1)
+        let second = makeCloseObservableWindow(id: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [first, second])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        let updatesBeforeClose = harness.display.updateCount
+
+        harness.display.actionHandler?(.closePreviewCard(first.id))
+        harness.windowDestroyedObserver.emitDestroyed(id: first.id)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [second.id])
+        XCTAssertEqual(harness.display.updateCount, updatesBeforeClose + 1)
+        XCTAssertEqual(harness.windowPeekCoordinator.destroyedWindowIDs, [first.id])
+        XCTAssertEqual(harness.display.hideReasons, [])
+    }
+
+    func testDestroyedLastCloseTargetHidesPanel() async {
+        let window = makeCloseObservableWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        harness.display.actionHandler?(.closePreviewCard(window.id))
+        harness.windowDestroyedObserver.emitDestroyed(id: window.id)
+
+        XCTAssertEqual(harness.windowPeekCoordinator.destroyedWindowIDs, [window.id])
+        XCTAssertEqual(harness.display.hideReasons, ["closePreviewCard.lastCardClosed"])
+    }
+
+    func testClosePreviewCardFailureCancelsObservationAndKeepsCard() async {
+        let window = makeCloseObservableWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        harness.windowOperationService.results[.closeWindow] = .init(
+            operation: .closeWindow,
+            windowID: window.id,
+            requestSucceeded: false,
+            failure: .init(reason: .actionFailed, stage: .pressButton, axErrorCode: nil)
+        )
+        let updatesBeforeClose = harness.display.updateCount
+
+        harness.display.actionHandler?(.closePreviewCard(window.id))
+        harness.windowDestroyedObserver.emitDestroyed(id: window.id)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [window.id])
+        XCTAssertEqual(harness.display.hideReasons, [])
+        XCTAssertEqual(harness.display.updateCount, updatesBeforeClose)
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set<PreviewWindowID>())
+        XCTAssertEqual(harness.windowPeekCoordinator.destroyedWindowIDs, [])
+    }
+
+    func testClosePreviewCardStillRequestsCloseWhenDestroyedObservationIsUnavailable() async {
+        let window = makeCloseObservableWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        harness.windowDestroyedObserver.unavailableIDs.insert(window.id)
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        harness.display.actionHandler?(.closePreviewCard(window.id))
+        harness.display.actionHandler?(.closePreviewCard(window.id))
+
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [.closeWindow])
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [window.id])
+        XCTAssertEqual(harness.display.hideReasons, [])
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set<PreviewWindowID>())
+    }
+
+    func testUnavailableDestroyedObservationReconcilesOnNextDockHover() async {
+        let first = makeCloseObservableWindow(id: 1)
+        let second = makeCloseObservableWindow(id: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [first, second])
+        harness.windowDestroyedObserver.unavailableIDs.insert(first.id)
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        harness.display.actionHandler?(.closePreviewCard(first.id))
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [first.id, second.id])
+
+        harness.queryService.windows = [second]
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [second.id])
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set<PreviewWindowID>())
+    }
+
+    func testClosingMultipleCardsKeepsRequestsAndObservationsIndependent() async {
+        let first = makeCloseObservableWindow(id: 1)
+        let second = makeCloseObservableWindow(id: 2)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [first, second])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        harness.display.actionHandler?(.closePreviewCard(first.id))
+        harness.display.actionHandler?(.closePreviewCard(first.id))
+        harness.display.actionHandler?(.closePreviewCard(second.id))
+
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [.closeWindow, .closeWindow])
+        XCTAssertEqual(harness.windowOperationService.performedWindowIDs, [first.id, second.id])
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set([first.id, second.id]))
+
+        harness.windowDestroyedObserver.emitDestroyed(id: first.id)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [second.id])
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set([second.id]))
+        XCTAssertEqual(harness.display.hideReasons, [])
+
+        harness.windowDestroyedObserver.emitDestroyed(id: second.id)
+
+        XCTAssertEqual(harness.display.hideReasons, ["closePreviewCard.lastCardClosed"])
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set<PreviewWindowID>())
+    }
+
+    func testHideCancelsCloseObservationAndDropsItsLateCallback() async {
+        let window = makeCloseObservableWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        let updatesBeforeHide = harness.display.updateCount
+
+        harness.display.actionHandler?(.closePreviewCard(window.id))
+        harness.controller.hide(reason: "test")
+        harness.windowDestroyedObserver.emitLateDestroyed(id: window.id)
+
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set<PreviewWindowID>())
+        XCTAssertEqual(harness.display.updateCount, updatesBeforeHide)
+        XCTAssertEqual(harness.display.hideReasons, ["test"])
+        XCTAssertEqual(harness.windowPeekCoordinator.destroyedWindowIDs, [])
+    }
+
+    func testNewSessionDropsLateCloseCallbackBeforeReusingTheSameWindowID() async {
+        let stale = makeCloseObservableWindow(id: 1)
+        let current = makeCloseObservableWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [stale])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        harness.display.actionHandler?(.closePreviewCard(stale.id))
+        harness.queryService.windows = [current]
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+        let updatesBeforeLateCallback = harness.display.updateCount
+        harness.windowDestroyedObserver.emitLateDestroyed(id: stale.id)
+
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [current.id])
+        XCTAssertEqual(harness.display.updateCount, updatesBeforeLateCallback)
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set<PreviewWindowID>())
+        XCTAssertEqual(harness.windowPeekCoordinator.destroyedWindowIDs, [])
+    }
+
+    func testTargetApplicationTerminationCancelsOnlyMatchingCloseObservation() async {
+        let terminated = makeCloseObservableWindow(id: 1, processID: 10_001)
+        let surviving = makeCloseObservableWindow(id: 2, processID: 10_002)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [terminated, surviving])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        harness.display.actionHandler?(.closePreviewCard(terminated.id))
+        harness.display.actionHandler?(.closePreviewCard(surviving.id))
+        harness.controller.targetApplicationTerminated(pid: terminated.id.pid)
+
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set([surviving.id]))
+
+        harness.windowDestroyedObserver.emitLateDestroyed(id: terminated.id)
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [terminated.id, surviving.id])
+
+        harness.windowDestroyedObserver.emitDestroyed(id: surviving.id)
+        XCTAssertEqual(harness.display.lastModel?.cards.map(\.id), [terminated.id])
+    }
+
+    func testRightClickCloseWindowKeepsExistingHideOnRequestSuccessPath() async {
+        let window = makeCloseObservableWindow(id: 1)
+        let harness = PreviewSessionHarness(screenRecordingGranted: true, windows: [window])
+        await harness.controller.showPreview(for: harness.app, anchor: harness.anchor)
+
+        harness.display.actionHandler?(.windowOperation(window.id, .closeWindow))
+
+        XCTAssertEqual(harness.windowOperationService.performedOperations, [.closeWindow])
+        XCTAssertEqual(harness.windowOperationService.performedWindowIDs, [window.id])
+        XCTAssertEqual(harness.windowDestroyedObserver.activeIDs, Set<PreviewWindowID>())
+        XCTAssertEqual(harness.display.hideReasons, ["windowOperation.closeWindow"])
+    }
 }
 
 @MainActor
@@ -972,6 +1271,8 @@ private final class FakeWindowOperationService: WindowOperationService {
     var availabilities: [PreviewWindowOperation: WindowOperationAvailability] = [:]
     var results: [PreviewWindowOperation: WindowOperationResult] = [:]
     private(set) var performedOperations: [PreviewWindowOperation] = []
+    private(set) var performedWindowIDs: [PreviewWindowID] = []
+    var onPerform: ((PreviewWindowOperation, PreviewWindowID) -> Void)?
 
     func availability(for operation: PreviewWindowOperation, window: PreviewWindow) -> WindowOperationAvailability {
         availabilities[operation] ?? .enabled(operation)
@@ -979,12 +1280,64 @@ private final class FakeWindowOperationService: WindowOperationService {
 
     func perform(_ operation: PreviewWindowOperation, on window: PreviewWindow) -> WindowOperationResult {
         performedOperations.append(operation)
+        performedWindowIDs.append(window.id)
+        onPerform?(operation, window.id)
         return results[operation] ?? WindowOperationResult(
             operation: operation,
             windowID: window.id,
             requestSucceeded: true,
             failure: nil
         )
+    }
+}
+
+@MainActor
+private final class FakeWindowDestroyedObserver: WindowDestroyedObserving {
+    var unavailableIDs: Set<PreviewWindowID> = []
+    var onObserve: ((PreviewWindowID) -> Void)?
+    private var handlers: [UUID: (PreviewWindowID, @MainActor (PreviewWindowID) -> Void)] = [:]
+    private var historicalHandlers: [(PreviewWindowID, @MainActor (PreviewWindowID) -> Void)] = []
+
+    var activeIDs: Set<PreviewWindowID> {
+        Set(handlers.values.map(\.0))
+    }
+
+    func observeWindow(
+        id: PreviewWindowID,
+        element: AXUIElement?,
+        onDestroyed: @escaping @MainActor (PreviewWindowID) -> Void
+    ) -> (any WindowDestroyedObservation)? {
+        onObserve?(id)
+        guard element != nil, !unavailableIDs.contains(id) else { return nil }
+        let tokenID = UUID()
+        handlers[tokenID] = (id, onDestroyed)
+        historicalHandlers.append((id, onDestroyed))
+        return Token { [weak self] in self?.handlers.removeValue(forKey: tokenID) }
+    }
+
+    func emitDestroyed(id: PreviewWindowID) {
+        let callbacks = handlers.values.filter { $0.0 == id }
+        callbacks.forEach { $0.1(id) }
+    }
+
+    func emitLateDestroyed(id: PreviewWindowID) {
+        historicalHandlers
+            .filter { $0.0 == id }
+            .forEach { $0.1(id) }
+    }
+
+    @MainActor
+    private final class Token: WindowDestroyedObservation {
+        private var onCancel: (() -> Void)?
+
+        init(onCancel: @escaping () -> Void) {
+            self.onCancel = onCancel
+        }
+
+        func cancel() {
+            onCancel?()
+            onCancel = nil
+        }
     }
 }
 
@@ -1002,6 +1355,8 @@ private final class PreviewSessionHarness {
     let targetTracker: AppTargetTracker
     let eventLog = SessionEventLog()
     let windowPeekCoordinator: RecordingWindowPeekCoordinator
+    let windowDestroyedObserver = FakeWindowDestroyedObserver()
+    let workspaceNotificationCenter: NotificationCenter
     let anchor: PreviewPanelAnchor
     let controller: PreviewSessionController
 
@@ -1012,6 +1367,8 @@ private final class PreviewSessionHarness {
         targetTracker: AppTargetTracker? = nil,
         app: NSRunningApplication = .current,
         screens: [WindowPeekScreen] = [],
+        workspaceNotificationCenter: NotificationCenter = NotificationCenter(),
+        isApplicationActive: @escaping @MainActor (NSRunningApplication) -> Bool = { _ in true },
         anchor: PreviewPanelAnchor = PreviewPanelAnchor(
             dockItemFrame: CGRect(x: 700, y: 0, width: 52, height: 48),
             mouseLocation: CGPoint(x: 726, y: 24),
@@ -1021,6 +1378,7 @@ private final class PreviewSessionHarness {
     ) {
         self.app = app
         self.anchor = anchor
+        self.workspaceNotificationCenter = workspaceNotificationCenter
         self.settingsStore = settingsStore
         self.targetTracker = targetTracker ?? AppTargetTracker(selfBundleIdentifier: "com.zong.zongMacTools")
         permissionService = FakePermissionService(
@@ -1045,6 +1403,9 @@ private final class PreviewSessionHarness {
             settingsStore: settingsStore,
             targetTracker: self.targetTracker,
             windowPeekCoordinator: windowPeekCoordinator,
+            windowDestroyedObserver: windowDestroyedObserver,
+            workspaceNotificationCenter: workspaceNotificationCenter,
+            isApplicationActive: isApplicationActive,
             logger: logger
         )
         self.controller = controller
@@ -1059,6 +1420,8 @@ private enum SessionEvent: Equatable {
     case beganSession(UInt64)
     case screensUpdated(UInt64, Int)
     case peekStopped(WindowPeekStopReason)
+    case peekPrimarySelectionHandoffBegan
+    case peekPrimarySelectionHandoffCompleted
     case hoverEntered(PreviewWindowID, UInt64, UInt64)
     case hoverExited(PreviewWindowID, UInt64, UInt64)
     case coarseAvailable(PreviewWindowID, UInt64)
@@ -1082,6 +1445,7 @@ private final class SessionEventLog {
 @MainActor
 private final class RecordingWindowPeekCoordinator: WindowPeekCoordinating {
     let eventLog: SessionEventLog
+    private(set) var destroyedWindowIDs: [PreviewWindowID] = []
 
     init(eventLog: SessionEventLog) {
         self.eventLog = eventLog
@@ -1113,31 +1477,59 @@ private final class RecordingWindowPeekCoordinator: WindowPeekCoordinating {
         eventLog.append(.coarseAvailable(windowID, sessionEpoch))
     }
 
-    func targetWindowDestroyed(_ windowID: PreviewWindowID) {}
+    func targetWindowDestroyed(_ windowID: PreviewWindowID) {
+        destroyedWindowIDs.append(windowID)
+    }
 
     func targetApplicationTerminated(pid: pid_t) {}
 
     func stop(reason: WindowPeekStopReason) {
-        eventLog.append(.peekStopped(reason))
+        if reason == .primarySelection {
+            eventLog.append(.peekPrimarySelectionHandoffBegan)
+        } else {
+            eventLog.append(.peekStopped(reason))
+        }
+    }
+
+    func completePrimarySelectionHandoff() {
+        eventLog.append(.peekPrimarySelectionHandoffCompleted)
     }
 }
 
 private func makeWindow(
     id: CGWindowID,
-    captureFrame: CGRect = CGRect(x: 100, y: 100, width: 800, height: 600)
+    captureFrame: CGRect = CGRect(x: 100, y: 100, width: 800, height: 600),
+    processID: pid_t = NSRunningApplication.current.processIdentifier,
+    axElement: AXUIElement? = nil
 ) -> PreviewWindow {
     PreviewWindow(
-        id: PreviewWindowID(pid: NSRunningApplication.current.processIdentifier, windowID: id),
+        id: PreviewWindowID(pid: processID, windowID: id),
         cgWindowID: id,
         app: NSRunningApplication.current,
         title: "Window \(id)",
         captureFrame: captureFrame,
-        axElement: nil,
+        axElement: axElement,
         appIcon: NSImage(size: NSSize(width: 32, height: 32)),
         thumbnailSource: nil,
         desktopPeekCaptureSource: nil,
         desktopPeekEligible: false
     )
+}
+
+private func makeCloseObservableWindow(
+    id: CGWindowID,
+    processID: pid_t = NSRunningApplication.current.processIdentifier
+) -> PreviewWindow {
+    makeWindow(
+        id: id,
+        processID: processID,
+        axElement: AXUIElementCreateApplication(processID)
+    )
+}
+
+private enum CloseRequestEvent: Equatable {
+    case observe(PreviewWindowID)
+    case perform(PreviewWindowOperation, PreviewWindowID)
 }
 
 private func makeImage() -> CGImage {
