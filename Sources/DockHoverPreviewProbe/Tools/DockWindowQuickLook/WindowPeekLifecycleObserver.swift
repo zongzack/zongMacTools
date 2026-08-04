@@ -16,45 +16,40 @@ protocol WindowPeekLifecycleObserving: AnyObject {
 }
 
 @MainActor
-protocol WindowPeekTargetDestroyedSubscribing: AnyObject {
-    func replaceTarget(
-        id: PreviewWindowID,
-        element: AXUIElement?,
-        onDestroyed: @escaping @MainActor (PreviewWindowID) -> Void
-    )
-
-    func clear()
+protocol WindowDestroyedObservation: AnyObject {
+    func cancel()
 }
 
 @MainActor
-struct WindowPeekTargetDestroyedSubscription {
-    let id: PreviewWindowID
-    let element: AXUIElement
-
-    func matches(_ callbackElement: AXUIElement) -> Bool {
-        CFEqual(element, callbackElement)
-    }
+protocol WindowDestroyedObserving: AnyObject {
+    @discardableResult
+    func observeWindow(
+        id: PreviewWindowID,
+        element: AXUIElement?,
+        onDestroyed: @escaping @MainActor (PreviewWindowID) -> Void
+    ) -> (any WindowDestroyedObservation)?
 }
 
 @MainActor
 final class WindowPeekLifecycleObserver: WindowPeekLifecycleObserving {
     private let workspaceNotificationCenter: NotificationCenter
     private let applicationNotificationCenter: NotificationCenter
-    private let targetDestroyedSubscriber: any WindowPeekTargetDestroyedSubscribing
+    private let destroyedObserver: any WindowDestroyedObserving
     private let logger: ProbeLogger
     private var workspaceTokens: [NSObjectProtocol] = []
     private var applicationTokens: [NSObjectProtocol] = []
+    private var targetDestroyedObservation: (any WindowDestroyedObservation)?
     private var handler: (@MainActor (WindowPeekLifecycleEvent) -> Void)?
 
     init(
         workspaceNotificationCenter: NotificationCenter,
         applicationNotificationCenter: NotificationCenter,
-        targetDestroyedSubscriber: any WindowPeekTargetDestroyedSubscribing,
+        destroyedObserver: any WindowDestroyedObserving,
         logger: ProbeLogger
     ) {
         self.workspaceNotificationCenter = workspaceNotificationCenter
         self.applicationNotificationCenter = applicationNotificationCenter
-        self.targetDestroyedSubscriber = targetDestroyedSubscriber
+        self.destroyedObserver = destroyedObserver
         self.logger = logger
     }
 
@@ -106,22 +101,22 @@ final class WindowPeekLifecycleObserver: WindowPeekLifecycleObserving {
     }
 
     func observeTargetWindow(id: PreviewWindowID?, element: AXUIElement?) {
-        guard let id, let element else {
-            targetDestroyedSubscriber.clear()
-            return
-        }
-        targetDestroyedSubscriber.replaceTarget(id: id, element: element) { [weak self] destroyedID in
+        targetDestroyedObservation?.cancel()
+        targetDestroyedObservation = nil
+        guard let id else { return }
+        targetDestroyedObservation = destroyedObserver.observeWindow(id: id, element: element) { [weak self] destroyedID in
             self?.emit(.targetWindowDestroyed(destroyedID))
         }
     }
 
     func stop() {
         handler = nil
+        targetDestroyedObservation?.cancel()
+        targetDestroyedObservation = nil
         workspaceTokens.forEach(workspaceNotificationCenter.removeObserver)
         workspaceTokens.removeAll()
         applicationTokens.forEach(applicationNotificationCenter.removeObserver)
         applicationTokens.removeAll()
-        targetDestroyedSubscriber.clear()
     }
 
     deinit {
@@ -136,84 +131,119 @@ final class WindowPeekLifecycleObserver: WindowPeekLifecycleObserving {
 }
 
 @MainActor
-final class SystemWindowPeekTargetDestroyedSubscriber: WindowPeekTargetDestroyedSubscribing {
+final class SystemWindowDestroyedObserver: WindowDestroyedObserving {
     private let logger: ProbeLogger
-    private var observer: AXObserver?
-    private var subscription: WindowPeekTargetDestroyedSubscription?
-    private var observerSource: CFRunLoopSource?
-    private var handler: (@MainActor (PreviewWindowID) -> Void)?
+    private var observations: [UUID: SystemWindowDestroyedObservation] = [:]
 
     init(logger: ProbeLogger) {
         self.logger = logger
     }
 
-    func replaceTarget(
+    @discardableResult
+    func observeWindow(
         id: PreviewWindowID,
         element: AXUIElement?,
         onDestroyed: @escaping @MainActor (PreviewWindowID) -> Void
-    ) {
-        clear()
+    ) -> (any WindowDestroyedObservation)? {
         guard let element else {
             logger.warning("peek.lifecycle.destroyObservationUnavailable id=\(id.windowID) code=noElement")
-            return
+            return nil
         }
 
-        var newObserver: AXObserver?
-        let createResult = AXObserverCreate(id.pid, windowPeekTargetDestroyedCallback, &newObserver)
-        guard createResult == .success, let newObserver else {
+        var axObserver: AXObserver?
+        let createResult = AXObserverCreate(id.pid, windowDestroyedCallback, &axObserver)
+        guard createResult == .success, let axObserver else {
             logger.warning("peek.lifecycle.destroyObservationUnavailable id=\(id.windowID) code=\(createResult.rawValue)")
-            return
+            return nil
         }
+
+        let tokenID = UUID()
+        let source = AXObserverGetRunLoopSource(axObserver)
+        let observation = SystemWindowDestroyedObservation(
+            id: id,
+            element: element,
+            axObserver: axObserver,
+            source: source,
+            onDestroyed: onDestroyed,
+            onCancel: { [weak self] in
+                self?.removeObservation(id: tokenID)
+            }
+        )
 
         let addResult = AXObserverAddNotification(
-            newObserver,
+            axObserver,
             element,
             kAXUIElementDestroyedNotification as CFString,
-            Unmanaged.passUnretained(self).toOpaque()
+            Unmanaged.passUnretained(observation).toOpaque()
         )
         guard addResult == .success else {
             logger.warning("peek.lifecycle.destroyObservationUnavailable id=\(id.windowID) code=\(addResult.rawValue)")
-            return
+            return nil
         }
 
-        let source = AXObserverGetRunLoopSource(newObserver)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        observer = newObserver
-        subscription = WindowPeekTargetDestroyedSubscription(id: id, element: element)
-        observerSource = source
-        handler = onDestroyed
+        observations[tokenID] = observation
+        return observation
     }
 
-    func clear() {
-        if let observer, let subscription {
-            AXObserverRemoveNotification(observer, subscription.element, kAXUIElementDestroyedNotification as CFString)
-        }
-        if let observerSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), observerSource, .commonModes)
-        }
-        observer = nil
-        subscription = nil
-        observerSource = nil
-        handler = nil
+    private func removeObservation(id: UUID) {
+        observations.removeValue(forKey: id)
     }
 
     deinit {
         MainActor.assumeIsolated {
-            clear()
+            let activeObservations = Array(observations.values)
+            activeObservations.forEach { $0.cancel() }
         }
-    }
-
-    fileprivate func handleDestroyedNotification(from callbackElement: AXUIElement) {
-        guard let subscription, subscription.matches(callbackElement) else { return }
-        handler?(subscription.id)
     }
 }
 
-private let windowPeekTargetDestroyedCallback: AXObserverCallback = { _, element, _, refcon in
+@MainActor
+private final class SystemWindowDestroyedObservation: WindowDestroyedObservation {
+    private let id: PreviewWindowID
+    private let element: AXUIElement
+    private let axObserver: AXObserver
+    private let source: CFRunLoopSource
+    private let onDestroyed: @MainActor (PreviewWindowID) -> Void
+    private var onCancel: (() -> Void)?
+    private var isCancelled = false
+
+    init(
+        id: PreviewWindowID,
+        element: AXUIElement,
+        axObserver: AXObserver,
+        source: CFRunLoopSource,
+        onDestroyed: @escaping @MainActor (PreviewWindowID) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.id = id
+        self.element = element
+        self.axObserver = axObserver
+        self.source = source
+        self.onDestroyed = onDestroyed
+        self.onCancel = onCancel
+    }
+
+    func cancel() {
+        guard !isCancelled else { return }
+        isCancelled = true
+        AXObserverRemoveNotification(axObserver, element, kAXUIElementDestroyedNotification as CFString)
+        CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        onCancel?()
+        onCancel = nil
+    }
+
+    fileprivate func handleDestroyedNotification(from callbackElement: AXUIElement) {
+        guard !isCancelled, CFEqual(element, callbackElement) else { return }
+        onDestroyed(id)
+    }
+}
+
+private let windowDestroyedCallback: AXObserverCallback = { _, element, _, refcon in
     guard let refcon else { return }
     precondition(Thread.isMainThread)
-    let subscriber = Unmanaged<SystemWindowPeekTargetDestroyedSubscriber>.fromOpaque(refcon).takeUnretainedValue()
+    let observation = Unmanaged<SystemWindowDestroyedObservation>.fromOpaque(refcon).takeUnretainedValue()
     MainActor.assumeIsolated {
-        subscriber.handleDestroyedNotification(from: element)
+        observation.handleDestroyedNotification(from: element)
     }
 }

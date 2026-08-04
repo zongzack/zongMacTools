@@ -94,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let lifecycleObserver = WindowPeekLifecycleObserver(
             workspaceNotificationCenter: NSWorkspace.shared.notificationCenter,
             applicationNotificationCenter: NotificationCenter.default,
-            targetDestroyedSubscriber: SystemWindowPeekTargetDestroyedSubscriber(logger: logger),
+            destroyedObserver: SystemWindowDestroyedObserver(logger: logger),
             logger: logger
         )
         windowPeekLifecycleObserver = lifecycleObserver
