@@ -107,3 +107,17 @@ pkill -x DockHoverPreviewProbe
 - 不 stage 用户无关改动。
 - 提交前看 `git diff --cached --stat` 和 `git diff --cached --check`。
 - 文档整理提交和代码 bugfix 提交尽量分开。
+
+## Agent skills
+
+### Issue tracker
+
+议题以本地 Markdown 文件保存在 `.scratch/` 中。See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+使用五个默认的 triage 状态字符串。See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+采用单上下文布局。See `docs/agents/domain.md`.
