@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="zongMacTools 是一组面向 macOS 日常操作的个人效率工具。当前提供 Dock Window Quick Look。"
+    />
+    <meta name="theme-color" content="#f3f6f7" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="zongMacTools | macOS 日常效率工具" />
+    <meta
+      property="og:description"
+      content="从 Dock 的一次停留开始，更快回到正在进行的工作。当前提供 Dock Window Quick Look。"
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="zongMacTools | macOS 日常效率工具" />
+    <meta
+      name="twitter:description"
+      content="从 Dock 的一次停留开始，更快回到正在进行的工作。当前提供 Dock Window Quick Look。"
+    />
+    <title>zongMacTools | macOS 日常效率工具</title>
+    <link rel="icon" href="assets/zong-mac-tools-logo.png" type="image/png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" type="module"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">跳至主要内容</a>
+
+    <header class="site-header">
+      <nav class="site-nav" aria-label="主导航">
+        <a class="wordmark" href="#top" aria-label="zongMacTools 首页">
+          <img src="assets/zong-mac-tools-logo.png" width="36" height="36" alt="" />
+          <span>zongMacTools</span>
+        </a>
+
+        <div class="nav-actions">
+          <a href="#experience">体验</a>
+          <a href="#install">安装</a>
+          <div class="appearance-control" role="group" aria-label="外观">
+            <button type="button" data-theme="system" aria-pressed="true">跟随系统</button>
+            <button type="button" data-theme="light" aria-pressed="false">浅色外观</button>
+            <button type="button" data-theme="dark" aria-pressed="false">深色外观</button>
+          </div>
+          <a
+            class="github-link"
+            href="https://github.com/zongzack/zongMacTools"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub 源码
+            <span class="external-mark" aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+      <section class="hero" id="top" aria-labelledby="product-name">
+        <div class="hero-content">
+          <img
+            class="hero-icon"
+            src="assets/zong-mac-tools-logo.png"
+            width="160"
+            height="160"
+            alt="zongMacTools 产品图标"
+          />
+          <p class="eyebrow">MACOS 日常效率工具</p>
+          <h1 id="product-name">zongMacTools</h1>
+          <p class="hero-summary">
+            从 Dock 的一次停留开始，更快回到正在进行的工作。
+          </p>
+          <p class="hero-tool">当前工具：<strong>Dock Window Quick Look</strong></p>
+          <div class="hero-actions">
+            <a class="button button-primary" id="hero-action" href="https://github.com/zongzack/zongMacTools" target="_blank" rel="noreferrer">
+              查看 GitHub 源码
+              <span aria-hidden="true">↗</span>
+            </a>
+            <a class="button button-secondary" href="#experience">查看产品体验</a>
+          </div>
+          <div class="release-status" id="release-status" aria-live="polite" aria-atomic="true">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span>正在确认公开测试版状态</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="experience-section" id="experience" aria-labelledby="experience-title">
+        <div class="section-heading">
+          <p class="eyebrow">DOCK WINDOW QUICK LOOK</p>
+          <h2 id="experience-title">把窗口上下文留在视线之内</h2>
+          <p>
+            悬停、浏览、切换。预览面板只在需要时出现，让正在运行的应用保持可见、可达。
+          </p>
+        </div>
+
+        <div class="effect-grid">
+          <article class="effect-card">
+            <div class="effect-slot" role="img" aria-label="Dock 悬停预览的真实界面截图待加入">
+              <span class="slot-marker">01</span>
+              <span class="slot-badge">待接入真实界面截图</span>
+            </div>
+            <div class="effect-copy">
+              <h3>Dock 悬停预览</h3>
+              <p>停留在正在运行的应用图标上，查看当前可见窗口。</p>
+            </div>
+          </article>
+
+          <article class="effect-card">
+            <div class="effect-slot" role="img" aria-label="预览卡片激活窗口的真实界面截图待加入">
+              <span class="slot-marker">02</span>
+              <span class="slot-badge">待接入真实界面截图</span>
+            </div>
+            <div class="effect-copy">
+              <h3>预览卡片激活</h3>
+              <p>选择一个窗口卡片，直接回到对应任务。</p>
+            </div>
+          </article>
+
+          <article class="effect-card">
+            <div class="effect-slot" role="img" aria-label="右键窗口操作的真实界面截图待加入">
+              <span class="slot-marker">03</span>
+              <span class="slot-badge">待接入真实界面截图</span>
+            </div>
+            <div class="effect-copy">
+              <h3>右键窗口操作</h3>
+              <p>在预览卡片上打开可用的窗口操作菜单。</p>
+            </div>
+          </article>
+
+          <article class="effect-card">
+            <div class="effect-slot" role="img" aria-label="Dock Window Quick Look 设置页面的真实界面截图待加入">
+              <span class="slot-marker">04</span>
+              <span class="slot-badge">待接入真实界面截图</span>
+            </div>
+            <div class="effect-copy">
+              <h3>设置</h3>
+              <p>在菜单栏应用中调整预览相关体验。</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="capability-section" aria-labelledby="capability-title">
+        <div class="section-heading compact">
+          <p class="eyebrow">为当前桌面保留上下文</p>
+          <h2 id="capability-title">不离开当前节奏</h2>
+        </div>
+        <ol class="capability-list">
+          <li>
+            <span>01</span>
+            <div>
+              <h3>悬停时出现</h3>
+              <p>预览在 Dock 图标上短暂停留后出现，不抢占正在使用的应用焦点。</p>
+            </div>
+          </li>
+          <li>
+            <span>02</span>
+            <div>
+              <h3>窗口保持可见</h3>
+              <p>窗口缩略图和标题集中在横向预览面板中，便于快速比较。</p>
+            </div>
+          </li>
+          <li>
+            <span>03</span>
+            <div>
+              <h3>把动作留在手边</h3>
+              <p>通过卡片激活目标窗口，或从右键菜单使用当前可用的窗口操作。</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="install-section" id="install" aria-labelledby="install-title">
+        <div class="install-intro">
+          <p class="eyebrow">公开测试版</p>
+          <h2 id="install-title">准备好时，从这里开始</h2>
+          <p>公开测试版发布后，安装只需三个步骤。完整发行详情始终保留在 GitHub Release。</p>
+        </div>
+        <ol class="install-steps">
+          <li><span>1</span><p>下载公开测试版压缩包</p></li>
+          <li><span>2</span><p>将 <code>zongMacTools.app</code> 移到 <code>/Applications</code></p></li>
+          <li><span>3</span><p>从“应用程序”中打开 zongMacTools</p></li>
+        </ol>
+        <a
+          class="text-link"
+          href="https://github.com/zongzack/zongMacTools/releases"
+          target="_blank"
+          rel="noreferrer"
+        >
+          在 GitHub 查看发行详情 <span aria-hidden="true">↗</span>
+        </a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <a class="wordmark" href="#top">
+          <img src="assets/zong-mac-tools-logo.png" width="32" height="32" alt="" />
+          <span>zongMacTools</span>
+        </a>
+        <p>面向 macOS 日常操作的个人效率工具。</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/zongzack/zongMacTools" target="_blank" rel="noreferrer">GitHub 源码</a>
+        <a href="https://github.com/zongzack/zongMacTools/releases" target="_blank" rel="noreferrer">发行详情</a>
+        <p>本站不收集个人数据。</p>
+      </div>
+    </footer>
+
+    <dialog class="install-dialog" id="install-dialog" aria-labelledby="install-dialog-title">
+      <form method="dialog" class="dialog-shell">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow">公开测试版</p>
+            <h2 id="install-dialog-title">安装 zongMacTools</h2>
+          </div>
+          <button class="close-button" value="cancel" aria-label="关闭安装引导">关闭</button>
+        </div>
+        <ol class="dialog-steps">
+          <li><span>1</span><p>下载 ZIP 压缩包。</p></li>
+          <li><span>2</span><p>解压后将 <code>zongMacTools.app</code> 移到 <code>/Applications</code>。</p></li>
+          <li><span>3</span><p>从“应用程序”中打开 zongMacTools。</p></li>
+        </ol>
+        <div class="dialog-actions">
+          <button class="button button-secondary" value="cancel">稍后再说</button>
+          <button class="button button-primary" type="button" id="confirm-download">继续下载 <span aria-hidden="true">↗</span></button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

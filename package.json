@@ -1,0 +1,11 @@
+{
+  "name": "zong-mac-tools",
+  "private": true,
+  "scripts": {
+    "test:site": "playwright test",
+    "test:site:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}
