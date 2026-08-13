@@ -1,17 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const releasesEndpoint = "https://api.github.com/repos/zongzack/zongMacTools/releases?per_page=10";
-
 test.use({ locale: "zh-CN" });
 
-async function showNoPublicRelease(page) {
-  await page.route(releasesEndpoint, (route) =>
-    route.fulfill({ contentType: "application/json", body: "[]" })
-  );
-}
-
 test("访客按七段连续桌面叙事理解产品方向", async ({ page }) => {
-  await showNoPublicRelease(page);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
@@ -39,7 +30,6 @@ test("访客按七段连续桌面叙事理解产品方向", async ({ page }) => 
 });
 
 test("顶栏仅提供品牌、工具、语言和 GitHub 源码入口", async ({ page }) => {
-  await showNoPublicRelease(page);
   await page.goto("/");
 
   const navigation = page.getByRole("navigation", { name: "主导航" });
@@ -52,7 +42,6 @@ test("顶栏仅提供品牌、工具、语言和 GitHub 源码入口", async ({ 
 });
 
 test("中文和英文在整个公开站中同步切换并保留本地选择", async ({ page }) => {
-  await showNoPublicRelease(page);
   await page.goto("/");
 
   const languageSwitch = page.getByRole("button", { name: "切换为英文" });
@@ -76,7 +65,6 @@ test("中文和英文在整个公开站中同步切换并保留本地选择", as
 test("浏览器英文语言在首次访问时得到英文完整内容", async ({ browser }) => {
   const context = await browser.newContext({ locale: "en-US" });
   const page = await context.newPage();
-  await showNoPublicRelease(page);
   await page.goto("/");
 
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
@@ -86,7 +74,6 @@ test("浏览器英文语言在首次访问时得到英文完整内容", async ({
 });
 
 test("键盘用户可跳过导航，减少动态效果时全部叙事保持直接可读", async ({ page }) => {
-  await showNoPublicRelease(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
@@ -99,7 +86,6 @@ test("键盘用户可跳过导航，减少动态效果时全部叙事保持直�
 });
 
 test("关键链接与行动控件具备触控尺寸和可见焦点", async ({ page }) => {
-  await showNoPublicRelease(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
 
@@ -120,7 +106,6 @@ test("关键链接与行动控件具备触控尺寸和可见焦点", async ({ pa
 });
 
 test("探索方向不展示下载、发布日期、等待名单或已完成能力", async ({ page }) => {
-  await showNoPublicRelease(page);
   await page.goto("/");
 
   const exploration = page.locator("#exploration");
@@ -131,7 +116,6 @@ test("探索方向不展示下载、发布日期、等待名单或已完成能�
 });
 
 test("站点不提供主题控制器，也不加载追踪或第三方资源", async ({ page }) => {
-  await showNoPublicRelease(page);
   const requests = [];
   page.on("request", (request) => requests.push(request.url()));
   await page.goto("/");
@@ -144,12 +128,11 @@ test("站点不提供主题控制器，也不加载追踪或第三方资源", as
   expect(await robots.text()).toContain("Allow: /");
   expect(await robots.text()).not.toContain("pages.dev");
   expect(await sitemap.text()).not.toContain("pages.dev");
-  expect(requests.filter((url) => !url.startsWith("http://127.0.0.1:4173") && !url.startsWith(releasesEndpoint))).toEqual([]);
+  expect(requests.filter((url) => !url.startsWith("http://127.0.0.1:4173"))).toEqual([]);
 });
 
 for (const width of [1440, 1024, 390]) {
   test(`站点在 ${width}px 视口不产生横向溢出、文字裁切或控件重叠`, async ({ page }) => {
-    await showNoPublicRelease(page);
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
 
