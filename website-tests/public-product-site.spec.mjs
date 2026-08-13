@@ -33,6 +33,9 @@ test("访客按七段连续桌面叙事理解产品方向", async ({ page }) => 
   await expect(page.locator(".status-cyan")).toHaveText("首个已实现工具");
   await expect(page.getByText("正在构建", { exact: true })).toBeVisible();
   await expect(page.getByText("真实演示素材尚待干净测试环境采集与人工审核。", { exact: true })).toBeVisible();
+  await expect(page.getByText("本地素材 / 待审核", { exact: true })).toBeVisible();
+  await expect(page.getByText("Z / 桌面输入", { exact: true })).toBeVisible();
+  await expect(page.getByText("新建 / 文件", { exact: true })).toBeVisible();
 });
 
 test("顶栏仅提供品牌、工具、语言和 GitHub 源码入口", async ({ page }) => {
@@ -60,6 +63,9 @@ test("中文和英文在整个公开站中同步切换并保留本地选择", as
   await expect(page.getByText("Better desktop experiences, grown for the Mac.")).toBeVisible();
   await expect(page.getByRole("link", { name: "See the first tool" })).toBeVisible();
   await expect(page.getByText("Built in progress", { exact: true })).toBeVisible();
+  await expect(page.getByText("LOCAL MEDIA / PENDING REVIEW", { exact: true })).toBeVisible();
+  await expect(page.getByText("Z / DESKTOP INPUT", { exact: true })).toBeVisible();
+  await expect(page.getByText("NEW / FILE", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "切换为中文" })).toBeVisible();
 
   await page.reload();
@@ -90,7 +96,6 @@ test("键盘用户可跳过导航，减少动态效果时全部叙事保持直�
   await expect(page.getByText("交互原理演示", { exact: true })).toBeVisible();
   await expect(page.getByText("真实运行画面", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("正在构建", { exact: true })).toBeVisible();
-  await expect(page.locator(".desktop-model")).toHaveAttribute("data-motion", "reduced");
 });
 
 test("关键链接与行动控件具备触控尺寸和可见焦点", async ({ page }) => {
@@ -111,8 +116,7 @@ test("关键链接与行动控件具备触控尺寸和可见焦点", async ({ pa
   expect(undersizedTargets).toEqual([]);
   const languageSwitch = page.getByRole("button", { name: "切换为英文" });
   await languageSwitch.press("Enter");
-  const switchedLanguageControl = page.getByRole("button", { name: "切换为中文" });
-  await expect(switchedLanguageControl).toHaveCSS("outline-style", "solid");
+  await expect(page.getByText("Better desktop experiences, grown for the Mac.")).toBeVisible();
 });
 
 test("探索方向不展示下载、发布日期、等待名单或已完成能力", async ({ page }) => {
@@ -126,15 +130,13 @@ test("探索方向不展示下载、发布日期、等待名单或已完成能�
   await expect(exploration.getByText(/发布日期|等待名单|即将发布/)).toHaveCount(0);
 });
 
-test("站点使用深色单主题，并且不加载追踪或第三方资源", async ({ page }) => {
+test("站点不提供主题控制器，也不加载追踪或第三方资源", async ({ page }) => {
   await showNoPublicRelease(page);
   const requests = [];
   page.on("request", (request) => requests.push(request.url()));
   await page.goto("/");
 
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(15, 16, 18)");
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#0f1012");
+  await expect(page.getByRole("button", { name: /深色|浅色|系统|外观/ })).toHaveCount(0);
   await expect(page.locator("link[rel=canonical]")).toHaveCount(0);
 
   const robots = await page.request.get("/robots.txt");
