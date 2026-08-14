@@ -261,18 +261,20 @@
             </p>
           </div>
           <div class="acquire-panel">
-            <p class="acquire-state" aria-live="polite" data-i18n="acquirePending">正在等待 GitHub 公开 Release 状态</p>
+            <p class="acquire-state" id="acquire-state" role="status" aria-live="polite" data-i18n="acquireLoading">正在确认 GitHub 公开 Release 状态</p>
             <dl>
               <div><dt data-i18n="requirementLabel">系统要求</dt><dd data-i18n="requirementValue">macOS 14 或更高版本</dd></div>
               <div><dt data-i18n="permissionLabel">需要授权</dt><dd data-i18n="permissionValue">辅助功能与屏幕录制</dd></div>
               <div><dt data-i18n="releaseLabel">发行状态</dt><dd data-i18n="releaseValue">未公证公开测试版</dd></div>
             </dl>
             <div class="acquire-links">
+              <a class="button button-primary" id="download-beta" hidden target="_blank" rel="noopener noreferrer"></a>
               <a
                 class="button button-secondary"
+                id="release-details"
                 href="https://github.com/zongzack/zongMacTools/releases"
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 aria-label="在 GitHub 查看 zongMacTools 发行详情"
                 data-i18n-aria-label="releaseDetailsLink"
               ><span data-i18n="releaseDetails">在 GitHub 查看发行详情</span><span aria-hidden="true">↗</span></a>
@@ -280,7 +282,7 @@
                 class="text-link"
                 href="https://github.com/zongzack/zongMacTools"
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 aria-label="在 GitHub 查看 zongMacTools 源码"
                 data-i18n-aria-label="githubSourceLink"
               ><span data-i18n="githubSource">GitHub 源码</span><span aria-hidden="true">↗</span></a>

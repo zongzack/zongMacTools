@@ -2,11 +2,16 @@ export const GITHUB_REPOSITORY_URL = "https://github.com/zongzack/zongMacTools";
 export const GITHUB_RELEASES_URL = `${GITHUB_REPOSITORY_URL}/releases`;
 export const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/zongzack/zongMacTools/releases?per_page=10";
 
-function isValidDate(value) {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+function isValidPublishedAt(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.toISOString() === value.replace("Z", ".000Z");
 }
 
-function isMatchingDownloadUrl(value, tagName, assetName) {
+function isMatchingGitHubReleaseUrl(value, expectedPathSegments) {
   if (typeof value !== "string") {
     return false;
   }
@@ -19,18 +24,20 @@ function isMatchingDownloadUrl(value, tagName, assetName) {
       url.hostname === "github.com" &&
       url.search === "" &&
       url.hash === "" &&
-      pathSegments.length === 7 &&
-      pathSegments[0] === "" &&
-      pathSegments[1] === "zongzack" &&
-      pathSegments[2] === "zongMacTools" &&
-      pathSegments[3] === "releases" &&
-      pathSegments[4] === "download" &&
-      pathSegments[5] === tagName &&
-      pathSegments[6] === assetName
+      pathSegments.length === expectedPathSegments.length &&
+      pathSegments.every((segment, index) => segment === expectedPathSegments[index])
     );
   } catch {
     return false;
   }
+}
+
+function isMatchingDownloadUrl(value, tagName, assetName) {
+  return isMatchingGitHubReleaseUrl(value, ["", "zongzack", "zongMacTools", "releases", "download", tagName, assetName]);
+}
+
+function isMatchingReleaseUrl(value, tagName) {
+  return isMatchingGitHubReleaseUrl(value, ["", "zongzack", "zongMacTools", "releases", "tag", tagName]);
 }
 
 function releaseCandidate(release) {
@@ -45,7 +52,8 @@ function releaseCandidate(release) {
   if (
     typeof release.tag_name !== "string" ||
     release.tag_name.length === 0 ||
-    !isValidDate(release.published_at) ||
+    !isValidPublishedAt(release.published_at) ||
+    !isMatchingReleaseUrl(release.html_url, release.tag_name) ||
     !Array.isArray(release.assets)
   ) {
     return { kind: "invalid" };
@@ -67,45 +75,29 @@ function releaseCandidate(release) {
   return asset ? { kind: "available", release, asset } : { kind: "skip" };
 }
 
-function localizedReleaseDate(isoDate) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  }).format(new Date(isoDate));
-}
-
 export function releaseStateFrom(releases) {
   if (!Array.isArray(releases)) {
-    return {
-      kind: "unavailable",
-      label: "暂时无法获取版本信息，可在 GitHub 查看最新状态"
-    };
+    return { kind: "unavailable" };
   }
 
   for (const release of releases) {
     const candidate = releaseCandidate(release);
     if (candidate.kind === "invalid") {
-      return {
-        kind: "unavailable",
-        label: "暂时无法获取版本信息，可在 GitHub 查看最新状态"
-      };
+      return { kind: "unavailable" };
     }
 
     if (candidate.kind === "available") {
-      const version =
-        typeof candidate.release.tag_name === "string" && candidate.release.tag_name
-          ? candidate.release.tag_name
-          : "最新版本";
       return {
         kind: "available",
-        label: `${version} 已发布于 ${localizedReleaseDate(candidate.release.published_at)}`,
-        assetUrl: candidate.asset.browser_download_url
+        tagName: candidate.release.tag_name,
+        publishedAt: candidate.release.published_at,
+        assetUrl: candidate.asset.browser_download_url,
+        releaseUrl: candidate.release.html_url
       };
     }
   }
 
-  return { kind: "pending", label: "公开测试版即将发布" };
+  return { kind: "pending" };
 }
 
 export async function fetchReleaseState(fetcher = fetch) {
@@ -120,9 +112,6 @@ export async function fetchReleaseState(fetcher = fetch) {
 
     return releaseStateFrom(await response.json());
   } catch {
-    return {
-      kind: "unavailable",
-      label: "暂时无法获取版本信息，可在 GitHub 查看最新状态"
-    };
+    return { kind: "unavailable" };
   }
 }

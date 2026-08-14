@@ -1,3 +1,5 @@
+import { GITHUB_RELEASES_URL, fetchReleaseState } from "./release-state.js";
+
 const languageStorageKey = "zong-mac-tools-language";
 
 const messages = {
@@ -74,7 +76,12 @@ const messages = {
     acquireEyebrow: "获取区",
     acquireTitle: "获取公开测试版",
     acquireCopy: "公开 Release 出现匹配下载资产后，此处将从 GitHub 确认准确版本、日期和下载入口。在此之前，发行与源码信息只以 GitHub 为准。",
-    acquirePending: "正在等待 GitHub 公开 Release 状态",
+    acquireLoading: "正在确认 GitHub 公开 Release 状态",
+    acquirePending: "暂无可验证的公开下载资产，请在 GitHub 查看项目与发行详情。",
+    acquireUnavailable: "暂时无法确认版本或下载资产，请在 GitHub 查看最新状态。",
+    acquireAvailable: "{version} 发布于 {date}",
+    downloadBeta: "下载 {version} 的公开测试版",
+    releaseDetailsForVersion: "在 GitHub 查看 {version} 发行详情",
     requirementLabel: "系统要求",
     requirementValue: "macOS 14 或更高版本",
     permissionLabel: "需要授权",
@@ -159,7 +166,12 @@ const messages = {
     acquireEyebrow: "Acquire",
     acquireTitle: "Get the public beta",
     acquireCopy: "Once a public GitHub Release has a matching download asset, this area will confirm its exact version, date, and download. Until then, GitHub remains the only source for release and source details.",
-    acquirePending: "Waiting for a public GitHub Release status",
+    acquireLoading: "Checking the public GitHub Release status",
+    acquirePending: "No verifiable public download asset is available. View the project and releases on GitHub.",
+    acquireUnavailable: "The version and download asset cannot be confirmed. View the latest status on GitHub.",
+    acquireAvailable: "{version} published on {date}",
+    downloadBeta: "Download the {version} public beta",
+    releaseDetailsForVersion: "View {version} release details on GitHub",
     requirementLabel: "System",
     requirementValue: "macOS 14 or later",
     permissionLabel: "Permissions",
@@ -181,6 +193,9 @@ const modelStageDescription = document.querySelector("[data-model-stage-descript
 const modelProgress = document.querySelector("[data-model-progress]");
 const modelCurrentStage = document.querySelector("[data-model-current-stage]");
 const modelScene = document.querySelector(".model-scene");
+const acquireState = document.querySelector("#acquire-state");
+const downloadBeta = document.querySelector("#download-beta");
+const releaseDetails = document.querySelector("#release-details");
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 const desktopPointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
 const modelStageOrder = ["dock", "windows", "switch", "actions"];
@@ -188,6 +203,7 @@ let activeLanguage = "zh";
 let activeModelStage = "dock";
 let scrollFrame;
 let modelHasDirectInteraction = false;
+let currentReleaseState = { kind: "loading" };
 
 function preferredLanguage() {
   try {
@@ -234,6 +250,7 @@ function renderLanguage(language, { persist = false } = {}) {
 
   languageSwitch.dataset.language = language;
   renderModelStage();
+  renderReleaseState();
 
   if (persist) {
     try {
@@ -242,6 +259,58 @@ function renderLanguage(language, { persist = false } = {}) {
       // Language switching remains available even when persistence is unavailable.
     }
   }
+}
+
+function formatCopy(template, values) {
+  return Object.entries(values).reduce((copy, [key, value]) => copy.replace(`{${key}}`, value), template);
+}
+
+function localizedReleaseDate(isoDate) {
+  return new Intl.DateTimeFormat(activeLanguage === "zh" ? "zh-CN" : "en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  }).format(new Date(isoDate));
+}
+
+function renderReleaseState() {
+  if (!acquireState || !downloadBeta || !releaseDetails) {
+    return;
+  }
+
+  const copy = messages[activeLanguage];
+  const available = currentReleaseState.kind === "available";
+  const stateCopy = available
+    ? formatCopy(copy.acquireAvailable, { version: currentReleaseState.tagName, date: localizedReleaseDate(currentReleaseState.publishedAt) })
+    : copy[`acquire${currentReleaseState.kind[0].toUpperCase()}${currentReleaseState.kind.slice(1)}`];
+
+  acquireState.dataset.state = currentReleaseState.kind;
+  acquireState.textContent = stateCopy;
+  downloadBeta.hidden = !available;
+  releaseDetails.href = available ? currentReleaseState.releaseUrl : GITHUB_RELEASES_URL;
+
+  if (available) {
+    const downloadCopy = formatCopy(copy.downloadBeta, { version: currentReleaseState.tagName });
+    downloadBeta.href = currentReleaseState.assetUrl;
+    downloadBeta.textContent = downloadCopy;
+    downloadBeta.setAttribute("aria-label", downloadCopy);
+    const detailsCopy = formatCopy(copy.releaseDetailsForVersion, { version: currentReleaseState.tagName });
+    releaseDetails.textContent = copy.releaseDetails;
+    releaseDetails.setAttribute("aria-label", detailsCopy);
+    return;
+  }
+
+  downloadBeta.removeAttribute("href");
+  downloadBeta.removeAttribute("aria-label");
+  releaseDetails.textContent = copy.releaseDetails;
+  releaseDetails.setAttribute("aria-label", copy.releaseDetailsLink);
+}
+
+async function loadReleaseState() {
+  currentReleaseState = { kind: "loading" };
+  renderReleaseState();
+  currentReleaseState = await fetchReleaseState();
+  renderReleaseState();
 }
 
 function renderModelStage() {
@@ -400,3 +469,4 @@ if (typeof motionQuery.addEventListener === "function") {
 renderLanguage(preferredLanguage());
 updateMotionState();
 scheduleModelScrollSync();
+loadReleaseState();
