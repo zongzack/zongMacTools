@@ -1042,35 +1042,51 @@ h3 {
   align-items: center;
 }
 
-.media-reserve {
+.media-evidence {
   position: relative;
-  min-height: 360px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 0;
   overflow: hidden;
-  border: 1px dashed var(--line-strong);
+  border: 1px solid var(--line-strong);
   background: #17191c;
 }
 
-.reserve-grid {
-  background-size: 38px 38px;
+.media-video,
+.media-poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.reserve-z {
-  top: 25%;
-  left: 35%;
-  width: 30%;
-  height: 44%;
-  opacity: 0.65;
+.media-poster {
+  display: none;
 }
 
-.media-reserve > p {
+.media-placeholder-badge,
+.media-evidence figcaption {
   position: absolute;
-  right: 18px;
-  bottom: 14px;
-  left: 18px;
   margin: 0;
-  color: var(--text-dim);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 10px;
+  line-height: 1.4;
+}
+
+.media-placeholder-badge {
+  top: 14px;
+  left: 14px;
+  padding: 6px 8px;
+  border: 1px solid rgb(244 239 231 / 30%);
+  background: rgb(21 23 26 / 88%);
+  color: var(--text);
+}
+
+.media-evidence figcaption {
+  right: 16px;
+  bottom: 14px;
+  left: 16px;
+  color: var(--text-dim);
 }
 
 .media-copy .media-pending {
@@ -1322,7 +1338,7 @@ h3 {
 
   .desktop-model { max-width: 680px; }
 
-  .media-reserve { max-width: 680px; }
+  .media-evidence { max-width: 680px; }
 }
 
 @media (max-width: 620px) {
@@ -1405,7 +1421,6 @@ h3 {
   .model-dock i { width: 22px; height: 22px; }
   .model-step-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  .media-reserve { min-height: 270px; }
   .finder-direction { min-height: 270px; }
   .folder-shape { top: 70px; height: 125px; }
   .file-a { top: 30px; right: 22%; }
@@ -1437,7 +1452,16 @@ h3 {
   .reserve-grid { background-image: none; }
 
   .hero-particles,
-  .model-pointer { display: none; }
+  .model-pointer,
+  .media-video { display: none; }
+
+  .media-poster { display: block; }
+}
+
+@media (max-width: 620px) {
+  .media-video { display: none; }
+
+  .media-poster { display: block; }
 }
 
 @media (hover: hover) and (pointer: fine) {

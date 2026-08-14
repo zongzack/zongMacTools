@@ -43,8 +43,8 @@ test("访客按七段连续桌面叙事理解产品方向", async ({ page }) => 
   await expect(page.getByText("macOS 增益工具", { exact: true })).toBeVisible();
   await expect(page.locator(".status-cyan")).toHaveText("首个已实现工具");
   await expect(page.getByText("正在构建", { exact: true })).toBeVisible();
-  await expect(page.getByText("真实演示素材尚待干净测试环境采集与人工审核。", { exact: true })).toBeVisible();
-  await expect(page.getByText("本地素材 / 待审核", { exact: true })).toBeVisible();
+  await expect(page.getByText("当前显示的是本地占位素材，不代表 App 真实运行画面。", { exact: false })).toBeVisible();
+  await expect(page.getByText("占位素材 / 待替换", { exact: true })).toBeVisible();
   await expect(page.getByText("Z / 桌面输入", { exact: true })).toBeVisible();
   await expect(page.getByText("新建 / 文件", { exact: true })).toBeVisible();
 });
@@ -72,7 +72,7 @@ test("中文和英文在整个公开站中同步切换并保留本地选择", as
   await expect(page.getByText("Better desktop experiences, grown for the Mac.")).toBeVisible();
   await expect(page.getByRole("link", { name: "See the first tool" })).toBeVisible();
   await expect(page.getByText("Built in progress", { exact: true })).toBeVisible();
-  await expect(page.getByText("LOCAL MEDIA / PENDING REVIEW", { exact: true })).toBeVisible();
+  await expect(page.getByText("PLACEHOLDER MEDIA / REPLACE AFTER REVIEW", { exact: true })).toBeVisible();
   await expect(page.getByText("Z / DESKTOP INPUT", { exact: true })).toBeVisible();
   await expect(page.getByText("NEW / FILE", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "切换为中文" })).toBeVisible();
@@ -165,6 +165,32 @@ test("键盘用户可跳过导航，减少动态效果时全部叙事保持直�
   await expect(page.getByText("交互原理演示", { exact: true })).toBeVisible();
   await expect(page.getByText("真实运行画面", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("正在构建", { exact: true })).toBeVisible();
+});
+
+test("媒体区提供明确标记的本地占位视频，并在窄屏和减少动态效果下展示海报", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const media = page.locator("#media");
+  const video = media.locator("video");
+  await expect(video).toBeVisible();
+  await expect(video).toHaveAttribute("poster", "assets/dock-window-quick-look-placeholder-poster.png");
+  await expect(video.locator("source")).toHaveAttribute("src", "assets/dock-window-quick-look-placeholder.mp4");
+  await expect(video).toHaveJSProperty("muted", true);
+  await expect(media.getByText("当前显示的是本地占位素材，不代表 App 真实运行画面。", { exact: false })).toBeVisible();
+  await expect(media.locator("figcaption")).toContainText("占位内容");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(video).toBeHidden();
+  const poster = media.locator(".media-poster");
+  await expect(poster).toBeVisible();
+  await media.scrollIntoViewIfNeeded();
+  await expect.poll(() => poster.evaluate((image) => image.complete && image.naturalWidth === 1600 && image.naturalHeight === 900)).toBe(true);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(video).toBeHidden();
+  await expect(poster).toBeVisible();
 });
 
 test("Dock Window Quick Look 模型以四个具名阶段说明当前交互", async ({ page }) => {

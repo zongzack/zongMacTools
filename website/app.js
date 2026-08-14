@@ -40,7 +40,7 @@ const messages = {
     boundaryHover: "查看当前可枚举窗口预览",
     boundarySwitch: "选择卡片切换窗口",
     boundaryMenu: "右键使用可用窗口操作",
-    toolMediaAction: "查看真实运行画面预留",
+    toolMediaAction: "查看真实运行画面占位媒体",
     desktopModelLabel: "交互原理演示：可操作的抽象 Dock 桌面模型",
     principleDemo: "交互原理演示",
     modelStepsLabel: "Dock 窗口速览步骤控制器",
@@ -62,10 +62,11 @@ const messages = {
     modelNote: "抽象模型，不是产品界面截图",
     mediaEyebrow: "真实运行画面",
     mediaTitle: "真实运行画面",
-    mediaCopy: "交互原理演示之后，这里将接入来自干净测试环境、经人工审阅的短静音本地素材，用于证明当前能力而不混淆网页模型与 App 界面。",
+    mediaCopy: "当前显示的是本地占位素材，不代表 App 真实运行画面。真实素材必须来自干净测试环境，并在人工审核后替换。",
     mediaPending: "真实演示素材尚待干净测试环境采集与人工审核。",
-    mediaReserveLabel: "真实运行画面素材预留，尚未接入视频或海报图",
-    mediaReserveMark: "本地素材 / 待审核",
+    mediaVideoLabel: "Dock Window Quick Look 占位视频，不是 App 运行录屏",
+    mediaPlaceholderCaption: "占位内容：不代表 App 真实运行画面",
+    mediaReserveMark: "占位素材 / 待替换",
     explorationEyebrow: "探索方向",
     explorationTitle: "Finder 右键新建文件",
     buildingStatus: "正在构建",
@@ -152,10 +153,11 @@ const messages = {
     modelNote: "Abstract model, not a product interface screenshot",
     mediaEyebrow: "Real running footage",
     mediaTitle: "Real running footage",
-    mediaCopy: "After the interaction principle demonstration, this area will hold short, muted local media captured in a clean test environment and reviewed by hand. It will prove current behavior without conflating the web model with the app interface.",
+    mediaCopy: "This is local placeholder media, not real App footage. Replace it only with media captured in a clean test environment and reviewed by hand.",
     mediaPending: "Real demonstration media is pending clean-environment capture and manual review.",
-    mediaReserveLabel: "Reserved space for real running footage, with no video or poster image connected yet",
-    mediaReserveMark: "LOCAL MEDIA / PENDING REVIEW",
+    mediaVideoLabel: "Dock Window Quick Look placeholder video, not an App screen recording",
+    mediaPlaceholderCaption: "Placeholder content: not real App footage",
+    mediaReserveMark: "PLACEHOLDER MEDIA / REPLACE AFTER REVIEW",
     explorationEyebrow: "Exploration direction",
     explorationTitle: "Create new files from Finder",
     buildingStatus: "Built in progress",
@@ -196,6 +198,7 @@ const modelScene = document.querySelector(".model-scene");
 const acquireState = document.querySelector("#acquire-state");
 const downloadBeta = document.querySelector("#download-beta");
 const releaseDetails = document.querySelector("#release-details");
+const mediaVideo = document.querySelector("#media-video");
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 const desktopPointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
 const modelStageOrder = ["dock", "windows", "switch", "actions"];
@@ -393,7 +396,24 @@ function updateMotionState() {
     model.dataset.motion = reduced ? "reduced" : "full";
   });
   updateModelSceneAccessibility();
+  updateMediaPlayback();
   scheduleModelScrollSync();
+}
+
+function updateMediaPlayback() {
+  if (!mediaVideo) {
+    return;
+  }
+
+  const canAutoplay = !motionQuery.matches && window.innerWidth > 620;
+  mediaVideo.autoplay = canAutoplay;
+
+  if (!canAutoplay) {
+    mediaVideo.pause();
+    return;
+  }
+
+  mediaVideo.play().catch(() => {});
 }
 
 languageSwitch.addEventListener("click", () => {
@@ -445,6 +465,7 @@ window.addEventListener("keydown", (event) => {
 });
 window.addEventListener("resize", () => {
   updateModelSceneAccessibility();
+  updateMediaPlayback();
   scheduleModelScrollSync();
 });
 

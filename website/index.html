@@ -148,7 +148,7 @@
               <li data-i18n="boundarySwitch">选择卡片切换窗口</li>
               <li data-i18n="boundaryMenu">右键使用可用窗口操作</li>
             </ul>
-            <a class="text-link" href="#media" data-i18n="toolMediaAction">查看真实运行画面预留</a>
+            <a class="text-link" href="#media" data-i18n="toolMediaAction">查看真实运行画面占位媒体</a>
           </div>
 
           <div
@@ -204,16 +204,19 @@
 
       <section class="media-section narrative-section" id="media" aria-labelledby="media-title">
         <div class="page-width media-layout">
-          <div class="media-reserve" role="img" aria-label="真实运行画面素材预留，尚未接入视频或海报图" data-i18n-aria-label="mediaReserveLabel">
-            <div class="reserve-grid" aria-hidden="true"></div>
-            <div class="reserve-z" aria-hidden="true"><i></i><i></i><i></i></div>
-            <p data-i18n="mediaReserveMark">本地素材 / 待审核</p>
-          </div>
+          <figure class="media-evidence" aria-labelledby="media-placeholder-caption">
+            <video class="media-video" id="media-video" autoplay loop muted playsinline preload="metadata" poster="assets/dock-window-quick-look-placeholder-poster.png" aria-label="Dock Window Quick Look 占位视频，不是 App 运行录屏" data-i18n-aria-label="mediaVideoLabel">
+              <source src="assets/dock-window-quick-look-placeholder.mp4" type="video/mp4">
+            </video>
+            <img class="media-poster" src="assets/dock-window-quick-look-placeholder-poster.png" width="1600" height="900" loading="lazy" alt="">
+            <p class="media-placeholder-badge" data-i18n="mediaReserveMark">占位素材 / 待替换</p>
+            <figcaption id="media-placeholder-caption" data-i18n="mediaPlaceholderCaption">占位内容：不代表 App 真实运行画面</figcaption>
+          </figure>
           <div class="media-copy section-intro">
             <p class="eyebrow" data-i18n="mediaEyebrow">真实运行画面</p>
             <h2 id="media-title" data-i18n="mediaTitle">真实运行画面</h2>
             <p data-i18n="mediaCopy">
-              交互原理演示之后，这里将接入来自干净测试环境、经人工审阅的短静音本地素材，用于证明当前能力而不混淆网页模型与 App 界面。
+              当前显示的是本地占位素材，不代表 App 真实运行画面。真实素材必须来自干净测试环境，并在人工审核后替换。
             </p>
             <p class="media-pending" data-i18n="mediaPending">真实演示素材尚待干净测试环境采集与人工审核。</p>
           </div>
