@@ -659,10 +659,12 @@ h3 {
 
 .desktop-model {
   position: relative;
-  min-height: 420px;
+  display: grid;
+  min-height: 500px;
   overflow: hidden;
   border: 1px solid var(--line-strong);
   background: #15171a;
+  isolation: isolate;
 }
 
 .desktop-model::before,
@@ -675,26 +677,77 @@ h3 {
 .desktop-model::before { inset: 58px 0 auto; height: 1px; }
 .desktop-model::after { top: 0; bottom: 0; left: 50%; width: 1px; }
 
-.model-label,
-.model-note {
-  position: absolute;
+.model-heading {
+  position: relative;
   z-index: 2;
   display: flex;
-  min-height: 30px;
+  min-height: 59px;
   align-items: center;
-  gap: 9px;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgb(244 239 231 / 6%);
+}
+
+.model-label,
+.model-progress,
+.model-note,
+.model-step-meta p {
+  margin: 0;
   color: var(--text-dim);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 10px;
 }
 
-.model-label { top: 14px; left: 16px; }
-.model-note { right: 16px; bottom: 14px; }
+.model-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.model-progress {
+  color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.model-stage-copy {
+  position: relative;
+  z-index: 2;
+  min-height: 91px;
+  padding: 15px 16px 14px;
+  border-bottom: 1px solid rgb(244 239 231 / 6%);
+  background: rgb(15 16 18 / 56%);
+}
+
+.model-stage-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.model-stage-description {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.model-scene {
+  position: relative;
+  z-index: 1;
+  min-height: 227px;
+}
 
 .model-window {
   position: absolute;
+  display: block;
+  padding: 0;
   border: 1px solid var(--line-strong);
   background: #1c1f23;
+  cursor: pointer;
+  transition: border-color 180ms ease-out, background-color 180ms ease-out, opacity 180ms ease-out, transform 180ms ease-out;
 }
 
 .model-window span {
@@ -722,30 +775,31 @@ h3 {
 .model-window b:nth-of-type(2) { top: 53px; width: 33%; }
 
 .model-window-one {
-  top: 88px;
+  top: 26px;
   left: 10%;
   width: 43%;
-  height: 182px;
+  height: 156px;
 }
 
 .model-window-two {
-  top: 113px;
+  top: 48px;
   right: 9%;
   width: 40%;
-  height: 154px;
+  height: 132px;
   background: #21252a;
 }
 
 .model-pointer {
   position: absolute;
   z-index: 3;
-  top: 178px;
-  left: 49%;
+  top: 108px;
+  left: 52%;
   width: 26px;
   height: 36px;
   border-left: 2px solid var(--text);
   transform: rotate(-28deg);
   transform-origin: bottom;
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
 }
 
 .model-pointer::before {
@@ -771,16 +825,19 @@ h3 {
 
 .model-dock {
   position: absolute;
+  z-index: 4;
   right: 12%;
-  bottom: 58px;
+  bottom: 19px;
   left: 12%;
   display: flex;
+  padding: 0;
   height: 48px;
   align-items: center;
   justify-content: center;
   gap: 13px;
   border: 1px solid var(--line-strong);
   background: #22262a;
+  transition: border-color 180ms ease-out, background-color 180ms ease-out, box-shadow 180ms ease-out;
 }
 
 .model-dock i {
@@ -808,6 +865,169 @@ h3 {
 
 .model-dock .dock-active::after {
   background: var(--cyan);
+}
+
+.model-operation-trigger {
+  position: absolute;
+  z-index: 5;
+  top: 38px;
+  left: calc(10% + 43% - 44px);
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  border: 1px solid var(--cyan);
+  border-radius: 3px;
+  background: #161a1d;
+  color: var(--cyan);
+  transition: opacity 180ms ease-out, transform 180ms ease-out, background-color 180ms ease-out;
+}
+
+.model-operation-trigger span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.model-operation-menu {
+  position: absolute;
+  z-index: 4;
+  top: 82px;
+  left: calc(10% + 43% - 98px);
+  display: grid;
+  width: 136px;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid var(--cyan);
+  background: #111416;
+  box-shadow: 0 12px 24px rgb(0 0 0 / 26%);
+  opacity: 0;
+  transform: translateY(-7px);
+  transition: opacity 180ms ease-out, transform 180ms ease-out;
+}
+
+.model-operation-menu i {
+  display: block;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.model-operation-menu i:first-child { background: var(--cyan); }
+
+.desktop-model[data-stage="dock"] .model-window,
+.desktop-model[data-stage="dock"] .model-pointer {
+  opacity: 0.2;
+}
+
+.desktop-model[data-stage="dock"] .model-window {
+  transform: translateY(12px) scale(0.98);
+}
+
+.desktop-model[data-stage="windows"] .model-window,
+.desktop-model[data-stage="switch"] .model-window,
+.desktop-model[data-stage="actions"] .model-window {
+  opacity: 1;
+}
+
+.desktop-model[data-stage="windows"] .model-dock,
+.desktop-model[data-stage="switch"] .model-dock,
+.desktop-model[data-stage="actions"] .model-dock {
+  border-color: var(--cyan);
+  background: #1a2427;
+  box-shadow: 0 0 0 3px rgb(120 211 212 / 12%);
+}
+
+.desktop-model[data-stage="switch"] .model-window-one,
+.desktop-model[data-stage="actions"] .model-window-one {
+  border-color: var(--cyan);
+  background: #202b2e;
+  transform: translate(-4px, -6px);
+}
+
+.desktop-model[data-stage="switch"] .model-window-two,
+.desktop-model[data-stage="actions"] .model-window-two {
+  opacity: 0.45;
+  transform: translate(5px, 7px);
+}
+
+.desktop-model[data-stage="windows"] .model-pointer {
+  transform: translate(-24px, 31px) rotate(-28deg);
+}
+
+.desktop-model[data-stage="switch"] .model-pointer,
+.desktop-model[data-stage="actions"] .model-pointer {
+  transform: translate(-73px, -12px) rotate(-28deg);
+}
+
+.desktop-model:not([data-stage="switch"]):not([data-stage="actions"]) .model-operation-trigger {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(7px);
+}
+
+.desktop-model[data-stage="actions"] .model-operation-menu {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.model-step-controls {
+  position: relative;
+  z-index: 3;
+  padding: 13px 16px 15px;
+  border-top: 1px solid rgb(244 239 231 / 6%);
+  background: #141619;
+}
+
+.model-step-meta {
+  display: flex;
+  min-height: 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.model-current-stage {
+  color: var(--cyan);
+  font-weight: 720;
+  text-align: right;
+}
+
+.model-step-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.model-step-list button {
+  min-height: 44px;
+  padding: 8px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: #1b1f22;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.25;
+  text-align: left;
+  transition: border-color 180ms ease-out, background-color 180ms ease-out, color 180ms ease-out;
+}
+
+.model-step-list button[aria-pressed="true"] {
+  border-color: var(--cyan);
+  background: #1b2a2d;
+  color: var(--text);
+}
+
+.model-note {
+  position: relative;
+  z-index: 3;
+  padding: 0 16px 14px;
+  background: #141619;
 }
 
 .media-section {
@@ -1169,14 +1389,21 @@ h3 {
   .origin-diagram { grid-column: 1; }
 
   .desktop-model {
-    min-height: 350px;
+    min-height: 474px;
   }
+
+  .model-heading,
+  .model-stage-copy,
+  .model-step-controls,
+  .model-note { padding-right: 14px; padding-left: 14px; }
 
   .model-window-one { left: 7%; width: 48%; }
   .model-window-two { right: 6%; width: 46%; }
-  .model-dock { right: 7%; bottom: 55px; left: 7%; gap: 9px; }
+  .model-operation-trigger { left: calc(7% + 48% - 44px); }
+  .model-operation-menu { left: calc(7% + 48% - 98px); }
+  .model-dock { right: 7%; bottom: 19px; left: 7%; gap: 9px; }
   .model-dock i { width: 22px; height: 22px; }
-  .model-note { left: 15px; right: auto; }
+  .model-step-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .media-reserve { min-height: 270px; }
   .finder-direction { min-height: 270px; }
@@ -1211,4 +1438,25 @@ h3 {
 
   .hero-particles,
   .model-pointer { display: none; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .model-dock:hover {
+    border-color: var(--cyan);
+    background: #1a2427;
+  }
+
+  .model-window:hover,
+  .model-operation-trigger:hover,
+  .model-step-list button:hover {
+    border-color: var(--cyan);
+    background: #202b2e;
+    color: var(--text);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .model-scene button {
+    pointer-events: none;
+  }
 }

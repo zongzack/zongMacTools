@@ -151,13 +151,53 @@
             <a class="text-link" href="#media" data-i18n="toolMediaAction">查看真实运行画面预留</a>
           </div>
 
-          <div class="desktop-model" data-motion="full" role="img" aria-label="交互原理演示：从 Dock 停留到窗口预览的抽象桌面模型" data-i18n-aria-label="desktopModelLabel">
-            <div class="model-label"><span data-i18n="principleDemo">交互原理演示</span><span aria-hidden="true">/ 01</span></div>
-            <div class="model-window model-window-one"><span></span><span></span><span></span><b></b><b></b></div>
-            <div class="model-window model-window-two"><span></span><span></span><span></span><b></b><b></b></div>
-            <div class="model-pointer"><i></i><span></span></div>
-            <div class="model-dock"><i></i><i></i><i class="dock-active"></i><i></i><i></i></div>
-            <div class="model-note"><span data-i18n="modelNote">抽象模型，不是产品界面截图</span></div>
+          <div
+            class="desktop-model"
+            data-motion="full"
+            data-stage="dock"
+            role="group"
+            aria-labelledby="model-principle-label model-stage-title"
+            aria-describedby="model-stage-description"
+          >
+            <div class="model-heading">
+              <p class="model-label" id="model-principle-label"><span data-i18n="principleDemo">交互原理演示</span><span aria-hidden="true">/ 01</span></p>
+              <p class="model-progress" data-model-progress>步骤 1 / 4</p>
+            </div>
+
+            <div class="model-stage-copy" role="status" aria-live="polite">
+              <p class="model-stage-title" id="model-stage-title" data-model-stage-title>停在 Dock</p>
+              <p class="model-stage-description" id="model-stage-description" data-model-stage-description>停在正在运行的 Dock 应用图标上。</p>
+            </div>
+
+            <div class="model-scene" aria-hidden="true">
+              <button class="model-window model-window-one" type="button" tabindex="-1" data-model-action="switch" aria-label="选择抽象窗口卡片并切换窗口" data-i18n-aria-label="modelWindowControl">
+                <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span><b aria-hidden="true"></b><b aria-hidden="true"></b>
+              </button>
+              <button class="model-window model-window-two" type="button" tabindex="-1" data-model-action="switch" aria-label="选择抽象窗口卡片并切换窗口" data-i18n-aria-label="modelWindowControl">
+                <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span><b aria-hidden="true"></b><b aria-hidden="true"></b>
+              </button>
+              <div class="model-pointer" aria-hidden="true"><i></i><span></span></div>
+              <button class="model-operation-trigger" type="button" tabindex="-1" data-model-action="actions" aria-label="打开抽象窗口操作菜单" data-i18n-aria-label="modelActionsControl"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button>
+              <div class="model-operation-menu" aria-hidden="true"><i></i><i></i><i></i></div>
+              <button class="model-dock" type="button" tabindex="-1" data-model-action="windows" aria-label="查看当前可枚举窗口" data-i18n-aria-label="modelDockControl">
+                <i aria-hidden="true"></i><i aria-hidden="true"></i><i class="dock-active" aria-hidden="true"></i><i aria-hidden="true"></i><i aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <nav class="model-step-controls" aria-label="Dock 窗口速览步骤控制器" data-i18n-aria-label="modelStepsLabel">
+              <div class="model-step-meta">
+                <p data-i18n="modelStepsIntro">用文字步骤查看同一交互原理</p>
+                <p class="model-current-stage" data-model-current-stage>当前阶段：停在 Dock</p>
+              </div>
+              <div class="model-step-list">
+                <button type="button" data-model-stage="dock" aria-pressed="true" data-i18n="modelStageDock">停在 Dock</button>
+                <button type="button" data-model-stage="windows" aria-pressed="false" data-i18n="modelStageWindows">查看窗口</button>
+                <button type="button" data-model-stage="switch" aria-pressed="false" data-i18n="modelStageSwitch">切换窗口</button>
+                <button type="button" data-model-stage="actions" aria-pressed="false" data-i18n="modelStageActions">窗口操作</button>
+              </div>
+            </nav>
+
+            <p class="model-note"><span data-i18n="modelNote">抽象模型，不是产品界面截图</span></p>
           </div>
         </div>
       </section>

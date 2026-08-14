@@ -39,8 +39,24 @@ const messages = {
     boundarySwitch: "选择卡片切换窗口",
     boundaryMenu: "右键使用可用窗口操作",
     toolMediaAction: "查看真实运行画面预留",
-    desktopModelLabel: "交互原理演示：从 Dock 停留到窗口预览的抽象桌面模型",
+    desktopModelLabel: "交互原理演示：可操作的抽象 Dock 桌面模型",
     principleDemo: "交互原理演示",
+    modelStepsLabel: "Dock 窗口速览步骤控制器",
+    modelStepsIntro: "用文字步骤查看同一交互原理",
+    modelCurrentStage: "当前阶段：",
+    modelStageDock: "停在 Dock",
+    modelStageWindows: "查看窗口",
+    modelStageSwitch: "切换窗口",
+    modelStageActions: "窗口操作",
+    modelDockControl: "查看当前可枚举窗口",
+    modelWindowControl: "选择抽象窗口卡片并切换窗口",
+    modelActionsControl: "打开抽象窗口操作菜单",
+    modelStages: {
+      dock: { progress: "步骤 1 / 4", title: "停在 Dock", description: "停在正在运行的 Dock 应用图标上。" },
+      windows: { progress: "步骤 2 / 4", title: "查看窗口", description: "预览展示当前可枚举窗口，不是实时视频。" },
+      switch: { progress: "步骤 3 / 4", title: "切换窗口", description: "选择抽象窗口卡片后，注意力回到目标窗口。" },
+      actions: { progress: "步骤 4 / 4", title: "窗口操作", description: "展示当前可用窗口操作的位置。" }
+    },
     modelNote: "抽象模型，不是产品界面截图",
     mediaEyebrow: "真实运行画面",
     mediaTitle: "真实运行画面",
@@ -108,8 +124,24 @@ const messages = {
     boundarySwitch: "Select a card to switch windows",
     boundaryMenu: "Use available actions from the context menu",
     toolMediaAction: "View the real-run media placeholder",
-    desktopModelLabel: "Interaction principle demonstration: an abstract desktop model from a Dock pause to window previews",
+    desktopModelLabel: "Interaction principle demonstration: an operable abstract Dock desktop model",
     principleDemo: "Interaction principle demonstration",
+    modelStepsLabel: "Dock Window Quick Look step controls",
+    modelStepsIntro: "Use the text steps to inspect the same interaction principle",
+    modelCurrentStage: "Current stage:",
+    modelStageDock: "Pause on the Dock",
+    modelStageWindows: "View windows",
+    modelStageSwitch: "Switch windows",
+    modelStageActions: "Window actions",
+    modelDockControl: "View currently enumerable windows",
+    modelWindowControl: "Select an abstract window card and switch windows",
+    modelActionsControl: "Open the abstract window actions menu",
+    modelStages: {
+      dock: { progress: "Step 1 of 4", title: "Pause on the Dock", description: "Pause on a running app in the Dock." },
+      windows: { progress: "Step 2 of 4", title: "View windows", description: "The previews show currently enumerable windows, not live video." },
+      switch: { progress: "Step 3 of 4", title: "Switch windows", description: "Select an abstract window card to return attention to the target window." },
+      actions: { progress: "Step 4 of 4", title: "Window actions", description: "Show where the currently available window actions appear." }
+    },
     modelNote: "Abstract model, not a product interface screenshot",
     mediaEyebrow: "Real running footage",
     mediaTitle: "Real running footage",
@@ -142,7 +174,20 @@ const messages = {
 };
 
 const languageSwitch = document.querySelector("#language-switch");
+const desktopModel = document.querySelector(".desktop-model");
+const modelStageButtons = document.querySelectorAll("[data-model-stage]");
+const modelStageTitle = document.querySelector("[data-model-stage-title]");
+const modelStageDescription = document.querySelector("[data-model-stage-description]");
+const modelProgress = document.querySelector("[data-model-progress]");
+const modelCurrentStage = document.querySelector("[data-model-current-stage]");
+const modelScene = document.querySelector(".model-scene");
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+const desktopPointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+const modelStageOrder = ["dock", "windows", "switch", "actions"];
+let activeLanguage = "zh";
+let activeModelStage = "dock";
+let scrollFrame;
+let modelHasDirectInteraction = false;
 
 function preferredLanguage() {
   try {
@@ -163,6 +208,7 @@ function setMeta(name, content) {
 
 function renderLanguage(language, { persist = false } = {}) {
   const copy = messages[language];
+  activeLanguage = language;
   document.documentElement.lang = language === "zh" ? "zh-Hans" : "en";
   document.title = copy.title;
   setMeta('meta[name="description"]', copy.description);
@@ -187,6 +233,7 @@ function renderLanguage(language, { persist = false } = {}) {
   });
 
   languageSwitch.dataset.language = language;
+  renderModelStage();
 
   if (persist) {
     try {
@@ -197,18 +244,152 @@ function renderLanguage(language, { persist = false } = {}) {
   }
 }
 
+function renderModelStage() {
+  if (!desktopModel || !modelStageTitle || !modelStageDescription || !modelProgress || !modelCurrentStage) {
+    return;
+  }
+
+  const stage = messages[activeLanguage].modelStages[activeModelStage];
+  desktopModel.dataset.stage = activeModelStage;
+  modelStageTitle.textContent = stage.title;
+  modelStageDescription.textContent = stage.description;
+  modelProgress.textContent = stage.progress;
+  modelCurrentStage.textContent = `${messages[activeLanguage].modelCurrentStage} ${stage.title}`;
+
+  modelStageButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.modelStage === activeModelStage));
+  });
+}
+
+function setModelStage(stage, { source = "direct" } = {}) {
+  if (!modelStageOrder.includes(stage)) {
+    return;
+  }
+
+  if (source !== "scroll" && scrollFrame !== undefined) {
+    window.cancelAnimationFrame(scrollFrame);
+    scrollFrame = undefined;
+  }
+
+  if (source !== "scroll") {
+    modelHasDirectInteraction = true;
+  }
+
+  if (stage === activeModelStage) {
+    return;
+  }
+
+  activeModelStage = stage;
+  renderModelStage();
+}
+
+function isDesktopPointer() {
+  return window.innerWidth >= 768 && desktopPointerQuery.matches;
+}
+
+function updateModelSceneAccessibility() {
+  modelScene?.setAttribute("aria-hidden", String(!isDesktopPointer()));
+}
+
+function syncModelStageWithScroll() {
+  scrollFrame = undefined;
+
+  if (!desktopModel || !isDesktopPointer() || modelHasDirectInteraction) {
+    return;
+  }
+
+  const { top } = desktopModel.getBoundingClientRect();
+  const start = window.innerHeight * 0.78;
+  const end = window.innerHeight * 0.22;
+  const progress = Math.min(1, Math.max(0, (start - top) / (start - end)));
+  const stageIndex = Math.min(modelStageOrder.length - 1, Math.floor(progress * modelStageOrder.length));
+  setModelStage(modelStageOrder[stageIndex], { source: "scroll" });
+}
+
+function scheduleModelScrollSync() {
+  if (scrollFrame === undefined) {
+    scrollFrame = window.requestAnimationFrame(syncModelStageWithScroll);
+  }
+}
+
+function resumeScrollNarrative() {
+  modelHasDirectInteraction = false;
+  scheduleModelScrollSync();
+}
+
 function updateMotionState() {
   const reduced = motionQuery.matches;
   document.documentElement.dataset.reducedMotion = String(reduced);
   document.querySelectorAll(".desktop-model").forEach((model) => {
     model.dataset.motion = reduced ? "reduced" : "full";
   });
+  updateModelSceneAccessibility();
+  scheduleModelScrollSync();
 }
 
 languageSwitch.addEventListener("click", () => {
   const nextLanguage = languageSwitch.dataset.language === "zh" ? "en" : "zh";
   renderLanguage(nextLanguage, { persist: true });
 });
+
+modelStageButtons.forEach((button) => {
+  button.addEventListener("click", () => setModelStage(button.dataset.modelStage));
+});
+
+document.querySelectorAll("[data-model-action]").forEach((control) => {
+  control.addEventListener("click", () => {
+    if (isDesktopPointer()) {
+      setModelStage(control.dataset.modelAction);
+    }
+  });
+});
+
+document.querySelectorAll(".model-window").forEach((windowCard) => {
+  windowCard.addEventListener("contextmenu", (event) => {
+    if (!isDesktopPointer()) {
+      return;
+    }
+
+    event.preventDefault();
+    setModelStage("actions");
+  });
+});
+
+document.querySelector(".model-dock")?.addEventListener("pointerenter", () => {
+  if (isDesktopPointer()) {
+    setModelStage("windows");
+  }
+});
+
+desktopModel?.addEventListener("pointerleave", () => {
+  if (isDesktopPointer()) {
+    resumeScrollNarrative();
+  }
+});
+
+window.addEventListener("scroll", scheduleModelScrollSync, { passive: true });
+window.addEventListener("wheel", resumeScrollNarrative, { passive: true });
+window.addEventListener("keydown", (event) => {
+  if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"].includes(event.key)) {
+    resumeScrollNarrative();
+  }
+});
+window.addEventListener("resize", () => {
+  updateModelSceneAccessibility();
+  scheduleModelScrollSync();
+});
+
+if (typeof desktopPointerQuery.addEventListener === "function") {
+  desktopPointerQuery.addEventListener("change", () => {
+    updateModelSceneAccessibility();
+    scheduleModelScrollSync();
+  });
+} else {
+  desktopPointerQuery.addListener(() => {
+    updateModelSceneAccessibility();
+    scheduleModelScrollSync();
+  });
+}
 
 if (typeof motionQuery.addEventListener === "function") {
   motionQuery.addEventListener("change", updateMotionState);
@@ -218,3 +399,4 @@ if (typeof motionQuery.addEventListener === "function") {
 
 renderLanguage(preferredLanguage());
 updateMotionState();
+scheduleModelScrollSync();

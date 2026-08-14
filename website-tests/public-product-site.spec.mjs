@@ -85,6 +85,81 @@ test("键盘用户可跳过导航，减少动态效果时全部叙事保持直�
   await expect(page.getByText("正在构建", { exact: true })).toBeVisible();
 });
 
+test("Dock Window Quick Look 模型以四个具名阶段说明当前交互", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const model = page.getByRole("group", { name: /交互原理演示/ });
+  const stageStatus = model.getByRole("status");
+  await model.scrollIntoViewIfNeeded();
+  await model.getByRole("button", { name: "停在 Dock", exact: true }).click();
+  await expect(stageStatus).toContainText("停在 Dock");
+  await expect(stageStatus).toContainText("停在正在运行的 Dock 应用图标上。");
+  await expect(model.getByRole("button", { name: "停在 Dock", exact: true })).toHaveAttribute("aria-pressed", "true");
+
+  await model.getByRole("button", { name: "查看当前可枚举窗口" }).hover();
+  await expect(stageStatus).toContainText("查看窗口");
+  await expect(stageStatus).toContainText("预览展示当前可枚举窗口，不是实时视频。");
+
+  await model.getByRole("button", { name: "选择抽象窗口卡片并切换窗口" }).first().click();
+  await expect(stageStatus).toContainText("切换窗口");
+  await expect(model.getByRole("button", { name: "切换窗口", exact: true })).toHaveAttribute("aria-pressed", "true");
+
+  await model.getByRole("button", { name: "选择抽象窗口卡片并切换窗口" }).first().click({ button: "right" });
+  await expect(stageStatus).toContainText("窗口操作");
+  await expect(stageStatus).toContainText("展示当前可用窗口操作的位置。");
+});
+
+test("桌面滚动和键盘步骤控制器都能推进 Dock 案例", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+
+  const model = page.getByRole("group", { name: /交互原理演示/ });
+  await model.scrollIntoViewIfNeeded();
+  const scrollBefore = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 520);
+  await expect.poll(() => page.evaluate((previous) => window.scrollY > previous, scrollBefore)).toBe(true);
+  await expect(model.getByRole("status")).toContainText("窗口操作");
+
+  const dockStep = model.getByRole("button", { name: "停在 Dock", exact: true });
+  await dockStep.focus();
+  await dockStep.press("Enter");
+  await expect(model.getByRole("status")).toContainText("停在 Dock");
+  await expect(dockStep).toHaveAttribute("aria-pressed", "true");
+
+  for (const [stage, description] of [
+    ["查看窗口", "预览展示当前可枚举窗口，不是实时视频。"],
+    ["切换窗口", "选择抽象窗口卡片后，注意力回到目标窗口。"],
+    ["窗口操作", "展示当前可用窗口操作的位置。"]
+  ]) {
+    const step = model.getByRole("button", { name: stage, exact: true });
+    await step.press("Space");
+    await expect(model.getByRole("status")).toContainText(description);
+    await expect(step).toHaveAttribute("aria-pressed", "true");
+  }
+});
+
+test("触控和减少动态效果用户可用文字步骤控制器操作同一模型", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  const model = page.getByRole("group", { name: /交互原理演示/ });
+  await expect(model.getByRole("button", { name: "查看当前可枚举窗口" })).toHaveCount(0);
+
+  for (const [stage, description] of [
+    ["停在 Dock", "停在正在运行的 Dock 应用图标上。"],
+    ["查看窗口", "预览展示当前可枚举窗口，不是实时视频。"],
+    ["切换窗口", "选择抽象窗口卡片后，注意力回到目标窗口。"],
+    ["窗口操作", "展示当前可用窗口操作的位置。"]
+  ]) {
+    const step = model.getByRole("button", { name: stage, exact: true });
+    await step.click();
+    await expect(model.getByRole("status")).toContainText(description);
+    await expect(step).toHaveAttribute("aria-pressed", "true");
+  }
+});
+
 test("关键链接与行动控件具备触控尺寸和可见焦点", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
