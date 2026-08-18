@@ -40,7 +40,7 @@ const messages = {
     boundaryHover: "查看当前可枚举窗口预览",
     boundarySwitch: "选择卡片切换窗口",
     boundaryMenu: "右键使用可用窗口操作",
-    toolMediaAction: "查看真实运行画面占位媒体",
+    toolMediaAction: "查看录屏素材预览",
     desktopModelLabel: "交互原理演示：可操作的抽象 Dock 桌面模型",
     principleDemo: "交互原理演示",
     modelStepsLabel: "Dock 窗口速览步骤控制器",
@@ -60,13 +60,19 @@ const messages = {
       actions: { progress: "步骤 4 / 4", title: "窗口操作", description: "展示当前可用窗口操作的位置。" }
     },
     modelNote: "抽象模型，不是产品界面截图",
-    mediaEyebrow: "真实运行画面",
-    mediaTitle: "真实运行画面",
-    mediaCopy: "当前显示的是本地占位素材，不代表 App 真实运行画面。真实素材必须来自干净测试环境，并在人工审核后替换。",
-    mediaPending: "真实演示素材尚待干净测试环境采集与人工审核。",
-    mediaVideoLabel: "Dock Window Quick Look 占位视频，不是 App 运行录屏",
-    mediaPlaceholderCaption: "占位内容：不代表 App 真实运行画面",
-    mediaReserveMark: "占位素材 / 待替换",
+    mediaEyebrow: "录屏素材预览",
+    mediaTitle: "Dock 录屏素材预览",
+    mediaCopy: "这是从你提供的录屏截取的本地素材预览，用于确认页面布局；正式发布前需在干净测试环境重新审核。",
+    mediaVideoLabel: "Dock Window Quick Look 本地录屏素材预览，发布前待审核",
+    mediaCaption: "本地预览：显示 Dock 预览、窗口操作和切换结果；公开发布前需复核素材。",
+    mediaEvidenceMark: "素材预览 / 待审核",
+    mediaStillsLabel: "Dock Window Quick Look 录屏素材预览关键帧",
+    mediaStillPreviewAlt: "Dock 中运行浏览器的多个窗口预览卡片显示在屏幕底部",
+    mediaStillPreviewCaption: "窗口预览",
+    mediaStillActionsAlt: "窗口预览卡片旁打开了可用窗口操作菜单",
+    mediaStillActionsCaption: "窗口操作",
+    mediaStillSwitchAlt: "从 Dock 预览卡片选择后，目标浏览器窗口显示在前景",
+    mediaStillSwitchCaption: "切换窗口",
     explorationEyebrow: "探索方向",
     explorationTitle: "Finder 右键新建文件",
     buildingStatus: "正在构建",
@@ -131,7 +137,7 @@ const messages = {
     boundaryHover: "Preview currently enumerable windows",
     boundarySwitch: "Select a card to switch windows",
     boundaryMenu: "Use available actions from the context menu",
-    toolMediaAction: "View the real-run media placeholder",
+    toolMediaAction: "View the recording preview",
     desktopModelLabel: "Interaction principle demonstration: an operable abstract Dock desktop model",
     principleDemo: "Interaction principle demonstration",
     modelStepsLabel: "Dock Window Quick Look step controls",
@@ -151,13 +157,19 @@ const messages = {
       actions: { progress: "Step 4 of 4", title: "Window actions", description: "Show where the currently available window actions appear." }
     },
     modelNote: "Abstract model, not a product interface screenshot",
-    mediaEyebrow: "Real running footage",
-    mediaTitle: "Real running footage",
-    mediaCopy: "This is local placeholder media, not real App footage. Replace it only with media captured in a clean test environment and reviewed by hand.",
-    mediaPending: "Real demonstration media is pending clean-environment capture and manual review.",
-    mediaVideoLabel: "Dock Window Quick Look placeholder video, not an App screen recording",
-    mediaPlaceholderCaption: "Placeholder content: not real App footage",
-    mediaReserveMark: "PLACEHOLDER MEDIA / REPLACE AFTER REVIEW",
+    mediaEyebrow: "Recording preview",
+    mediaTitle: "Dock recording preview",
+    mediaCopy: "This local preview is derived from the recording you provided to check the page layout. It needs a clean-environment review before public release.",
+    mediaVideoLabel: "Dock Window Quick Look local recording preview, pending release review",
+    mediaCaption: "Local preview: shows Dock previews, window actions, and switching; review the footage before public release.",
+    mediaEvidenceMark: "RECORDING PREVIEW / REVIEW PENDING",
+    mediaStillsLabel: "Dock Window Quick Look recording preview frames",
+    mediaStillPreviewAlt: "Preview cards for multiple browser windows appear above the Dock",
+    mediaStillPreviewCaption: "Window previews",
+    mediaStillActionsAlt: "Available window actions are open beside the window preview cards",
+    mediaStillActionsCaption: "Window actions",
+    mediaStillSwitchAlt: "The selected browser window appears in the foreground after choosing a Dock preview card",
+    mediaStillSwitchCaption: "Switch window",
     explorationEyebrow: "Exploration direction",
     explorationTitle: "Create new files from Finder",
     buildingStatus: "Built in progress",
@@ -248,6 +260,13 @@ function renderLanguage(language, { persist = false } = {}) {
     const key = element.dataset.i18nAriaLabel;
     if (copy[key]) {
       element.setAttribute("aria-label", copy[key]);
+    }
+  });
+
+  document.querySelectorAll("[data-i18n-alt]").forEach((element) => {
+    const key = element.dataset.i18nAlt;
+    if (copy[key]) {
+      element.setAttribute("alt", copy[key]);
     }
   });
 

@@ -23,6 +23,13 @@ npm run test:site
 
 Cloudflare 实际创建项目并提供 Pages 子域后，再统一写入 canonical、分享 URL、`robots.txt` 和 `sitemap.xml`；未配置的阶段不要猜测或预写任何 `pages.dev` 或自定义域名。
 
-## 截图素材
+## 录屏预览素材
 
-首版预留四个固定比例的真实效果图位置：Dock 悬停预览、预览卡片激活、右键窗口操作和设置。只有在人工审阅确认其不包含个人信息、无关窗口且准确反映当前 app 能力后，才可把真机截图接入这些位置。不要使用合成画面、库存图或人工拼绘的应用界面替代。
+当前媒体区使用本地托管的录屏预览和三张关键帧，全部为 `1600 × 900`、`16:9`：
+
+- `assets/dock-window-quick-look.mp4`：去除音轨的 H.264 录屏预览，聚焦 Dock 窗口预览、窗口操作和窗口切换。
+- `assets/dock-window-quick-look-poster.jpg`：右键窗口操作画面，同时作为窄屏和减少动态效果下的海报图。
+- `assets/dock-window-quick-look-preview.jpg`：窗口预览关键帧。
+- `assets/dock-window-quick-look-switch.jpg`：切换窗口关键帧。
+
+这些文件由 `Assets/demonstrate/zongmactools.mp4` 截取和转码得到。当前页面将其明确标为本地预览，不能替代正式发布素材。正式发布前仍需在干净测试环境人工确认窗口标题、路径、桌面图标、通知、浏览器标签、头像、画面边缘和当前能力一致性；不通过审核的素材不得接入公开站。不要使用合成画面、库存图或人工拼绘的应用界面替代真实运行素材。

@@ -34,7 +34,7 @@ test("访客按七段连续桌面叙事理解产品方向", async ({ page }) => 
   expect(sectionTitles).toEqual([
     "为什么是 zongMacTools",
     "Dock Window Quick Look（Dock 窗口速览）",
-    "真实运行画面",
+    "Dock 录屏素材预览",
     "Finder 右键新建文件",
     "获取公开测试版"
   ]);
@@ -43,8 +43,8 @@ test("访客按七段连续桌面叙事理解产品方向", async ({ page }) => 
   await expect(page.getByText("macOS 增益工具", { exact: true })).toBeVisible();
   await expect(page.locator(".status-cyan")).toHaveText("首个已实现工具");
   await expect(page.getByText("正在构建", { exact: true })).toBeVisible();
-  await expect(page.getByText("当前显示的是本地占位素材，不代表 App 真实运行画面。", { exact: false })).toBeVisible();
-  await expect(page.getByText("占位素材 / 待替换", { exact: true })).toBeVisible();
+  await expect(page.getByText("这是从你提供的录屏截取的本地素材预览，用于确认页面布局；正式发布前需在干净测试环境重新审核。", { exact: true })).toBeVisible();
+  await expect(page.getByText("素材预览 / 待审核", { exact: true })).toBeVisible();
   await expect(page.getByText("Z / 桌面输入", { exact: true })).toBeVisible();
   await expect(page.getByText("新建 / 文件", { exact: true })).toBeVisible();
 });
@@ -72,7 +72,7 @@ test("中文和英文在整个公开站中同步切换并保留本地选择", as
   await expect(page.getByText("Better desktop experiences, grown for the Mac.")).toBeVisible();
   await expect(page.getByRole("link", { name: "See the first tool" })).toBeVisible();
   await expect(page.getByText("Built in progress", { exact: true })).toBeVisible();
-  await expect(page.getByText("PLACEHOLDER MEDIA / REPLACE AFTER REVIEW", { exact: true })).toBeVisible();
+  await expect(page.getByText("RECORDING PREVIEW / REVIEW PENDING", { exact: true })).toBeVisible();
   await expect(page.getByText("Z / DESKTOP INPUT", { exact: true })).toBeVisible();
   await expect(page.getByText("NEW / FILE", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "切换为中文" })).toBeVisible();
@@ -163,22 +163,25 @@ test("键盘用户可跳过导航，减少动态效果时全部叙事保持直�
   await skipLink.press("Enter");
   await expect(page.locator("main")).toBeFocused();
   await expect(page.getByText("交互原理演示", { exact: true })).toBeVisible();
-  await expect(page.getByText("真实运行画面", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Dock 录屏素材预览", { exact: true })).toBeVisible();
   await expect(page.getByText("正在构建", { exact: true })).toBeVisible();
 });
 
-test("媒体区提供明确标记的本地占位视频，并在窄屏和减少动态效果下展示海报", async ({ page }) => {
+test("媒体区提供本地录屏预览、关键帧，并在窄屏和减少动态效果下展示海报", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
   const media = page.locator("#media");
   const video = media.locator("video");
   await expect(video).toBeVisible();
-  await expect(video).toHaveAttribute("poster", "assets/dock-window-quick-look-placeholder-poster.png");
-  await expect(video.locator("source")).toHaveAttribute("src", "assets/dock-window-quick-look-placeholder.mp4");
+  await expect(video).toHaveAttribute("poster", "assets/dock-window-quick-look-poster.jpg");
+  await expect(video.locator("source")).toHaveAttribute("src", "assets/dock-window-quick-look.mp4");
   await expect(video).toHaveJSProperty("muted", true);
-  await expect(media.getByText("当前显示的是本地占位素材，不代表 App 真实运行画面。", { exact: false })).toBeVisible();
-  await expect(media.locator("figcaption")).toContainText("占位内容");
+  await expect(media.getByText("这是从你提供的录屏截取的本地素材预览，用于确认页面布局；正式发布前需在干净测试环境重新审核。", { exact: true })).toBeVisible();
+  await expect(media.locator(".media-evidence figcaption")).toContainText("公开发布前需复核素材");
+  await expect(media.getByText("素材预览 / 待审核", { exact: true })).toBeVisible();
+  await expect(media.locator(".media-still")).toHaveCount(3);
+  await expect(media.locator(".media-still img")).toHaveCount(3);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(video).toBeHidden();

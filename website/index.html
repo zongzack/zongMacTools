@@ -148,7 +148,7 @@
               <li data-i18n="boundarySwitch">选择卡片切换窗口</li>
               <li data-i18n="boundaryMenu">右键使用可用窗口操作</li>
             </ul>
-            <a class="text-link" href="#media" data-i18n="toolMediaAction">查看真实运行画面占位媒体</a>
+            <a class="text-link" href="#media" data-i18n="toolMediaAction">查看录屏素材预览</a>
           </div>
 
           <div
@@ -204,22 +204,35 @@
 
       <section class="media-section narrative-section" id="media" aria-labelledby="media-title">
         <div class="page-width media-layout">
-          <figure class="media-evidence" aria-labelledby="media-placeholder-caption">
-            <video class="media-video" id="media-video" autoplay loop muted playsinline preload="metadata" poster="assets/dock-window-quick-look-placeholder-poster.png" aria-label="Dock Window Quick Look 占位视频，不是 App 运行录屏" data-i18n-aria-label="mediaVideoLabel">
-              <source src="assets/dock-window-quick-look-placeholder.mp4" type="video/mp4">
+          <figure class="media-evidence" aria-labelledby="media-caption">
+            <video class="media-video" id="media-video" autoplay loop muted playsinline preload="metadata" poster="assets/dock-window-quick-look-poster.jpg" aria-label="Dock Window Quick Look 实际运行录屏，展示窗口预览、窗口选择和窗口操作" data-i18n-aria-label="mediaVideoLabel">
+              <source src="assets/dock-window-quick-look.mp4" type="video/mp4">
             </video>
-            <img class="media-poster" src="assets/dock-window-quick-look-placeholder-poster.png" width="1600" height="900" loading="lazy" alt="">
-            <p class="media-placeholder-badge" data-i18n="mediaReserveMark">占位素材 / 待替换</p>
-            <figcaption id="media-placeholder-caption" data-i18n="mediaPlaceholderCaption">占位内容：不代表 App 真实运行画面</figcaption>
+            <img class="media-poster" src="assets/dock-window-quick-look-poster.jpg" width="1600" height="900" loading="lazy" alt="">
+            <p class="media-evidence-mark" data-i18n="mediaEvidenceMark">素材预览 / 待审核</p>
+            <figcaption id="media-caption" data-i18n="mediaCaption">本地预览：显示 Dock 预览、窗口操作和切换结果；公开发布前需复核素材。</figcaption>
           </figure>
           <div class="media-copy section-intro">
-            <p class="eyebrow" data-i18n="mediaEyebrow">真实运行画面</p>
-            <h2 id="media-title" data-i18n="mediaTitle">真实运行画面</h2>
+            <p class="eyebrow" data-i18n="mediaEyebrow">录屏素材预览</p>
+            <h2 id="media-title" data-i18n="mediaTitle">Dock 录屏素材预览</h2>
             <p data-i18n="mediaCopy">
-              当前显示的是本地占位素材，不代表 App 真实运行画面。真实素材必须来自干净测试环境，并在人工审核后替换。
+              这是从你提供的录屏截取的本地素材预览，用于确认页面布局；正式发布前需在干净测试环境重新审核。
             </p>
-            <p class="media-pending" data-i18n="mediaPending">真实演示素材尚待干净测试环境采集与人工审核。</p>
           </div>
+        </div>
+        <div class="page-width media-stills" aria-label="Dock Window Quick Look 录屏素材预览关键帧" data-i18n-aria-label="mediaStillsLabel">
+          <figure class="media-still">
+            <img src="assets/dock-window-quick-look-preview.jpg" width="1600" height="900" loading="lazy" alt="Dock 中运行浏览器的多个窗口预览卡片显示在屏幕底部" data-i18n-alt="mediaStillPreviewAlt">
+            <figcaption data-i18n="mediaStillPreviewCaption">窗口预览</figcaption>
+          </figure>
+          <figure class="media-still">
+            <img src="assets/dock-window-quick-look-poster.jpg" width="1600" height="900" loading="lazy" alt="窗口预览卡片旁打开了可用窗口操作菜单" data-i18n-alt="mediaStillActionsAlt">
+            <figcaption data-i18n="mediaStillActionsCaption">窗口操作</figcaption>
+          </figure>
+          <figure class="media-still">
+            <img src="assets/dock-window-quick-look-switch.jpg" width="1600" height="900" loading="lazy" alt="从 Dock 预览卡片选择后，目标浏览器窗口显示在前景" data-i18n-alt="mediaStillSwitchAlt">
+            <figcaption data-i18n="mediaStillSwitchCaption">切换窗口</figcaption>
+          </figure>
         </div>
       </section>
 
