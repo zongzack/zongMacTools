@@ -1,6 +1,11 @@
+// GitHub 公开 Release 状态边界：下载资产与发行详情的唯一事实来源。
+// 只接受公开、非 Draft、字段与路径都可校验的 Release；其余情况诚实降级。
+
 export const GITHUB_REPOSITORY_URL = "https://github.com/zongzack/zongMacTools";
 export const GITHUB_RELEASES_URL = `${GITHUB_REPOSITORY_URL}/releases`;
 export const GITHUB_RELEASES_API_URL = "https://api.github.com/repos/zongzack/zongMacTools/releases?per_page=10";
+
+const ASSET_NAME_PATTERN = /^zongMacTools-.+\.zip$/i;
 
 function isValidPublishedAt(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) {
@@ -11,36 +16,36 @@ function isValidPublishedAt(value) {
   return !Number.isNaN(date.getTime()) && date.toISOString() === value.replace("Z", ".000Z");
 }
 
-function isMatchingGitHubReleaseUrl(value, expectedPathSegments) {
+function isExpectedGitHubUrl(value, expectedSegments) {
   if (typeof value !== "string") {
     return false;
   }
 
   try {
     const url = new URL(value);
-    const pathSegments = url.pathname.split("/").map(decodeURIComponent);
+    const segments = url.pathname.split("/").map(decodeURIComponent);
     return (
       url.protocol === "https:" &&
       url.hostname === "github.com" &&
       url.search === "" &&
       url.hash === "" &&
-      pathSegments.length === expectedPathSegments.length &&
-      pathSegments.every((segment, index) => segment === expectedPathSegments[index])
+      segments.length === expectedSegments.length &&
+      segments.every((segment, index) => segment === expectedSegments[index])
     );
   } catch {
     return false;
   }
 }
 
-function isMatchingDownloadUrl(value, tagName, assetName) {
-  return isMatchingGitHubReleaseUrl(value, ["", "zongzack", "zongMacTools", "releases", "download", tagName, assetName]);
+function isReleaseUrl(value, tagName) {
+  return isExpectedGitHubUrl(value, ["", "zongzack", "zongMacTools", "releases", "tag", tagName]);
 }
 
-function isMatchingReleaseUrl(value, tagName) {
-  return isMatchingGitHubReleaseUrl(value, ["", "zongzack", "zongMacTools", "releases", "tag", tagName]);
+function isAssetDownloadUrl(value, tagName, assetName) {
+  return isExpectedGitHubUrl(value, ["", "zongzack", "zongMacTools", "releases", "download", tagName, assetName]);
 }
 
-function releaseCandidate(release) {
+function evaluateRelease(release) {
   if (!release || typeof release !== "object" || typeof release.draft !== "boolean") {
     return { kind: "invalid" };
   }
@@ -53,19 +58,19 @@ function releaseCandidate(release) {
     typeof release.tag_name !== "string" ||
     release.tag_name.length === 0 ||
     !isValidPublishedAt(release.published_at) ||
-    !isMatchingReleaseUrl(release.html_url, release.tag_name) ||
+    !isReleaseUrl(release.html_url, release.tag_name) ||
     !Array.isArray(release.assets)
   ) {
     return { kind: "invalid" };
   }
 
   const matchingAssets = release.assets.filter(
-    (asset) => typeof asset?.name === "string" && /^zongMacTools-.+\.zip$/i.test(asset.name)
+    (asset) => typeof asset?.name === "string" && ASSET_NAME_PATTERN.test(asset.name)
   );
 
   if (
     matchingAssets.some(
-      (asset) => !isMatchingDownloadUrl(asset.browser_download_url, release.tag_name, asset.name)
+      (asset) => !isAssetDownloadUrl(asset.browser_download_url, release.tag_name, asset.name)
     )
   ) {
     return { kind: "invalid" };
@@ -81,7 +86,8 @@ export function releaseStateFrom(releases) {
   }
 
   for (const release of releases) {
-    const candidate = releaseCandidate(release);
+    const candidate = evaluateRelease(release);
+
     if (candidate.kind === "invalid") {
       return { kind: "unavailable" };
     }

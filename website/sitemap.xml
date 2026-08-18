@@ -1,2 +1,3 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- 生产 Pages 地址未配置前不写入任何 URL；配置后再补充 loc 条目。 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" />

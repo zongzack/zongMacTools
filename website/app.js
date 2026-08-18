@@ -1,224 +1,250 @@
 import { GITHUB_RELEASES_URL, fetchReleaseState } from "./release-state.js";
 
-const languageStorageKey = "zong-mac-tools-language";
+const languageStorageKey = "zongmactools-site-language";
+const demoStageOrder = ["dock", "windows", "switch", "actions"];
 
 const messages = {
   zh: {
-    title: "zongMacTools | 面向 macOS 的桌面工具",
-    description: "zongMacTools 让更好的桌面体验，在 Mac 上继续生长。当前首个已实现工具是 Dock Window Quick Look（Dock 窗口速览）。",
-    ogDescription: "将已被验证有用的桌面体验重新做成适合 macOS 的工具，也补齐 macOS 日常操作的效率空白。",
+    title: "zongMacTools | 让更好的桌面体验，在 Mac 上继续生长",
+    description:
+      "zongMacTools 把其他桌面系统中已验证有用的交互重新做成适合 macOS 的工具，也补齐 macOS 日常操作的效率空白。首个已实现工具是 Dock Window Quick Look（Dock 窗口速览）。",
+    ogDescription: "把已被验证有用的桌面体验重新做成适合 macOS 的工具，也补齐值得被补上的 macOS 日常操作细节。",
     ogLocale: "zh_CN",
     skipLink: "跳至主要内容",
     primaryNavigation: "主导航",
     homeLink: "zongMacTools 首页",
-    toolNav: "查看工具案例",
-    languageSwitch: "切换为英文",
-    githubSourceLink: "在 GitHub 查看 zongMacTools 源码",
+    toolNav: "工具案例",
+    languageSwitch: "Switch to English",
+    githubSourceLink: "在 GitHub 查看 zongMacTools 源码（新标签页打开）",
     githubSource: "GitHub 源码",
-    heroEyebrow: "连续桌面叙事",
+    githubSourceShort: "GitHub 源码",
+    heroEyebrow: "macOS 桌面工具集合",
     heroStatement: "让更好的桌面体验，在 Mac 上继续生长。",
-    heroSummary: "将已被验证有用的桌面体验重新做成适合 macOS 的工具，也补齐值得被补上的日常操作细节。",
+    heroSummary: "把其他桌面系统中已验证有用的交互，重新做成符合 macOS 使用方式的工具；也为 Mac 补上那些值得被补上的日常操作细节。",
     heroAction: "查看首个工具",
-    continueReading: "继续阅读",
-    heroDeviceLabel: "Z / 桌面输入",
+    heroHint: "向下滚动，沿着一个连续的 macOS 桌面了解这个工具集合。",
     originsEyebrow: "工具来源",
     originsTitle: "为什么是 zongMacTools",
-    originsSummary: "有些好用的体验已在别处证明自己，但需要重新做成符合 macOS 使用方式的工具；也有些效率空白，值得直接为 Mac 补上。",
-    originRail: "zongMacTools 的工具来源",
-    migrationKicker: "体验迁移路径",
-    migrationTitle: "体验迁移工具",
-    migrationCopy: "从其他桌面系统中被反复验证的交互能力出发，按 macOS 的使用习惯、系统限制和公开 API 重新实现，而不是复制原有界面。",
-    gainKicker: "macOS 效率空白",
-    gainTitle: "macOS 增益工具",
-    gainCopy: "不以别处的功能为起点，直接改善 Mac 日常操作中值得被补齐的细节，让工具集合沿着真实工作流继续扩展。",
-    toolEyebrow: "首个已实现工具",
+    originsSummary:
+      "有些好用的体验已在别的桌面系统里证明过自己，但需要重新做成符合 macOS 使用方式的工具；也有些 Mac 日常操作里的效率空白，值得被直接补上。zongMacTools 沿着这两条路径持续构建。",
+    migrationTag: "体验迁移工具",
+    migrationTitle: "已在别处验证，为 Mac 重做",
+    migrationCopy: "从其他桌面系统中被反复验证的交互出发，按照 macOS 的习惯、系统边界和公开 API 重新实现。迁移的是体验，不是界面复刻。",
+    gainTag: "macOS 增益工具",
+    gainTitle: "直接补齐 Mac 的效率空白",
+    gainCopy: "不以其他平台为起点，从 Mac 日常操作里真实遇到的别扭细节出发，给出顺手、克制、像系统自带一样的答案。",
+    toolEyebrow: "首个工具",
     toolTitle: "Dock Window Quick Look（Dock 窗口速览）",
-    toolSummary: "停在 Dock，快速辨认正在运行应用的当前可枚举窗口，再把注意力准确带回要继续的任务。",
     implementedStatus: "首个已实现工具",
-    toolDetail: "悬停正在运行的 Dock 应用图标后查看预览卡片；选择卡片可切换目标窗口，右键卡片可使用当前可用的窗口操作。",
-    toolBoundaries: "Dock Window Quick Look 当前能力",
-    boundaryHover: "查看当前可枚举窗口预览",
-    boundarySwitch: "选择卡片切换窗口",
-    boundaryMenu: "右键使用可用窗口操作",
-    toolMediaAction: "查看录屏素材预览",
-    desktopModelLabel: "交互原理演示：可操作的抽象 Dock 桌面模型",
-    principleDemo: "交互原理演示",
-    modelStepsLabel: "Dock 窗口速览步骤控制器",
-    modelStepsIntro: "用文字步骤查看同一交互原理",
-    modelCurrentStage: "当前阶段：",
-    modelStageDock: "停在 Dock",
-    modelStageWindows: "查看窗口",
-    modelStageSwitch: "切换窗口",
-    modelStageActions: "窗口操作",
-    modelDockControl: "查看当前可枚举窗口",
-    modelWindowControl: "选择抽象窗口卡片并切换窗口",
-    modelActionsControl: "打开抽象窗口操作菜单",
-    modelStages: {
-      dock: { progress: "步骤 1 / 4", title: "停在 Dock", description: "停在正在运行的 Dock 应用图标上。" },
-      windows: { progress: "步骤 2 / 4", title: "查看窗口", description: "预览展示当前可枚举窗口，不是实时视频。" },
-      switch: { progress: "步骤 3 / 4", title: "切换窗口", description: "选择抽象窗口卡片后，注意力回到目标窗口。" },
-      actions: { progress: "步骤 4 / 4", title: "窗口操作", description: "展示当前可用窗口操作的位置。" }
+    toolSummary: "停在 Dock 上正在运行的应用图标，查看它当前可枚举的窗口；选择预览卡片切换窗口，或在卡片上右键使用当前可用的窗口操作。",
+    demoLabel: "交互原理演示：可操作的抽象 Dock 桌面模型",
+    demoBadge: "交互原理演示 · 抽象模型，不是产品界面截图",
+    demoStepsLabel: "Dock 窗口速览步骤控制器",
+    demoStepsIntro: "使用文字步骤查看同一交互原理：",
+    stageDock: "停在 Dock",
+    stageWindows: "查看窗口",
+    stageSwitch: "切换窗口",
+    stageActions: "窗口操作",
+    demoStages: {
+      dock: { progress: "步骤 1 / 4", title: "停在 Dock", description: "指针停在正在运行的 Dock 应用图标上。" },
+      windows: { progress: "步骤 2 / 4", title: "查看窗口", description: "预览展示当前可枚举窗口的静态缩略图，不是实时视频。" },
+      switch: { progress: "步骤 3 / 4", title: "切换窗口", description: "选择预览卡片后，目标窗口被激活并来到前景。" },
+      actions: { progress: "步骤 4 / 4", title: "窗口操作", description: "在预览卡片上右键，可使用当前可用的窗口操作。" }
     },
-    modelNote: "抽象模型，不是产品界面截图",
-    mediaEyebrow: "录屏素材预览",
-    mediaTitle: "Dock 录屏素材预览",
-    mediaCopy: "这是从你提供的录屏截取的本地素材预览，用于确认页面布局；正式发布前需在干净测试环境重新审核。",
-    mediaVideoLabel: "Dock Window Quick Look 本地录屏素材预览，发布前待审核",
-    mediaCaption: "本地预览：显示 Dock 预览、窗口操作和切换结果；公开发布前需复核素材。",
-    mediaEvidenceMark: "素材预览 / 待审核",
-    mediaStillsLabel: "Dock Window Quick Look 录屏素材预览关键帧",
-    mediaStillPreviewAlt: "Dock 中运行浏览器的多个窗口预览卡片显示在屏幕底部",
-    mediaStillPreviewCaption: "窗口预览",
-    mediaStillActionsAlt: "窗口预览卡片旁打开了可用窗口操作菜单",
-    mediaStillActionsCaption: "窗口操作",
-    mediaStillSwitchAlt: "从 Dock 预览卡片选择后，目标浏览器窗口显示在前景",
-    mediaStillSwitchCaption: "切换窗口",
+    boundaryListLabel: "Dock Window Quick Look 当前能力",
+    boundaryHover: "悬停 Dock 图标，预览当前可枚举窗口（静态缩略图，非实时视频）",
+    boundarySwitch: "选择预览卡片，切换并激活目标窗口",
+    boundaryMenu: "在卡片上右键，使用当前可用的窗口操作",
+    boundaryNote: "不承诺实时预览、跨 Space 窗口、恢复最小化窗口或多显示器行为；这些边界以 GitHub 发行详情为准。",
+    toolMediaLink: "接着查看真实运行画面",
+    mediaEyebrow: "真实运行画面",
+    mediaTitle: "Dock 窗口速览运行录屏",
+    mediaReviewMark: "素材预览 / 待审核",
+    mediaCopy:
+      "以下画面来自本地录屏，覆盖停在 Dock、预览出现、选择窗口卡片与打开右键窗口操作菜单。正式发布前，所有素材还需在干净测试环境完成人工隐私与能力一致性审核；当前仅作为占位预览。",
+    mediaVideoLabel: "Dock Window Quick Look 本地录屏预览，发布前待审核",
+    mediaPosterAlt: "本地录屏海报帧：Dock 预览卡片旁打开窗口操作菜单，发布前待审核",
+    mediaCaption: "本地录屏预览（待审核）：悬停 Dock、预览出现、选择窗口与窗口操作。",
+    mediaStillsLabel: "Dock Window Quick Look 录屏关键帧",
+    stillPreviewAlt: "录屏关键帧：运行中应用的多个窗口预览卡片出现在 Dock 上方",
+    stillPreviewCaption: "预览出现",
+    stillSwitchAlt: "录屏关键帧：选择预览卡片后目标窗口来到前景",
+    stillSwitchCaption: "切换窗口",
+    stillActionsAlt: "录屏关键帧：预览卡片上打开可用窗口操作菜单",
+    stillActionsCaption: "窗口操作",
     explorationEyebrow: "探索方向",
     explorationTitle: "Finder 右键新建文件",
     buildingStatus: "正在构建",
-    explorationCopy: "从 Finder 文件夹空白区域开始，快速创建常用格式的本地文件。它是一个正在构建的 macOS 增益方向，不是当前可下载工具。",
-    exploreGithubLink: "在 GitHub 探索项目",
+    explorationCopy:
+      "目标工作流：在 Finder 文件夹的空白区域右键，直接新建常用格式的本地文件。这是一个正在构建的 macOS 增益方向，今天还不能下载，也不提供时间承诺或订阅入口。",
+    exploreGithubLink: "在 GitHub 探索 zongMacTools 项目（新标签页打开）",
     exploreGithub: "在 GitHub 探索项目",
-    finderDirectionLabel: "新建 / 文件",
     acquireEyebrow: "获取区",
     acquireTitle: "获取公开测试版",
-    acquireCopy: "公开 Release 出现匹配下载资产后，此处将从 GitHub 确认准确版本、日期和下载入口。在此之前，发行与源码信息只以 GitHub 为准。",
-    acquireLoading: "正在确认 GitHub 公开 Release 状态",
-    acquirePending: "暂无可验证的公开下载资产，请在 GitHub 查看项目与发行详情。",
-    acquireUnavailable: "暂时无法确认版本或下载资产，请在 GitHub 查看最新状态。",
-    acquireAvailable: "{version} 发布于 {date}",
-    downloadBeta: "下载 {version} 的公开测试版",
-    releaseDetailsForVersion: "在 GitHub 查看 {version} 发行详情",
+    acquireCopy: "下载资产与发行详情的唯一事实来源是 GitHub Release。这里只读取公开 Release 状态；无法确认时，请直接以 GitHub 为准。",
+    acquireLoading: "正在确认 GitHub 公开 Release 状态…",
+    acquirePending: "暂无可验证的公开下载资产。请前往 GitHub 查看项目与发行详情。",
+    acquireUnavailable: "暂时无法确认版本或下载资产。请前往 GitHub 查看最新状态。",
+    acquireAvailable: "{version} · 发布于 {date}",
+    downloadBeta: "下载公开测试版",
+    downloadBetaForVersion: "下载 {version} 公开测试版（ZIP）",
+    releaseDetails: "GitHub 发行详情",
+    releaseDetailsLink: "在 GitHub 查看 zongMacTools 发行详情（新标签页打开）",
+    releaseDetailsForVersion: "在 GitHub 查看 {version} 发行详情（新标签页打开）",
     requirementLabel: "系统要求",
     requirementValue: "macOS 14 或更高版本",
     permissionLabel: "需要授权",
     permissionValue: "辅助功能与屏幕录制",
     releaseLabel: "发行状态",
     releaseValue: "未公证公开测试版",
-    releaseDetailsLink: "在 GitHub 查看 zongMacTools 发行详情",
-    releaseDetails: "在 GitHub 查看发行详情",
-    footerCopy: "面向 macOS 的桌面工具集合。",
-    privacyCopy: "本站不收集个人数据。"
+    acquireNote: "完整安装、校验、签名、权限引导与已知限制，请以 GitHub 发行详情为准。",
+    footerCopy: "面向 macOS 的桌面工具集合，沿连续桌面叙事持续生长。",
+    privacyCopy: "本站为无数据站点：不收集个人数据，不使用 Cookie、分析或第三方媒体服务。"
   },
   en: {
-    title: "zongMacTools | Desktop tools for macOS",
-    description: "zongMacTools grows better desktop experiences for the Mac. Its first implemented tool is Dock Window Quick Look.",
-    ogDescription: "Desktop interactions proven useful elsewhere, rebuilt for macOS, plus tools that fill everyday macOS gaps.",
+    title: "zongMacTools | Better desktop experiences, grown for the Mac",
+    description:
+      "zongMacTools rebuilds desktop interactions that proved useful elsewhere into tools that feel at home on macOS, and fills everyday macOS efficiency gaps. Its first implemented tool is Dock Window Quick Look.",
+    ogDescription: "Proven desktop interactions rebuilt for macOS, plus tools that fill the everyday gaps worth filling on a Mac.",
     ogLocale: "en_US",
     skipLink: "Skip to main content",
     primaryNavigation: "Primary navigation",
     homeLink: "zongMacTools home",
-    toolNav: "View tool case study",
+    toolNav: "Tool case study",
     languageSwitch: "切换为中文",
-    githubSourceLink: "View zongMacTools source on GitHub",
+    githubSourceLink: "View the zongMacTools source on GitHub (opens in a new tab)",
     githubSource: "Source on GitHub",
-    heroEyebrow: "Continuous desktop narrative",
+    githubSourceShort: "Source on GitHub",
+    heroEyebrow: "Desktop tools for macOS",
     heroStatement: "Better desktop experiences, grown for the Mac.",
-    heroSummary: "We rebuild useful, proven desktop interactions for macOS and fill the everyday details that deserve to work better on a Mac.",
+    heroSummary:
+      "We take interactions that proved useful on other desktop systems and rebuild them the macOS way — and we fill the everyday details that deserve a better answer on the Mac.",
     heroAction: "See the first tool",
-    continueReading: "Continue reading",
-    heroDeviceLabel: "Z / DESKTOP INPUT",
+    heroHint: "Scroll to follow one continuous macOS desktop through this tool collection.",
     originsEyebrow: "Where tools begin",
     originsTitle: "Why zongMacTools",
-    originsSummary: "Some useful experiences have proved themselves elsewhere, yet need to be rebuilt for how macOS works. Others are everyday gaps worth filling directly for the Mac.",
-    originRail: "The origins of zongMacTools tools",
-    migrationKicker: "Experience migration path",
-    migrationTitle: "Experience migration tools",
-    migrationCopy: "Starting from interaction patterns proven on other desktop systems, then rebuilding them around macOS habits, system boundaries, and public APIs instead of copying another interface.",
-    gainKicker: "Everyday macOS gaps",
-    gainTitle: "macOS gain tools",
-    gainCopy: "Not derived from another platform. These tools improve everyday Mac work where a small missing detail deserves a deliberate, native-feeling answer.",
-    toolEyebrow: "First implemented tool",
+    originsSummary:
+      "Some useful experiences have already proved themselves on other desktop systems, yet need to be rebuilt for how macOS works. Others are everyday efficiency gaps on the Mac that deserve to be filled directly. zongMacTools keeps building along both paths.",
+    migrationTag: "Experience migration tools",
+    migrationTitle: "Proven elsewhere, rebuilt for the Mac",
+    migrationCopy:
+      "Starting from interactions validated on other desktop systems, rebuilt around macOS habits, system boundaries, and public APIs. What migrates is the experience, not a copy of someone's interface.",
+    gainTag: "macOS gain tools",
+    gainTitle: "Filling the Mac's efficiency gaps",
+    gainCopy:
+      "Not derived from another platform. These start from real friction in everyday Mac work and answer it with something that feels native and restrained.",
+    toolEyebrow: "The first tool",
     toolTitle: "Dock Window Quick Look",
-    toolSummary: "Pause on the Dock, identify the currently enumerable windows of a running app, then return precisely to the task you meant to continue.",
     implementedStatus: "First implemented tool",
-    toolDetail: "Hover a running Dock app to view preview cards. Select a card to switch windows, or use the available window actions from a card's context menu.",
-    toolBoundaries: "Current Dock Window Quick Look capabilities",
-    boundaryHover: "Preview currently enumerable windows",
-    boundarySwitch: "Select a card to switch windows",
-    boundaryMenu: "Use available actions from the context menu",
-    toolMediaAction: "View the recording preview",
-    desktopModelLabel: "Interaction principle demonstration: an operable abstract Dock desktop model",
-    principleDemo: "Interaction principle demonstration",
-    modelStepsLabel: "Dock Window Quick Look step controls",
-    modelStepsIntro: "Use the text steps to inspect the same interaction principle",
-    modelCurrentStage: "Current stage:",
-    modelStageDock: "Pause on the Dock",
-    modelStageWindows: "View windows",
-    modelStageSwitch: "Switch windows",
-    modelStageActions: "Window actions",
-    modelDockControl: "View currently enumerable windows",
-    modelWindowControl: "Select an abstract window card and switch windows",
-    modelActionsControl: "Open the abstract window actions menu",
-    modelStages: {
-      dock: { progress: "Step 1 of 4", title: "Pause on the Dock", description: "Pause on a running app in the Dock." },
-      windows: { progress: "Step 2 of 4", title: "View windows", description: "The previews show currently enumerable windows, not live video." },
-      switch: { progress: "Step 3 of 4", title: "Switch windows", description: "Select an abstract window card to return attention to the target window." },
-      actions: { progress: "Step 4 of 4", title: "Window actions", description: "Show where the currently available window actions appear." }
+    toolSummary:
+      "Pause on a running app's Dock icon to see its currently enumerable windows. Select a preview card to switch windows, or right-click a card for the window actions available today.",
+    demoLabel: "Interaction principle demonstration: an operable abstract Dock desktop model",
+    demoBadge: "Interaction principle demonstration · abstract model, not a product screenshot",
+    demoStepsLabel: "Dock Window Quick Look step controls",
+    demoStepsIntro: "Inspect the same interaction principle with text steps:",
+    stageDock: "Pause on the Dock",
+    stageWindows: "View windows",
+    stageSwitch: "Switch windows",
+    stageActions: "Window actions",
+    demoStages: {
+      dock: { progress: "Step 1 of 4", title: "Pause on the Dock", description: "The pointer pauses on a running app's Dock icon." },
+      windows: {
+        progress: "Step 2 of 4",
+        title: "View windows",
+        description: "The preview shows static thumbnails of currently enumerable windows, not live video."
+      },
+      switch: {
+        progress: "Step 3 of 4",
+        title: "Switch windows",
+        description: "Selecting a preview card activates the target window and brings it forward."
+      },
+      actions: {
+        progress: "Step 4 of 4",
+        title: "Window actions",
+        description: "Right-clicking a preview card offers the window actions available today."
+      }
     },
-    modelNote: "Abstract model, not a product interface screenshot",
-    mediaEyebrow: "Recording preview",
-    mediaTitle: "Dock recording preview",
-    mediaCopy: "This local preview is derived from the recording you provided to check the page layout. It needs a clean-environment review before public release.",
+    boundaryListLabel: "Current Dock Window Quick Look capabilities",
+    boundaryHover: "Hover a Dock icon to preview currently enumerable windows (static thumbnails, not live video)",
+    boundarySwitch: "Select a preview card to switch to and activate the target window",
+    boundaryMenu: "Right-click a card to use the window actions available today",
+    boundaryNote:
+      "No live previews, cross-Space windows, minimized-window recovery, or multi-display behavior is promised; the GitHub release details remain the source of truth for these boundaries.",
+    toolMediaLink: "Continue to the real running footage",
+    mediaEyebrow: "Real running footage",
+    mediaTitle: "Dock Window Quick Look in action",
+    mediaReviewMark: "FOOTAGE PREVIEW / REVIEW PENDING",
+    mediaCopy:
+      "The footage below comes from a local recording and covers pausing on the Dock, the preview appearing, selecting a window card, and opening the window actions menu. Before public release, every asset still needs a human privacy and capability review in a clean test environment; for now it serves only as a placeholder preview.",
     mediaVideoLabel: "Dock Window Quick Look local recording preview, pending release review",
-    mediaCaption: "Local preview: shows Dock previews, window actions, and switching; review the footage before public release.",
-    mediaEvidenceMark: "RECORDING PREVIEW / REVIEW PENDING",
-    mediaStillsLabel: "Dock Window Quick Look recording preview frames",
-    mediaStillPreviewAlt: "Preview cards for multiple browser windows appear above the Dock",
-    mediaStillPreviewCaption: "Window previews",
-    mediaStillActionsAlt: "Available window actions are open beside the window preview cards",
-    mediaStillActionsCaption: "Window actions",
-    mediaStillSwitchAlt: "The selected browser window appears in the foreground after choosing a Dock preview card",
-    mediaStillSwitchCaption: "Switch window",
+    mediaPosterAlt: "Recording poster frame: window actions menu open beside Dock preview cards, pending release review",
+    mediaCaption: "Local recording preview (pending review): Dock hover, preview appearing, window switching, and window actions.",
+    mediaStillsLabel: "Dock Window Quick Look recording key frames",
+    stillPreviewAlt: "Recording key frame: preview cards for a running app's windows appear above the Dock",
+    stillPreviewCaption: "Preview appears",
+    stillSwitchAlt: "Recording key frame: the target window comes to the foreground after selecting a preview card",
+    stillSwitchCaption: "Switch window",
+    stillActionsAlt: "Recording key frame: the available window actions menu open on a preview card",
+    stillActionsCaption: "Window actions",
     explorationEyebrow: "Exploration direction",
     explorationTitle: "Create new files from Finder",
-    buildingStatus: "Built in progress",
-    explorationCopy: "Starting from empty space in a Finder folder, create common local file formats quickly. This is a macOS gain direction under construction, not a tool available to download today.",
-    exploreGithubLink: "Explore the project on GitHub",
-    exploreGithub: "Explore on GitHub",
-    finderDirectionLabel: "NEW / FILE",
+    buildingStatus: "Under construction",
+    explorationCopy:
+      "The target workflow: right-click empty space in a Finder folder and create a new local file in a common format. This macOS gain direction is under construction — no download, release date, or waitlist today.",
+    exploreGithubLink: "Explore the zongMacTools project on GitHub (opens in a new tab)",
+    exploreGithub: "Explore the project on GitHub",
     acquireEyebrow: "Acquire",
     acquireTitle: "Get the public beta",
-    acquireCopy: "Once a public GitHub Release has a matching download asset, this area will confirm its exact version, date, and download. Until then, GitHub remains the only source for release and source details.",
-    acquireLoading: "Checking the public GitHub Release status",
-    acquirePending: "No verifiable public download asset is available. View the project and releases on GitHub.",
-    acquireUnavailable: "The version and download asset cannot be confirmed. View the latest status on GitHub.",
-    acquireAvailable: "{version} published on {date}",
-    downloadBeta: "Download the {version} public beta",
-    releaseDetailsForVersion: "View {version} release details on GitHub",
+    acquireCopy:
+      "GitHub Releases are the single source of truth for download assets and release details. This area only reads the public release state; when it cannot be confirmed, GitHub is the place to check.",
+    acquireLoading: "Checking the public GitHub Release status…",
+    acquirePending: "No verifiable public download asset yet. Visit GitHub for the project and release details.",
+    acquireUnavailable: "The version and download asset cannot be confirmed right now. Visit GitHub for the latest status.",
+    acquireAvailable: "{version} · published on {date}",
+    downloadBeta: "Download the public beta",
+    downloadBetaForVersion: "Download the {version} public beta (ZIP)",
+    releaseDetails: "Release details on GitHub",
+    releaseDetailsLink: "View zongMacTools release details on GitHub (opens in a new tab)",
+    releaseDetailsForVersion: "View {version} release details on GitHub (opens in a new tab)",
     requirementLabel: "System",
     requirementValue: "macOS 14 or later",
     permissionLabel: "Permissions",
     permissionValue: "Accessibility and Screen Recording",
     releaseLabel: "Release state",
     releaseValue: "Unnotarized public beta",
-    releaseDetailsLink: "View zongMacTools release details on GitHub",
-    releaseDetails: "Release details on GitHub",
-    footerCopy: "A collection of desktop tools for macOS.",
-    privacyCopy: "This site does not collect personal data."
+    acquireNote: "For full installation, verification, signature, permission guidance, and known limitations, refer to the GitHub release details.",
+    footerCopy: "A collection of desktop tools for macOS, growing along one continuous desktop narrative.",
+    privacyCopy: "This is a no-data site: no personal data collection, no cookies, no analytics, and no third-party media services."
   }
 };
 
-const languageSwitch = document.querySelector("#language-switch");
-const desktopModel = document.querySelector(".desktop-model");
-const modelStageButtons = document.querySelectorAll("[data-model-stage]");
-const modelStageTitle = document.querySelector("[data-model-stage-title]");
-const modelStageDescription = document.querySelector("[data-model-stage-description]");
-const modelProgress = document.querySelector("[data-model-progress]");
-const modelCurrentStage = document.querySelector("[data-model-current-stage]");
-const modelScene = document.querySelector(".model-scene");
-const acquireState = document.querySelector("#acquire-state");
-const downloadBeta = document.querySelector("#download-beta");
-const releaseDetails = document.querySelector("#release-details");
-const mediaVideo = document.querySelector("#media-video");
+const languageToggle = document.querySelector("#language-toggle");
+const demo = document.querySelector("#demo");
+const demoStepButtons = document.querySelectorAll("[data-demo-stage]");
+const demoProgress = document.querySelector("[data-demo-progress]");
+const demoStageTitle = document.querySelector("[data-demo-stage-title]");
+const demoStageDescription = document.querySelector("[data-demo-stage-description]");
+const sceneDockControl = document.querySelector("[data-demo-hover]");
+const acquireStatus = document.querySelector("#acquire-status");
+const downloadAction = document.querySelector("#download-action");
+const releaseAction = document.querySelector("#release-action");
+const mediaVideo = document.querySelector("#quicklook-video");
+
 const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-const desktopPointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
-const modelStageOrder = ["dock", "windows", "switch", "actions"];
+const finePointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+
+// 与 styles.css 断点保持一致：44rem 窄屏媒体查询对应 704px（根字号 16px）。
+const desktopPointerMinWidth = 768;
+const videoAutoplayMinWidth = 704;
+
 let activeLanguage = "zh";
-let activeModelStage = "dock";
+let activeDemoStage = "dock";
+let releaseState = { kind: "loading" };
 let scrollFrame;
-let modelHasDirectInteraction = false;
-let currentReleaseState = { kind: "loading" };
+let demoTouchedDirectly = false;
+let mediaOnScreen = false;
+
+/* ---------- 语言 ---------- */
 
 function preferredLanguage() {
   try {
@@ -227,14 +253,18 @@ function preferredLanguage() {
       return saved;
     }
   } catch {
-    // Local storage may be unavailable in a privacy-restricted context.
+    // 隐私受限环境下 localStorage 可能不可用，退回浏览器语言。
   }
 
   return navigator.languages?.some((language) => language.toLowerCase().startsWith("zh")) ? "zh" : "en";
 }
 
-function setMeta(name, content) {
-  document.querySelector(name)?.setAttribute("content", content);
+function setMetaContent(selector, content) {
+  document.querySelector(selector)?.setAttribute("content", content);
+}
+
+function fillTemplate(template, values) {
+  return Object.entries(values).reduce((text, [key, value]) => text.replace(`{${key}}`, value), template);
 }
 
 function renderLanguage(language, { persist = false } = {}) {
@@ -242,12 +272,12 @@ function renderLanguage(language, { persist = false } = {}) {
   activeLanguage = language;
   document.documentElement.lang = language === "zh" ? "zh-Hans" : "en";
   document.title = copy.title;
-  setMeta('meta[name="description"]', copy.description);
-  setMeta('meta[property="og:title"]', copy.title);
-  setMeta('meta[property="og:description"]', copy.ogDescription);
-  setMeta('meta[property="og:locale"]', copy.ogLocale);
-  setMeta('meta[name="twitter:title"]', copy.title);
-  setMeta('meta[name="twitter:description"]', copy.ogDescription);
+  setMetaContent('meta[name="description"]', copy.description);
+  setMetaContent('meta[property="og:title"]', copy.title);
+  setMetaContent('meta[property="og:description"]', copy.ogDescription);
+  setMetaContent('meta[property="og:locale"]', copy.ogLocale);
+  setMetaContent('meta[name="twitter:title"]', copy.title);
+  setMetaContent('meta[name="twitter:description"]', copy.ogDescription);
 
   document.querySelectorAll("[data-i18n]").forEach((element) => {
     const key = element.dataset.i18n;
@@ -270,22 +300,20 @@ function renderLanguage(language, { persist = false } = {}) {
     }
   });
 
-  languageSwitch.dataset.language = language;
-  renderModelStage();
+  languageToggle.dataset.language = language;
+  renderDemoStage();
   renderReleaseState();
 
   if (persist) {
     try {
       localStorage.setItem(languageStorageKey, language);
     } catch {
-      // Language switching remains available even when persistence is unavailable.
+      // 无法持久化时，语言切换在本次会话内仍然可用。
     }
   }
 }
 
-function formatCopy(template, values) {
-  return Object.entries(values).reduce((copy, [key, value]) => copy.replace(`{${key}}`, value), template);
-}
+/* ---------- 发布状态 ---------- */
 
 function localizedReleaseDate(isoDate) {
   return new Intl.DateTimeFormat(activeLanguage === "zh" ? "zh-CN" : "en-US", {
@@ -296,135 +324,128 @@ function localizedReleaseDate(isoDate) {
 }
 
 function renderReleaseState() {
-  if (!acquireState || !downloadBeta || !releaseDetails) {
+  if (!acquireStatus || !downloadAction || !releaseAction) {
     return;
   }
 
   const copy = messages[activeLanguage];
-  const available = currentReleaseState.kind === "available";
-  const stateCopy = available
-    ? formatCopy(copy.acquireAvailable, { version: currentReleaseState.tagName, date: localizedReleaseDate(currentReleaseState.publishedAt) })
-    : copy[`acquire${currentReleaseState.kind[0].toUpperCase()}${currentReleaseState.kind.slice(1)}`];
+  const available = releaseState.kind === "available";
 
-  acquireState.dataset.state = currentReleaseState.kind;
-  acquireState.textContent = stateCopy;
-  downloadBeta.hidden = !available;
-  releaseDetails.href = available ? currentReleaseState.releaseUrl : GITHUB_RELEASES_URL;
+  acquireStatus.dataset.state = releaseState.kind;
 
   if (available) {
-    const downloadCopy = formatCopy(copy.downloadBeta, { version: currentReleaseState.tagName });
-    downloadBeta.href = currentReleaseState.assetUrl;
-    downloadBeta.textContent = downloadCopy;
-    downloadBeta.setAttribute("aria-label", downloadCopy);
-    const detailsCopy = formatCopy(copy.releaseDetailsForVersion, { version: currentReleaseState.tagName });
-    releaseDetails.textContent = copy.releaseDetails;
-    releaseDetails.setAttribute("aria-label", detailsCopy);
-    return;
+    acquireStatus.textContent = fillTemplate(copy.acquireAvailable, {
+      version: releaseState.tagName,
+      date: localizedReleaseDate(releaseState.publishedAt)
+    });
+  } else {
+    const key = `acquire${releaseState.kind[0].toUpperCase()}${releaseState.kind.slice(1)}`;
+    acquireStatus.textContent = copy[key];
   }
 
-  downloadBeta.removeAttribute("href");
-  downloadBeta.removeAttribute("aria-label");
-  releaseDetails.textContent = copy.releaseDetails;
-  releaseDetails.setAttribute("aria-label", copy.releaseDetailsLink);
+  downloadAction.hidden = !available;
+  if (available) {
+    const label = fillTemplate(copy.downloadBetaForVersion, { version: releaseState.tagName });
+    downloadAction.href = releaseState.assetUrl;
+    downloadAction.setAttribute("aria-label", label);
+    downloadAction.textContent = `${copy.downloadBeta} · ${releaseState.tagName}`;
+    releaseAction.href = releaseState.releaseUrl;
+    releaseAction.setAttribute("aria-label", fillTemplate(copy.releaseDetailsForVersion, { version: releaseState.tagName }));
+  } else {
+    downloadAction.removeAttribute("href");
+    downloadAction.removeAttribute("aria-label");
+    downloadAction.textContent = copy.downloadBeta;
+    releaseAction.href = GITHUB_RELEASES_URL;
+    releaseAction.setAttribute("aria-label", copy.releaseDetailsLink);
+  }
+  releaseAction.textContent = copy.releaseDetails;
 }
 
 async function loadReleaseState() {
-  currentReleaseState = { kind: "loading" };
+  releaseState = { kind: "loading" };
   renderReleaseState();
-  currentReleaseState = await fetchReleaseState();
+  releaseState = await fetchReleaseState();
   renderReleaseState();
 }
 
-function renderModelStage() {
-  if (!desktopModel || !modelStageTitle || !modelStageDescription || !modelProgress || !modelCurrentStage) {
+/* ---------- 交互原理演示 ---------- */
+
+function isFineDesktopPointer() {
+  return window.innerWidth >= desktopPointerMinWidth && finePointerQuery.matches;
+}
+
+function renderDemoStage() {
+  if (!demo || !demoProgress || !demoStageTitle || !demoStageDescription) {
     return;
   }
 
-  const stage = messages[activeLanguage].modelStages[activeModelStage];
-  desktopModel.dataset.stage = activeModelStage;
-  modelStageTitle.textContent = stage.title;
-  modelStageDescription.textContent = stage.description;
-  modelProgress.textContent = stage.progress;
-  modelCurrentStage.textContent = `${messages[activeLanguage].modelCurrentStage} ${stage.title}`;
+  const stage = messages[activeLanguage].demoStages[activeDemoStage];
+  demo.dataset.stage = activeDemoStage;
+  demoProgress.textContent = stage.progress;
+  demoStageTitle.textContent = stage.title;
+  demoStageDescription.textContent = stage.description;
 
-  modelStageButtons.forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.modelStage === activeModelStage));
+  demoStepButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.demoStage === activeDemoStage));
   });
 }
 
-function setModelStage(stage, { source = "direct" } = {}) {
-  if (!modelStageOrder.includes(stage)) {
+function setDemoStage(stage, { source = "direct" } = {}) {
+  if (!demoStageOrder.includes(stage)) {
     return;
-  }
-
-  if (source !== "scroll" && scrollFrame !== undefined) {
-    window.cancelAnimationFrame(scrollFrame);
-    scrollFrame = undefined;
   }
 
   if (source !== "scroll") {
-    modelHasDirectInteraction = true;
+    demoTouchedDirectly = true;
+    if (scrollFrame !== undefined) {
+      window.cancelAnimationFrame(scrollFrame);
+      scrollFrame = undefined;
+    }
   }
 
-  if (stage === activeModelStage) {
+  if (stage === activeDemoStage) {
     return;
   }
 
-  activeModelStage = stage;
-  renderModelStage();
-}
-
-function isDesktopPointer() {
-  return window.innerWidth >= 768 && desktopPointerQuery.matches;
-}
-
-function updateModelSceneAccessibility() {
-  modelScene?.setAttribute("aria-hidden", String(!isDesktopPointer()));
-}
-
-function syncModelStageWithScroll() {
-  scrollFrame = undefined;
-
-  if (!desktopModel || !isDesktopPointer() || modelHasDirectInteraction) {
-    return;
-  }
-
-  const { top } = desktopModel.getBoundingClientRect();
-  const start = window.innerHeight * 0.78;
-  const end = window.innerHeight * 0.22;
-  const progress = Math.min(1, Math.max(0, (start - top) / (start - end)));
-  const stageIndex = Math.min(modelStageOrder.length - 1, Math.floor(progress * modelStageOrder.length));
-  setModelStage(modelStageOrder[stageIndex], { source: "scroll" });
-}
-
-function scheduleModelScrollSync() {
-  if (scrollFrame === undefined) {
-    scrollFrame = window.requestAnimationFrame(syncModelStageWithScroll);
-  }
+  activeDemoStage = stage;
+  renderDemoStage();
 }
 
 function resumeScrollNarrative() {
-  modelHasDirectInteraction = false;
-  scheduleModelScrollSync();
+  demoTouchedDirectly = false;
+  scheduleDemoScrollSync();
 }
 
-function updateMotionState() {
-  const reduced = motionQuery.matches;
-  document.documentElement.dataset.reducedMotion = String(reduced);
-  document.querySelectorAll(".desktop-model").forEach((model) => {
-    model.dataset.motion = reduced ? "reduced" : "full";
-  });
-  updateModelSceneAccessibility();
-  updateMediaPlayback();
-  scheduleModelScrollSync();
+function syncDemoStageWithScroll() {
+  scrollFrame = undefined;
+
+  if (!demo || !isFineDesktopPointer() || demoTouchedDirectly || motionQuery.matches) {
+    return;
+  }
+
+  const { top } = demo.getBoundingClientRect();
+  const start = window.innerHeight * 0.82;
+  const end = window.innerHeight * 0.2;
+  const progress = Math.min(1, Math.max(0, (start - top) / (start - end)));
+  const stageIndex = Math.min(demoStageOrder.length - 1, Math.floor(progress * demoStageOrder.length));
+  setDemoStage(demoStageOrder[stageIndex], { source: "scroll" });
 }
+
+function scheduleDemoScrollSync() {
+  if (scrollFrame === undefined) {
+    scrollFrame = window.requestAnimationFrame(syncDemoStageWithScroll);
+  }
+}
+
+/* ---------- 媒体播放 ---------- */
 
 function updateMediaPlayback() {
   if (!mediaVideo) {
     return;
   }
 
-  const canAutoplay = !motionQuery.matches && window.innerWidth > 620;
+  // 自动播放只在适用环境发生：无减少动态效果偏好、足够宽的视口，且媒体区实际进入视野。
+  const canAutoplay = !motionQuery.matches && window.innerWidth > videoAutoplayMinWidth && mediaOnScreen;
   mediaVideo.autoplay = canAutoplay;
 
   if (!canAutoplay) {
@@ -432,50 +453,84 @@ function updateMediaPlayback() {
     return;
   }
 
-  mediaVideo.play().catch(() => {});
+  mediaVideo.play().catch(() => {
+    // 自动播放被浏览器拒绝时，保留海报帧与控件。
+  });
 }
 
-languageSwitch.addEventListener("click", () => {
-  const nextLanguage = languageSwitch.dataset.language === "zh" ? "en" : "zh";
-  renderLanguage(nextLanguage, { persist: true });
+if (mediaVideo && typeof IntersectionObserver === "function") {
+  new IntersectionObserver(
+    (entries) => {
+      mediaOnScreen = entries.some((entry) => entry.isIntersecting);
+      updateMediaPlayback();
+    },
+    { threshold: 0.25 }
+  ).observe(mediaVideo);
+}
+
+/* ---------- 减少动态效果 ---------- */
+
+function updateMotionState() {
+  document.documentElement.dataset.reducedMotion = String(motionQuery.matches);
+  updateMediaPlayback();
+  scheduleDemoScrollSync();
+}
+
+/* ---------- 事件 ---------- */
+
+languageToggle.addEventListener("click", () => {
+  renderLanguage(languageToggle.dataset.language === "zh" ? "en" : "zh", { persist: true });
 });
 
-modelStageButtons.forEach((button) => {
-  button.addEventListener("click", () => setModelStage(button.dataset.modelStage));
+demoStepButtons.forEach((button) => {
+  button.addEventListener("click", () => setDemoStage(button.dataset.demoStage));
 });
 
-document.querySelectorAll("[data-model-action]").forEach((control) => {
-  control.addEventListener("click", () => {
-    if (isDesktopPointer()) {
-      setModelStage(control.dataset.modelAction);
+sceneDockControl?.addEventListener("pointerenter", () => {
+  if (isFineDesktopPointer()) {
+    setDemoStage(sceneDockControl.dataset.demoHover);
+  }
+});
+
+sceneDockControl?.addEventListener("click", () => {
+  if (isFineDesktopPointer()) {
+    setDemoStage(sceneDockControl.dataset.demoHover);
+  }
+});
+
+document.querySelectorAll("[data-demo-scene-card]").forEach((card) => {
+  card.addEventListener("click", () => {
+    if (isFineDesktopPointer()) {
+      setDemoStage("switch");
     }
   });
-});
 
-document.querySelectorAll(".model-window").forEach((windowCard) => {
-  windowCard.addEventListener("contextmenu", (event) => {
-    if (!isDesktopPointer()) {
+  card.addEventListener("contextmenu", (event) => {
+    if (!isFineDesktopPointer()) {
       return;
     }
 
     event.preventDefault();
-    setModelStage("actions");
+    setDemoStage("actions");
   });
 });
 
-document.querySelector(".model-dock")?.addEventListener("pointerenter", () => {
-  if (isDesktopPointer()) {
-    setModelStage("windows");
+sceneDockControl?.addEventListener("contextmenu", (event) => {
+  if (!isFineDesktopPointer()) {
+    return;
   }
+
+  event.preventDefault();
+  setDemoStage("actions");
 });
 
-desktopModel?.addEventListener("pointerleave", () => {
-  if (isDesktopPointer()) {
+demo?.addEventListener("pointerleave", () => {
+  if (isFineDesktopPointer()) {
     resumeScrollNarrative();
   }
 });
 
-window.addEventListener("scroll", scheduleModelScrollSync, { passive: true });
+window.addEventListener("scroll", scheduleDemoScrollSync, { passive: true });
 window.addEventListener("wheel", resumeScrollNarrative, { passive: true });
 window.addEventListener("keydown", (event) => {
   if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"].includes(event.key)) {
@@ -483,21 +538,14 @@ window.addEventListener("keydown", (event) => {
   }
 });
 window.addEventListener("resize", () => {
-  updateModelSceneAccessibility();
   updateMediaPlayback();
-  scheduleModelScrollSync();
+  scheduleDemoScrollSync();
 });
 
-if (typeof desktopPointerQuery.addEventListener === "function") {
-  desktopPointerQuery.addEventListener("change", () => {
-    updateModelSceneAccessibility();
-    scheduleModelScrollSync();
-  });
+if (typeof finePointerQuery.addEventListener === "function") {
+  finePointerQuery.addEventListener("change", scheduleDemoScrollSync);
 } else {
-  desktopPointerQuery.addListener(() => {
-    updateModelSceneAccessibility();
-    scheduleModelScrollSync();
-  });
+  finePointerQuery.addListener(scheduleDemoScrollSync);
 }
 
 if (typeof motionQuery.addEventListener === "function") {
@@ -506,7 +554,9 @@ if (typeof motionQuery.addEventListener === "function") {
   motionQuery.addListener(updateMotionState);
 }
 
+/* ---------- 启动 ---------- */
+
 renderLanguage(preferredLanguage());
 updateMotionState();
-scheduleModelScrollSync();
+scheduleDemoScrollSync();
 loadReleaseState();
