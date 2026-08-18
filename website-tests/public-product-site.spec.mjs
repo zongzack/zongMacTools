@@ -182,13 +182,20 @@ test("媒体区提供本地录屏预览、关键帧，并在窄屏和减少动�
   await expect(media.getByText("素材预览 / 待审核", { exact: true })).toBeVisible();
   await expect(media.locator(".media-still")).toHaveCount(3);
   await expect(media.locator(".media-still img")).toHaveCount(3);
+  await expect.poll(() => media.locator(".media-still img").evaluateAll((images) =>
+    images.every((image) => image.complete && image.naturalWidth === 2704 && image.naturalHeight === 1434)
+  )).toBe(true);
+  await expect.poll(() => media.locator(".media-evidence").evaluate((element) => {
+    const { width, height } = element.getBoundingClientRect();
+    return Math.abs(width / height - 2704 / 1434) < 0.01;
+  })).toBe(true);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(video).toBeHidden();
   const poster = media.locator(".media-poster");
   await expect(poster).toBeVisible();
   await media.scrollIntoViewIfNeeded();
-  await expect.poll(() => poster.evaluate((image) => image.complete && image.naturalWidth === 1600 && image.naturalHeight === 900)).toBe(true);
+  await expect.poll(() => poster.evaluate((image) => image.complete && image.naturalWidth === 2704 && image.naturalHeight === 1434)).toBe(true);
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
