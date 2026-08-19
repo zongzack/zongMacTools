@@ -1,7 +1,7 @@
 import AppKit
 @preconcurrency import ApplicationServices
 import CoreGraphics
-import ScreenCaptureKit
+@preconcurrency import ScreenCaptureKit
 
 private let axMatchThreshold = 0.72
 

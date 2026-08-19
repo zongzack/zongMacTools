@@ -243,7 +243,9 @@ final class PreviewSessionController {
 
     func targetApplicationTerminated(pid: pid_t) {
         let matchingIDs = pendingCloses.keys.filter { $0.pid == pid }
-        matchingIDs.forEach(cancelPendingClose(for:))
+        for id in matchingIDs {
+            cancelPendingClose(for: id)
+        }
     }
 
     func isMouseInsidePanel(_ point: CGPoint) -> Bool {
@@ -495,7 +497,9 @@ final class PreviewSessionController {
 
     private func cancelAllPendingCloses() {
         let pendingCloseIDs = Array(pendingCloses.keys)
-        pendingCloseIDs.forEach(cancelPendingClose(for:))
+        for id in pendingCloseIDs {
+            cancelPendingClose(for: id)
+        }
     }
 
     private func isCurrent(_ expectedGeneration: Int, sessionEpoch: UInt64) -> Bool {
