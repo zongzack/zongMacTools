@@ -186,7 +186,6 @@ Desktop Window Peek extends the existing card preview with a two-stage, static m
 - `PreviewPanelView` uses one hover emitter, SwiftUI `.onHover`. Its relay carries the session epoch to `PreviewPanelController`, which supplies a monotonic sequence number and rejects stale relays. Context-menu preflight stops the mirror before AppKit begins menu tracking.
 - `PreviewSessionController` starts a new epoch before permission refresh or window query, forwards the query's paired screen snapshots to the coordinator, and routes selection, menu, thumbnail, and hover actions synchronously on the MainActor.
 - `WindowPeekLifecycleObserver` listens on `NSWorkspace.shared.notificationCenter` for active-Space and application-termination events, on the application notification center for screen changes, and maintains a single public AX destroyed subscription for the current target. All paths stop the mirror before clearing the corresponding state.
-- Capability probe evidence is recorded in `docs/verification/dock-window-desktop-peek-capability-probe.md`. The 2026-07-28 manual checklist records the currently blocked runtime validation separately rather than treating automated evidence as a manual pass.
 
 ## 验收标准
 

@@ -48,19 +48,11 @@ MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 �
 仍需继续验证的内容：
 
 - Multiple displays 因当前硬件不可用仍是 `blocked / not available`。
-- P3 真实 app 人工验收尚未执行，详见 `docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`。
-- P4 正式应用化人工验收尚未执行，详见 `docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md`。
+- P3 真实 app 人工验收尚未执行。
+- P4 正式应用化人工验收尚未执行。
 - 多工具源码结构重组后的人工 smoke test 尚未执行：需从 `build/zongMacTools.app` 启动，打开设置并切换 General language 后确认 sidebar/detail 刷新，并确认窗口重新显示时 title 使用当前语言；确认 Dock Window Quick Look 设置仍写入且预览行为响应，确认右键扩展仍只是设置里的禁用占位，覆盖 Dock 悬停预览、右键窗口操作菜单、诊断导出/关于状态、Launch at Login 状态/打开设置路径等主流程。ad-hoc 重新签名后 TCC 可能需要重新添加。
 
-详细记录见：
-
-- `docs/verification/dock-hover-preview-probe-summary.md`
-- `docs/verification/dock-hover-preview-p2-ui-polish-manual-checklist.md`
-- `docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`
-- `docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md`
-- `docs/verification/dock-hover-preview-environment-variant-verification-plan.md`
-- `docs/architecture/dock-hover-preview-technical-design.md`
-- `docs/roadmap.md`
+稳定的技术设计见 `docs/architecture/dock-hover-preview-technical-design.md`。
 
 ## 运行环境
 
@@ -386,5 +378,3 @@ MVP 阶段坚持以下边界：
 2. 执行 P3 窗口操作增强人工验收，重点覆盖右键菜单、关闭/最小化失败降级、菜单期间会话保留和屏幕录制权限缺失。
 3. 执行 P4 正式应用化人工验收，重点覆盖稳定签名、TCC、关于与状态、诊断导出、release artifact、Launch at Login 和屏幕录制权限缺失静默抑制。
 4. 在上述验收完成前，不扩展新产品功能。
-
-完整后续清单见 `docs/roadmap.md`。
