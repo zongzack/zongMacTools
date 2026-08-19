@@ -5,7 +5,7 @@ const demoStageOrder = ["dock", "windows", "switch", "actions"];
 
 const messages = {
   zh: {
-    title: "zongMacTools | 把 Windows 上顺手的桌面功能带到 Mac",
+    title: "zongMacTools | 把 Windows 上好用的桌面功能带到 Mac",
     description:
       "zongMacTools 将 Windows 用户熟悉的桌面交互，按照 macOS 的习惯重新实现。首个工具把任务栏窗口预览带到 Mac 的 Dock。",
     ogDescription: "从任务栏窗口预览到 Finder 右键新建文件，zongMacTools 正在把值得带来的 Windows 桌面体验重做成 macOS 工具。",
@@ -19,7 +19,7 @@ const messages = {
     githubSource: "GitHub 源码",
     githubSourceShort: "GitHub 源码",
     heroEyebrow: "Windows → macOS",
-    heroStatement: "把 Windows 上顺手的桌面功能，带到 Mac。",
+    heroStatement: "把 Windows 上好用的桌面功能，带到 Mac。",
     heroSummary: "zongMacTools 将 Windows 用户熟悉的高频桌面交互，按照 macOS 的系统习惯重新实现。不是复制界面，而是把值得留下的体验做成真正像 Mac 的工具。",
     heroAction: "查看第一个迁移",
     heroHint: "向下滚动，看看哪些 Windows 体验已经来到 Mac。",

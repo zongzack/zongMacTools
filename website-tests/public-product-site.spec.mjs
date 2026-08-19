@@ -29,7 +29,7 @@ test("访客按 Windows 到 macOS 的功能迁移理解产品方向", async ({ p
   await page.goto("/");
 
   await expect(page.getByRole("heading", { level: 1, name: "zongMacTools" })).toBeVisible();
-  await expect(page.getByText("把 Windows 上顺手的桌面功能，带到 Mac。")).toBeVisible();
+  await expect(page.getByText("把 Windows 上好用的桌面功能，带到 Mac。")).toBeVisible();
   await expect(page.getByRole("link", { name: "查看第一个迁移" })).toBeVisible();
   await expect(page.getByRole("link", { name: "查看真实运行画面" })).toBeVisible();
 
@@ -381,13 +381,13 @@ test("站点不提供主题控制器，也不加载追踪或第三方资源", as
   await page.goto("/");
 
   await expect(page.getByRole("button", { name: /深色|浅色|系统|外观/ })).toHaveCount(0);
-  await expect(page.locator("link[rel=canonical]")).toHaveCount(0);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://zongmactools.pages.dev/");
 
   const robots = await page.request.get("/robots.txt");
   const sitemap = await page.request.get("/sitemap.xml");
   expect(await robots.text()).toContain("Allow: /");
   expect(await robots.text()).not.toContain("pages.dev");
-  expect(await sitemap.text()).not.toContain("pages.dev");
+  expect(await sitemap.text()).toContain("https://zongmactools.pages.dev/");
   expect(requests.filter((url) => !url.startsWith("http://127.0.0.1:4173") && url !== githubReleasesApiUrl)).toEqual([]);
 });
 
