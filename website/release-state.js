@@ -1,4 +1,4 @@
-// GitHub 公开 Release 状态边界：下载资产与发行详情的唯一事实来源。
+// 读取 GitHub 的公开发行接口，提供版本和下载链接。
 // 只接受公开、非 Draft、字段与路径都可校验的 Release；其余情况诚实降级。
 
 export const GITHUB_REPOSITORY_URL = "https://github.com/zongzack/zongMacTools";

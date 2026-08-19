@@ -3,17 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0c0f13" />
-    <title>zongMacTools | 让更好的桌面体验，在 Mac 上继续生长</title>
-    <meta name="description" content="zongMacTools 把其他桌面系统中已验证有用的交互重新做成适合 macOS 的工具，也补齐 macOS 日常操作的效率空白。首个已实现工具是 Dock Window Quick Look（Dock 窗口速览）。" />
+    <meta name="theme-color" content="#f6f6f7" />
+    <title>zongMacTools | 把 Windows 上顺手的桌面功能带到 Mac</title>
+    <meta name="description" content="zongMacTools 将 Windows 用户熟悉的桌面交互，按照 macOS 的习惯重新实现。首个工具把任务栏窗口预览带到 Mac 的 Dock。" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="zongMacTools | 让更好的桌面体验，在 Mac 上继续生长" />
-    <meta property="og:description" content="把已被验证有用的桌面体验重新做成适合 macOS 的工具，也补齐值得被补上的 macOS 日常操作细节。" />
+    <meta property="og:title" content="zongMacTools | 把 Windows 上顺手的桌面功能带到 Mac" />
+    <meta property="og:description" content="从任务栏窗口预览到 Finder 右键新建文件，zongMacTools 正在把值得带来的 Windows 桌面体验重做成 macOS 工具。" />
     <meta property="og:locale" content="zh_CN" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="zongMacTools | 让更好的桌面体验，在 Mac 上继续生长" />
-    <meta name="twitter:description" content="把已被验证有用的桌面体验重新做成适合 macOS 的工具，也补齐值得被补上的 macOS 日常操作细节。" />
-    <link rel="icon" href="assets/z-mark.svg" type="image/svg+xml" />
+    <meta name="twitter:title" content="zongMacTools | 把 Windows 上顺手的桌面功能带到 Mac" />
+    <meta name="twitter:description" content="从任务栏窗口预览到 Finder 右键新建文件，zongMacTools 正在把值得带来的 Windows 桌面体验重做成 macOS 工具。" />
+    <link rel="icon" href="assets/zong-mac-tools-logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="assets/zong-mac-tools-logo.png" />
     <link rel="stylesheet" href="styles.css" />
     <script type="module" src="app.js"></script>
@@ -24,13 +24,11 @@
     <header class="site-header">
       <nav class="site-nav" aria-label="主导航" data-i18n-aria-label="primaryNavigation">
         <a class="brand" href="#hero" aria-label="zongMacTools 首页" data-i18n-aria-label="homeLink">
-          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-            <path d="M7 8h18L13 19h12v5H7l12-11H7z" fill="currentColor" />
-          </svg>
+          <img class="brand-mark" src="assets/zong-mac-tools-logo.png" alt="" />
           <span class="brand-word">zongMacTools</span>
         </a>
         <div class="nav-actions">
-          <a class="nav-link" href="#tool" data-i18n="toolNav">工具案例</a>
+          <a class="nav-link" href="#tool" data-i18n="toolNav">迁移案例</a>
           <button class="nav-link language-toggle" id="language-toggle" type="button" data-language="zh" aria-label="Switch to English" data-i18n-aria-label="languageSwitch">中 / EN</button>
           <a
             class="nav-link nav-github"
@@ -50,43 +48,37 @@
       <section class="hero" id="hero" aria-labelledby="hero-title">
         <div class="hero-backdrop" aria-hidden="true">
           <span class="hero-grid"></span>
-          <span class="hero-particle hero-particle-a"></span>
-          <span class="hero-particle hero-particle-b"></span>
-          <span class="hero-particle hero-particle-c"></span>
-          <span class="hero-trace"></span>
         </div>
         <div class="section-inner hero-inner">
-          <p class="eyebrow" data-i18n="heroEyebrow">macOS 桌面工具集合</p>
+          <p class="eyebrow" data-i18n="heroEyebrow">Windows → macOS</p>
           <h1 class="hero-title" id="hero-title">
-            <svg class="hero-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-            <path d="M7 8h18L13 19h12v5H7l12-11H7z" fill="currentColor" />
-          </svg>
-          <span>zongMacTools</span>
-        </h1>
-          <p class="hero-statement" data-i18n="heroStatement">让更好的桌面体验，在 Mac 上继续生长。</p>
-          <p class="hero-summary" data-i18n="heroSummary">把其他桌面系统中已验证有用的交互，重新做成符合 macOS 使用方式的工具；也为 Mac 补上那些值得被补上的日常操作细节。</p>
+            <img class="hero-mark" src="assets/zong-mac-tools-logo.png" alt="" />
+            <span>zongMacTools</span>
+          </h1>
+          <p class="hero-statement" data-i18n="heroStatement">把 Windows 上顺手的桌面功能，带到 Mac。</p>
+          <p class="hero-summary" data-i18n="heroSummary">zongMacTools 将 Windows 用户熟悉的高频桌面交互，按照 macOS 的系统习惯重新实现。不是复制界面，而是把值得留下的体验做成真正像 Mac 的工具。</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="#tool" data-i18n="heroAction">查看首个工具</a>
+            <a class="button button-primary" href="#tool" data-i18n="heroAction">查看第一个迁移</a>
           </div>
-          <p class="hero-hint" data-i18n="heroHint">向下滚动，沿着一个连续的 macOS 桌面了解这个工具集合。</p>
+          <p class="hero-hint" data-i18n="heroHint">向下滚动，看看哪些 Windows 体验已经来到 Mac。</p>
         </div>
       </section>
 
       <section class="origins" id="origins" aria-labelledby="origins-title">
         <div class="section-inner">
-          <p class="eyebrow" data-i18n="originsEyebrow">工具来源</p>
-          <h2 id="origins-title" data-i18n="originsTitle">为什么是 zongMacTools</h2>
-          <p class="section-summary" data-i18n="originsSummary">有些好用的体验已在别的桌面系统里证明过自己，但需要重新做成符合 macOS 使用方式的工具；也有些 Mac 日常操作里的效率空白，值得被直接补上。zongMacTools 沿着这两条路径持续构建。</p>
+          <p class="eyebrow" data-i18n="originsEyebrow">Windows → macOS</p>
+          <h2 id="origins-title" data-i18n="originsTitle">把熟悉的操作，重新做成 Mac 工具</h2>
+          <p class="section-summary" data-i18n="originsSummary">Windows 上有些高频交互已经证明好用；zongMacTools 挑选其中值得带来的部分，遵循 macOS 的窗口、权限和交互习惯重新实现。</p>
           <div class="origin-paths">
             <article class="origin-path" data-path="migration">
-              <p class="path-tag" data-i18n="migrationTag">体验迁移工具</p>
-              <h3 data-i18n="migrationTitle">已在别处验证，为 Mac 重做</h3>
-              <p data-i18n="migrationCopy">从其他桌面系统中被反复验证的交互出发，按照 macOS 的习惯、系统边界和公开 API 重新实现。迁移的是体验，不是界面复刻。</p>
+              <p class="path-tag" data-i18n="migrationTag">Windows 任务栏</p>
+              <h3 data-i18n="migrationTitle">悬停预览窗口 → Dock 窗口速览</h3>
+              <p data-i18n="migrationCopy">Windows 任务栏可以悬停查看同一应用的窗口。Dock Window Quick Look 将这个交互带到 macOS：停在 Dock 图标上，查看窗口、切换前景并使用当前可用的窗口操作。</p>
             </article>
             <article class="origin-path" data-path="gain">
-              <p class="path-tag" data-i18n="gainTag">macOS 增益工具</p>
-              <h3 data-i18n="gainTitle">直接补齐 Mac 的效率空白</h3>
-              <p data-i18n="gainCopy">不以其他平台为起点，从 Mac 日常操作里真实遇到的别扭细节出发，给出顺手、克制、像系统自带一样的答案。</p>
+              <p class="path-tag" data-i18n="gainTag">Windows 资源管理器</p>
+              <h3 data-i18n="gainTitle">右键新建文件 → Finder 新建文件</h3>
+              <p data-i18n="gainCopy">资源管理器空白处右键新建文件，是一个熟悉的工作流。我们正在把它按照 Finder 的使用方式重新实现。</p>
             </article>
           </div>
         </div>
@@ -94,15 +86,15 @@
 
       <section class="tool" id="tool" aria-labelledby="tool-title">
         <div class="section-inner">
-          <p class="eyebrow" data-i18n="toolEyebrow">首个工具</p>
+          <p class="eyebrow" data-i18n="toolEyebrow">Windows 体验迁移 · 已实现</p>
           <div class="tool-heading">
             <h2 id="tool-title" data-i18n="toolTitle">Dock Window Quick Look（Dock 窗口速览）</h2>
-            <p class="status-pill status-implemented" data-i18n="implementedStatus">首个已实现工具</p>
+            <p class="status-pill status-implemented" data-i18n="implementedStatus">已实现</p>
           </div>
-          <p class="section-summary" data-i18n="toolSummary">停在 Dock 上正在运行的应用图标，查看它当前可枚举的窗口；选择预览卡片切换窗口，或在卡片上右键使用当前可用的窗口操作。</p>
+          <p class="section-summary" data-i18n="toolSummary">Windows 任务栏可以悬停查看应用窗口。现在，停在 macOS Dock 上正在运行的应用图标，也能查看当前窗口并快速切换。</p>
 
-          <div class="demo" id="demo" data-stage="dock" role="group" aria-label="交互原理演示：可操作的抽象 Dock 桌面模型" data-i18n-aria-label="demoLabel">
-            <p class="demo-badge" data-i18n="demoBadge">交互原理演示 · 抽象模型，不是产品界面截图</p>
+          <div class="demo" id="demo" data-stage="dock" role="group" aria-label="交互原理演示：Windows 任务栏预览的 macOS 重做" data-i18n-aria-label="demoLabel">
+            <p class="demo-badge" data-i18n="demoBadge">交互预览 · 展示窗口预览、切换和操作路径</p>
 
             <div class="demo-scene" aria-hidden="true">
               <div class="scene-desktop">
@@ -137,7 +129,7 @@
             </div>
 
             <div class="demo-controls">
-              <p class="demo-steps-intro" data-i18n="demoStepsIntro">使用文字步骤查看同一交互原理：</p>
+              <p class="demo-steps-intro" data-i18n="demoStepsIntro">按步骤看看这个熟悉交互如何来到 Mac：</p>
               <div class="demo-steps" role="group" aria-label="Dock 窗口速览步骤控制器" data-i18n-aria-label="demoStepsLabel">
                 <button class="demo-step" type="button" data-demo-stage="dock" aria-pressed="true">
                   <span class="demo-step-index" aria-hidden="true">1</span>
@@ -171,17 +163,17 @@
           </ul>
           <p class="boundary-note" data-i18n="boundaryNote">不承诺实时预览、跨 Space 窗口、恢复最小化窗口或多显示器行为；这些边界以 GitHub 发行详情为准。</p>
           <p class="tool-media-link">
-            <a class="button button-quiet" href="#media" data-i18n="toolMediaLink">接着查看真实运行画面</a>
+            <a class="button button-quiet" href="#media" data-i18n="toolMediaLink">查看真实运行画面</a>
           </p>
         </div>
       </section>
 
       <section class="media" id="media" aria-labelledby="media-title">
         <div class="section-inner">
-          <p class="eyebrow" data-i18n="mediaEyebrow">真实运行画面</p>
-          <h2 id="media-title" data-i18n="mediaTitle">Dock 窗口速览运行录屏</h2>
-          <p class="status-pill status-review" data-i18n="mediaReviewMark">素材预览 / 待审核</p>
-          <p class="section-summary" data-i18n="mediaCopy">以下画面来自本地录屏，覆盖停在 Dock、预览出现、选择窗口卡片与打开右键窗口操作菜单。正式发布前，所有素材还需在干净测试环境完成人工隐私与能力一致性审核；当前仅作为占位预览。</p>
+          <p class="eyebrow" data-i18n="mediaEyebrow">迁移后的真实运行画面</p>
+          <h2 id="media-title" data-i18n="mediaTitle">Windows 任务栏预览，来到 macOS Dock</h2>
+          <p class="status-pill status-media" data-i18n="mediaSourceMark">本地录屏</p>
+          <p class="section-summary" data-i18n="mediaCopy">下面的本地录屏展示 Windows 用户熟悉的窗口预览如何在 macOS Dock 上工作，覆盖停在 Dock、预览出现、选择窗口卡片与打开右键窗口操作菜单。</p>
 
           <figure class="media-frame">
             <video
@@ -192,7 +184,7 @@
               playsinline
               preload="metadata"
               poster="assets/quick-look-poster.jpg"
-              aria-label="Dock Window Quick Look 本地录屏预览，发布前待审核"
+              aria-label="Dock Window Quick Look 本地录屏，展示窗口预览、切换和操作"
               data-i18n-aria-label="mediaVideoLabel"
             >
               <source src="assets/quick-look-recording.mp4" type="video/mp4" />
@@ -200,11 +192,11 @@
             <img
               class="media-poster"
               src="assets/quick-look-poster.jpg"
-              alt="本地录屏海报帧：Dock 预览卡片旁打开窗口操作菜单，发布前待审核"
+              alt="本地录屏海报帧：Dock 预览卡片旁打开窗口操作菜单"
               data-i18n-alt="mediaPosterAlt"
               loading="lazy"
             />
-            <figcaption data-i18n="mediaCaption">本地录屏预览（待审核）：悬停 Dock、预览出现、选择窗口与窗口操作。</figcaption>
+            <figcaption data-i18n="mediaCaption">本地录屏：悬停 Dock、预览出现、选择窗口与窗口操作。</figcaption>
           </figure>
 
           <div class="media-stills" role="group" aria-label="Dock Window Quick Look 录屏关键帧" data-i18n-aria-label="mediaStillsLabel">
@@ -226,12 +218,12 @@
 
       <section class="exploration" id="exploration" aria-labelledby="exploration-title">
         <div class="section-inner">
-          <p class="eyebrow" data-i18n="explorationEyebrow">探索方向</p>
+          <p class="eyebrow" data-i18n="explorationEyebrow">下一项 Windows 体验</p>
           <div class="tool-heading">
-            <h2 id="exploration-title" data-i18n="explorationTitle">Finder 右键新建文件</h2>
-            <p class="status-pill status-building" data-i18n="buildingStatus">正在构建</p>
+            <h2 id="exploration-title" data-i18n="explorationTitle">资源管理器右键新建文件 → Finder</h2>
+            <p class="status-pill status-building" data-i18n="buildingStatus">开发中</p>
           </div>
-          <p class="section-summary" data-i18n="explorationCopy">目标工作流：在 Finder 文件夹的空白区域右键，直接新建常用格式的本地文件。这是一个正在构建的 macOS 增益方向，今天还不能下载，也不提供时间承诺或订阅入口。</p>
+          <p class="section-summary" data-i18n="explorationCopy">Windows 资源管理器可以在文件夹空白处右键新建文件。我们正在把这个工作流按照 Finder 的方式带到 macOS；目标是在 Finder 中直接创建 Markdown、JSON 等常用本地文件，进展会在 GitHub 公布。</p>
           <a
             class="button button-quiet"
             href="https://github.com/zongzack/zongMacTools"
@@ -249,9 +241,9 @@
         <div class="section-inner">
           <p class="eyebrow" data-i18n="acquireEyebrow">获取区</p>
           <h2 id="acquire-title" data-i18n="acquireTitle">获取公开测试版</h2>
-          <p class="section-summary" data-i18n="acquireCopy">下载资产与发行详情的唯一事实来源是 GitHub Release。这里只读取公开 Release 状态；无法确认时，请直接以 GitHub 为准。</p>
+          <p class="section-summary" data-i18n="acquireCopy">公开测试版的下载、版本和安装说明都在 GitHub Release 中提供。需要获取最新版本时，请直接打开 GitHub 发行详情。</p>
 
-          <p class="acquire-status" id="acquire-status" role="status" data-state="loading" data-i18n="acquireLoading">正在确认 GitHub 公开 Release 状态…</p>
+          <p class="acquire-status" id="acquire-status" role="status" data-state="loading" data-i18n="acquireLoading">正在检查最新公开版本…</p>
 
           <div class="acquire-actions">
             <a class="button button-primary" id="download-action" hidden target="_blank" rel="noopener noreferrer" data-i18n="downloadBeta">下载公开测试版</a>
@@ -300,12 +292,10 @@
     <footer class="site-footer">
       <div class="section-inner footer-inner">
         <a class="brand" href="#hero" aria-label="zongMacTools 首页" data-i18n-aria-label="homeLink">
-          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-            <path d="M7 8h18L13 19h12v5H7l12-11H7z" fill="currentColor" />
-          </svg>
+          <img class="brand-mark" src="assets/zong-mac-tools-logo.png" alt="" />
           <span class="brand-word">zongMacTools</span>
         </a>
-        <p data-i18n="footerCopy">面向 macOS 的桌面工具集合，沿连续桌面叙事持续生长。</p>
+        <p data-i18n="footerCopy">把 Windows 上值得留下的桌面体验，重做成 macOS 工具。</p>
         <p class="footer-privacy" data-i18n="privacyCopy">本站为无数据站点：不收集个人数据，不使用 Cookie、分析或第三方媒体服务。</p>
       </div>
     </footer>

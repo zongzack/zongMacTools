@@ -1,20 +1,25 @@
-/* zongMacTools 公开产品站 — 深色单主题连续桌面叙事 */
+/* zongMacTools 公开产品站：Windows 到 macOS 的功能迁移叙事 */
 
 :root {
-  --surface: #0c0f13;
-  --surface-raised: #12161c;
-  --surface-inset: #090b0e;
-  --line: #232a33;
-  --line-strong: #334052;
-  --text: #f4efe6;
-  --text-soft: #c9c2b4;
-  --text-dim: #8d928f;
-  --accent-migration: #63c8ce;
-  --accent-gain: #b7c25e;
-  --focus-ring: #f4efe6;
+  --surface: #f6f6f7;
+  --surface-raised: #ffffff;
+  --surface-inset: #efeff1;
+  --line: rgb(27 27 30 / 0.09);
+  --line-strong: rgb(27 27 30 / 0.16);
+  --text: #1b1b1e;
+  --text-soft: #4f5158;
+  --text-dim: #75777e;
+  --accent-migration: #0b6e76;
+  --accent-gain: #5f6a16;
+  --focus-ring: #1b1b1e;
   --content-width: 72rem;
   --header-height: 4rem;
   --radius: 0.75rem;
+  --radius-card: 1rem;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --card-toplight: inset 0 1px 0 rgb(255 255 255 / 0.6);
+  --card-shadow: 0 24px 64px rgb(27 27 30 / 0.08);
+  --hover-wash: rgb(27 27 30 / 0.04);
 }
 
 * {
@@ -23,7 +28,7 @@
 
 html {
   scroll-behavior: smooth;
-  background: var(--surface);
+  background: #efeff1;
 }
 
 html[data-reduced-motion="true"] {
@@ -32,7 +37,7 @@ html[data-reduced-motion="true"] {
 
 body {
   margin: 0;
-  background: var(--surface);
+  background: linear-gradient(to bottom, #ffffff 0%, #f6f6f7 40rem, #efeff1 100%) fixed;
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   font-size: 1rem;
@@ -74,7 +79,7 @@ a {
   z-index: 20;
   padding: 0.75rem 1.25rem;
   background: var(--text);
-  color: var(--surface);
+  color: #ffffff;
   border-radius: var(--radius);
   text-decoration: none;
   font-weight: 600;
@@ -126,9 +131,9 @@ h3 {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgb(255 255 255 / 0.72);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border-bottom: 1px solid var(--line);
 }
 
@@ -181,11 +186,13 @@ h3 {
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background-color 0.2s var(--ease);
 }
 
 .nav-link:hover {
   color: var(--text);
   border-color: var(--line-strong);
+  background: var(--hover-wash);
 }
 
 .language-toggle[data-language="en"] {
@@ -207,15 +214,17 @@ h3 {
   text-decoration: none;
   border: 1px solid transparent;
   cursor: pointer;
+  transition: background-color 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.25s var(--ease);
 }
 
 .button-primary {
   background: var(--text);
-  color: var(--surface);
+  color: #ffffff;
 }
 
 .button-primary:hover {
-  background: #ffffff;
+  background: #000000;
+  box-shadow: 0 8px 28px rgb(11 110 118 / 0.28);
 }
 
 .button-quiet {
@@ -224,8 +233,8 @@ h3 {
 }
 
 .button-quiet:hover {
-  border-color: var(--text-dim);
-  background: var(--surface-raised);
+  border-color: rgb(27 27 30 / 0.3);
+  background: var(--hover-wash);
 }
 
 /* ---------- 首屏 ---------- */
@@ -249,48 +258,11 @@ h3 {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(to right, rgb(244 239 230 / 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(244 239 230 / 0.045) 1px, transparent 1px);
+    linear-gradient(to right, rgb(27 27 30 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(27 27 30 / 0.035) 1px, transparent 1px);
   background-size: 4.5rem 4.5rem;
   mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 30%, transparent 75%);
-}
-
-/* 低对比静态方向粒子：不做持续漂移，只标示方向 */
-.hero-particle {
-  position: absolute;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--text);
-  opacity: 0.14;
-}
-
-.hero-particle-a {
-  top: 24%;
-  left: 18%;
-}
-
-.hero-particle-b {
-  top: 58%;
-  left: 74%;
-  background: var(--accent-migration);
-}
-
-.hero-particle-c {
-  top: 38%;
-  left: 58%;
-  background: var(--accent-gain);
-}
-
-.hero-trace {
-  position: absolute;
-  top: 66%;
-  left: 12%;
-  width: 34%;
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgb(244 239 230 / 0.22), transparent);
-  transform: rotate(-8deg);
 }
 
 .hero-inner {
@@ -345,7 +317,7 @@ h3 {
 /* ---------- 工具来源 ---------- */
 
 .origins {
-  background: var(--surface-inset);
+  background: rgb(27 27 30 / 0.025);
   border-block: 1px solid var(--line);
 }
 
@@ -359,8 +331,9 @@ h3 {
 .origin-path {
   padding: 1.75rem;
   border: 1px solid var(--line);
-  border-radius: calc(var(--radius) * 1.5);
+  border-radius: var(--radius-card);
   background: var(--surface-raised);
+  box-shadow: var(--card-toplight);
   display: grid;
   gap: 0.875rem;
   align-content: start;
@@ -444,12 +417,12 @@ h3 {
   background: var(--accent-gain);
 }
 
-.status-review {
+.status-media {
   color: var(--text-soft);
   margin-top: 1rem;
 }
 
-.status-review::before {
+.status-media::before {
   background: var(--text-dim);
 }
 
@@ -465,8 +438,9 @@ h3 {
 .demo {
   margin-top: 3rem;
   border: 1px solid var(--line);
-  border-radius: calc(var(--radius) * 2);
+  border-radius: calc(var(--radius-card) * 1.25);
   background: var(--surface-raised);
+  box-shadow: var(--card-toplight), var(--card-shadow);
   padding: clamp(1.25rem, 3vw, 2.5rem);
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
@@ -497,8 +471,9 @@ h3 {
 
 .demo-scene {
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   background: var(--surface-inset);
+  box-shadow: var(--card-toplight);
   padding: clamp(0.75rem, 2vw, 1.5rem);
 }
 
@@ -507,7 +482,7 @@ h3 {
   aspect-ratio: 16 / 10;
   border-radius: calc(var(--radius) * 0.75);
   background:
-    linear-gradient(to bottom, rgb(244 239 230 / 0.05), transparent 18%),
+    linear-gradient(to bottom, rgb(27 27 30 / 0.03), transparent 18%),
     var(--surface);
   overflow: hidden;
 }
@@ -521,7 +496,7 @@ h3 {
   display: grid;
   gap: 0.5rem;
   align-content: start;
-  transition: opacity 0.35s ease, transform 0.35s ease, border-color 0.35s ease;
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease), border-color 0.35s var(--ease);
 }
 
 .scene-window-main {
@@ -569,7 +544,7 @@ h3 {
   gap: 0.625rem;
   opacity: 0;
   transform: translateY(0.75rem);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
 }
 
 .scene-card {
@@ -580,7 +555,7 @@ h3 {
   border: 1px solid var(--line-strong);
   background: var(--surface-raised);
   cursor: pointer;
-  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+  transition: border-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
 
 .scene-card:hover {
@@ -599,7 +574,7 @@ h3 {
   background: var(--surface-raised);
   opacity: 0;
   transform: translateY(0.5rem);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition: opacity 0.35s var(--ease), transform 0.35s var(--ease);
 }
 
 .scene-menu-item {
@@ -619,7 +594,7 @@ h3 {
   bottom: 12%;
   transform: rotate(-45deg);
   opacity: 0.9;
-  transition: left 0.4s ease, bottom 0.4s ease, opacity 0.3s ease;
+  transition: left 0.4s var(--ease), bottom 0.4s var(--ease), opacity 0.3s var(--ease);
 }
 
 .scene-dock {
@@ -745,17 +720,19 @@ h3 {
   font-size: 0.9375rem;
   text-align: start;
   cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background-color 0.2s var(--ease);
 }
 
 .demo-step:hover {
   color: var(--text);
-  border-color: var(--text-dim);
+  border-color: rgb(27 27 30 / 0.3);
+  background: var(--hover-wash);
 }
 
 .demo-step[aria-pressed="true"] {
   color: var(--text);
-  border-color: var(--text);
-  background: var(--surface-inset);
+  border-color: rgb(27 27 30 / 0.5);
+  background: rgb(27 27 30 / 0.05);
 }
 
 .demo-step-index {
@@ -836,15 +813,16 @@ h3 {
 /* ---------- 真实运行画面 ---------- */
 
 .media {
-  background: var(--surface-inset);
+  background: rgb(27 27 30 / 0.025);
   border-block: 1px solid var(--line);
 }
 
 .media-frame {
   margin-top: 2.75rem;
   border: 1px solid var(--line);
-  border-radius: calc(var(--radius) * 1.5);
+  border-radius: var(--radius-card);
   background: var(--surface-raised);
+  box-shadow: var(--card-toplight), var(--card-shadow);
   padding: clamp(0.75rem, 2vw, 1.5rem);
   display: grid;
   gap: 0.875rem;
@@ -904,7 +882,7 @@ h3 {
 /* ---------- 获取区 ---------- */
 
 .acquire {
-  background: var(--surface-inset);
+  background: rgb(27 27 30 / 0.025);
   border-block: 1px solid var(--line);
 }
 
@@ -954,9 +932,10 @@ h3 {
 
 .acquire-fact {
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   padding: 1rem 1.25rem;
   background: var(--surface-raised);
+  box-shadow: var(--card-toplight);
 }
 
 .acquire-fact dt {
