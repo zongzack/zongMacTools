@@ -26,6 +26,21 @@ final class PackagingTests: XCTestCase {
         XCTAssertNotNil(build.range(of: #"^[1-9]\d*$"#, options: .regularExpression))
     }
 
+    func testFinderSyncInfoPlistProvidesSystemManagementMetadata() throws {
+        let url = packageRoot()
+            .appendingPathComponent("Sources")
+            .appendingPathComponent("FinderSyncExtension")
+            .appendingPathComponent("Info.plist")
+        let data = try Data(contentsOf: url)
+        let object = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+        let plist = try XCTUnwrap(object as? [String: Any])
+
+        XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "zongMacTools")
+        let extensionDictionary = try XCTUnwrap(plist["NSExtension"] as? [String: Any])
+        XCTAssertNotNil(extensionDictionary["NSExtensionAttributes"] as? [String: Any])
+        XCTAssertEqual(extensionDictionary["NSExtensionPointIdentifier"] as? String, "com.apple.FinderSync")
+    }
+
     func testPackagingScriptsPassBashSyntaxValidation() throws {
         for script in [
             "build_probe_app.sh",

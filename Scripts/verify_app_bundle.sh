@@ -81,7 +81,9 @@ done
 grep -q '<p:sld' "$POWERPOINT_ROOT/ppt/slides/slide1.xml" || fail "PowerPoint template is missing a slide"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPointIdentifier' "$EXTENSION_INFO_PLIST")" == "com.apple.FinderSync" ]] || fail "Finder Sync extension point mismatch"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$EXTENSION_INFO_PLIST")" == "com.zong.zongMacTools.finder-sync" ]] || fail "Finder Sync extension bundle id mismatch"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$EXTENSION_INFO_PLIST")" == "zongMacTools" ]] || fail "Finder Sync display name mismatch"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionPrincipalClass' "$EXTENSION_INFO_PLIST")" == "FinderSyncExtension.FinderSyncExtension" ]] || fail "Finder Sync principal class mismatch"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :NSExtension:NSExtensionAttributes' "$EXTENSION_INFO_PLIST" 2>/dev/null)" == "Dict"* ]] || fail "Finder Sync extension attributes missing"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$EXTENSION_INFO_PLIST")" == "$(plist_value LSMinimumSystemVersion)" ]] || fail "minimum system version mismatch"
 
 normalized_arches() {
