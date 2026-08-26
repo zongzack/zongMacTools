@@ -44,6 +44,52 @@ final class PackagingTests: XCTestCase {
         }
     }
 
+    func testAuthoritativeBuildRecordsNestedSigningOrderWithoutDeepSigning() throws {
+        let source = try scriptSource(named: "build_probe_app.sh")
+
+        XCTAssertTrue(source.contains("SIGNING_TRACE_PATH"))
+        XCTAssertTrue(source.contains("1 extension-sign start"))
+        XCTAssertTrue(source.contains("2 extension-sign success"))
+        XCTAssertTrue(source.contains("3 app-sign start"))
+        XCTAssertTrue(source.contains("4 app-sign success"))
+        XCTAssertNil(source.range(of: #"codesign[^\n]*--deep"#, options: .regularExpression), "authoritative build must not use codesign --deep")
+
+        let extensionSuccess = try XCTUnwrap(source.range(of: "2 extension-sign success"))
+        let appStart = try XCTUnwrap(source.range(of: "3 app-sign start"))
+        XCTAssertLessThan(
+            source.distance(from: source.startIndex, to: extensionSuccess.lowerBound),
+            source.distance(from: source.startIndex, to: appStart.lowerBound),
+            "outer app signing must start only after extension signing succeeds"
+        )
+    }
+
+    func testBundleVerifierSeparatelyChecksSignaturesEntitlementsAndSingleExtension() throws {
+        let source = try scriptSource(named: "verify_app_bundle.sh")
+
+        XCTAssertTrue(source.contains("expected exactly one embedded extension"))
+        XCTAssertTrue(source.contains("expected exactly one appex in the complete bundle"))
+        XCTAssertTrue(source.contains("codesign --verify --strict \"$EXTENSION_PATH\""))
+        XCTAssertTrue(source.contains("codesign --verify --strict \"$APP_PATH\""))
+        XCTAssertTrue(source.contains("com.apple.security.app-sandbox"))
+        XCTAssertTrue(source.contains("missing signing order trace"))
+        XCTAssertTrue(source.contains("artifact app-cdhash"))
+        XCTAssertTrue(source.contains("artifact extension-cdhash"))
+        XCTAssertTrue(source.contains("find \"$APP_PATH/Contents\" -type f -perm -111 -print0"))
+        XCTAssertTrue(source.contains("xmllint --noout --nonet"))
+        XCTAssertTrue(source.contains("Sheet1"))
+        XCTAssertTrue(source.contains("normalized_arches"))
+        XCTAssertTrue(source.contains("unzip -tqq"))
+        XCTAssertNil(source.range(of: #"codesign[^\n]*--deep"#, options: .regularExpression), "bundle verification must not hide nested signing failures behind --deep")
+    }
+
+    func testReleasePackagingVerifiesTheExtractedArchive() throws {
+        let source = try scriptSource(named: "package_release_app.sh")
+
+        XCTAssertTrue(source.contains("ditto -x -k \"$ZIP_PATH\""))
+        XCTAssertTrue(source.contains("verify_app_bundle.sh\" \"$ARCHIVE_VERIFY_DIR/${APP_NAME}.app\""))
+        XCTAssertTrue(source.contains("mktemp -d"))
+    }
+
     func testIconSourceExists() {
         XCTAssertTrue(FileManager.default.fileExists(atPath: packageRoot().appendingPathComponent("Assets/AppIcon/zong-mac-tools-logo.png").path))
     }
@@ -343,5 +389,14 @@ final class PackagingTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+    }
+
+    private func scriptSource(named name: String) throws -> String {
+        try String(
+            contentsOf: packageRoot()
+                .appendingPathComponent("Scripts")
+                .appendingPathComponent(name),
+            encoding: .utf8
+        )
     }
 }

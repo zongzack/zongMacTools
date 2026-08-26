@@ -36,6 +36,11 @@ fi
   ditto -c -k --keepParent "${APP_NAME}.app" "$ZIP_PATH"
 )
 
+ARCHIVE_VERIFY_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zongMacTools-release-verify.XXXXXX")"
+trap 'rm -rf "$ARCHIVE_VERIFY_DIR"' EXIT
+ditto -x -k "$ZIP_PATH" "$ARCHIVE_VERIFY_DIR"
+"$ROOT_DIR/Scripts/verify_app_bundle.sh" "$ARCHIVE_VERIFY_DIR/${APP_NAME}.app" >&2
+
 (
   cd "$DIST_DIR"
   shasum -a 256 "$(basename "$ZIP_PATH")" > SHA256SUMS.txt

@@ -7,6 +7,7 @@ APP_BUNDLE_NAME="zongMacTools"
 CONFIGURATION="${CONFIGURATION:-debug}"
 CODE_SIGN_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 APP_DIR="$ROOT_DIR/build/${APP_BUNDLE_NAME}.app"
+SIGNING_TRACE_PATH="${SIGNING_TRACE_PATH:-$ROOT_DIR/build/signing-order.log}"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
@@ -22,6 +23,10 @@ CORE_RESOURCE_BUNDLE="$SWIFT_BIN_DIR/DockHoverPreviewProbe_FinderNewFileCore.bun
 EXTENSION_ENTITLEMENTS_PATH="$ROOT_DIR/Sources/FinderSyncExtension/FinderSyncExtension.entitlements"
 
 [[ -d "$CORE_RESOURCE_BUNDLE" ]] || { echo "missing FinderNewFileCore resource bundle: $CORE_RESOURCE_BUNDLE" >&2; exit 1; }
+
+mkdir -p "$(dirname "$SIGNING_TRACE_PATH")"
+: > "$SIGNING_TRACE_PATH"
+printf '%s\n' "build configuration=$CONFIGURATION" >> "$SIGNING_TRACE_PATH"
 
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PLUGINS_DIR/$EXTENSION_BUNDLE_NAME/Contents/MacOS" "$PLUGINS_DIR/$EXTENSION_BUNDLE_NAME/Contents/Resources"
@@ -56,21 +61,40 @@ rm -rf "$ICONSET_DIR"
 plutil -lint "$CONTENTS_DIR/Info.plist" >&2
 plutil -lint "$EXTENSION_DIR/Contents/Info.plist" >&2
 
-CODE_SIGN_OPTIONS=()
 if [[ "$CODE_SIGN_IDENTITY" == "-" ]]; then
   echo "Signing with ad-hoc identity (-)." >&2
   echo "TCC caveat: ad-hoc re-signing can require re-adding Accessibility and Screen Recording permissions." >&2
-  codesign --force --sign "$CODE_SIGN_IDENTITY" --entitlements "$EXTENSION_ENTITLEMENTS_PATH" "$EXTENSION_DIR" >&2
-  codesign --force --sign "$CODE_SIGN_IDENTITY" "$APP_DIR" >&2
 else
-  CODE_SIGN_OPTIONS+=(--options runtime --timestamp)
   echo "Signing with configured identity: $CODE_SIGN_IDENTITY" >&2
-  codesign --force --sign "$CODE_SIGN_IDENTITY" "${CODE_SIGN_OPTIONS[@]}" --entitlements "$EXTENSION_ENTITLEMENTS_PATH" "$EXTENSION_DIR" >&2
-  codesign --force --sign "$CODE_SIGN_IDENTITY" "${CODE_SIGN_OPTIONS[@]}" "$APP_DIR" >&2
 fi
 
+sign_code() {
+  local target="$1"
+  shift
+  if [[ "$CODE_SIGN_IDENTITY" == "-" ]]; then
+codesign --force --sign "$CODE_SIGN_IDENTITY" "$@" "$target" >&2
+  else
+codesign --force --sign "$CODE_SIGN_IDENTITY" --options runtime --timestamp "$@" "$target" >&2
+  fi
+}
+
+printf '%s\n' "1 extension-sign start" >> "$SIGNING_TRACE_PATH"
+sign_code "$EXTENSION_DIR" --entitlements "$EXTENSION_ENTITLEMENTS_PATH"
+printf '%s\n' "2 extension-sign success" >> "$SIGNING_TRACE_PATH"
+printf '%s\n' "3 app-sign start" >> "$SIGNING_TRACE_PATH"
+sign_code "$APP_DIR"
+printf '%s\n' "4 app-sign success" >> "$SIGNING_TRACE_PATH"
+APP_CDHASH="$(codesign -dv --verbose=4 "$APP_DIR" 2>&1 | awk -F= '/^CDHash=/{print $2; exit}')"
+EXTENSION_CDHASH="$(codesign -dv --verbose=4 "$EXTENSION_DIR" 2>&1 | awk -F= '/^CDHash=/{print $2; exit}')"
+[[ -n "$APP_CDHASH" && -n "$EXTENSION_CDHASH" ]] || { echo "unable to record signed bundle CDHash values" >&2; exit 1; }
+printf '%s\n' "artifact app-cdhash=$APP_CDHASH" >> "$SIGNING_TRACE_PATH"
+printf '%s\n' "artifact extension-cdhash=$EXTENSION_CDHASH" >> "$SIGNING_TRACE_PATH"
+printf '%s\n' "5 extension-verify start" >> "$SIGNING_TRACE_PATH"
 codesign --verify --strict "$EXTENSION_DIR" >&2
-codesign --verify --deep --strict "$APP_DIR" >&2
+printf '%s\n' "6 extension-verify success" >> "$SIGNING_TRACE_PATH"
+printf '%s\n' "7 app-verify start" >> "$SIGNING_TRACE_PATH"
+codesign --verify --strict "$APP_DIR" >&2
+printf '%s\n' "8 app-verify success" >> "$SIGNING_TRACE_PATH"
 codesign -dv --verbose=4 "$APP_DIR" >&2
 
 echo "$APP_DIR"

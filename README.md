@@ -93,7 +93,7 @@ Scripts/build_probe_app.sh
 - 从 `Assets/AppIcon/zong-mac-tools-logo.png` 生成 `zongMacTools.icns`。
 - 校验 `Info.plist`。
 - 使用 `CODE_SIGN_IDENTITY` 指定的身份签名；未指定时使用 ad-hoc fallback。
-- 运行 `codesign --verify --deep --strict`。
+- 分别对嵌套 Finder Sync 扩展和外层 App 运行 `codesign --verify --strict`，并记录签名顺序。
 
 默认 ad-hoc 签名适合无证书本地开发，但每次重新签名都可能让系统辅助功能和屏幕录制权限需要重新添加。若本机有稳定证书，可使用：
 
@@ -109,7 +109,7 @@ CODE_SIGN_IDENTITY="Developer ID Application: Example" Scripts/build_probe_app.s
 Scripts/verify_app_bundle.sh build/zongMacTools.app
 ```
 
-验证内容包括 Info.plist、executable、icon、bundle id、用户可见名称和签名摘要。ad-hoc 签名会通过验证，但脚本会提示 TCC caveat。
+验证内容包括 Info.plist、executable、icon、bundle id、嵌套 Finder Sync 扩展、架构、模板资源、实际沙盒 entitlement，以及扩展和外层 App 分别执行的严格签名校验。ad-hoc 签名会通过验证，但脚本会提示 TCC caveat；构建脚本同时写入 `build/signing-order.log`，记录扩展签名成功后才开始外层 App 签名。
 
 ### 3. 构建并打开 app
 
