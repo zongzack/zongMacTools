@@ -3,6 +3,7 @@ import Foundation
 enum SettingsPage: Hashable {
     case general
     case dockWindowQuickLook
+    case finderExtension
     case support
     case aboutStatus
 }

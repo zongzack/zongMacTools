@@ -31,7 +31,7 @@ struct SettingsRootView: View {
         SettingsSidebarView(
             selection: selection,
             text: text,
-            tools: [.dockWindowQuickLook, .contextMenuExtensionPlaceholder]
+            tools: [.dockWindowQuickLook, .contextMenuExtension]
         )
     }
 
@@ -42,6 +42,8 @@ struct SettingsRootView: View {
             GeneralSettingsView(viewModel: viewModel.appSettings, text: text)
         case .dockWindowQuickLook:
             DockWindowQuickLookSettingsView(viewModel: viewModel.dockWindowQuickLookSettings, text: text)
+        case .finderExtension:
+            FinderExtensionSettingsView(viewModel: viewModel.finderExtensionSettings, text: text)
         case .support:
             SupportSettingsView(
                 text: text,

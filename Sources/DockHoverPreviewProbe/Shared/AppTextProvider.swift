@@ -21,6 +21,10 @@ enum LocalizedTextKey: String, CaseIterable {
     case noExcludedApps
     case clearAll
     case contextMenuExtension
+    case finderExtensionSubtitle
+    case finderExtensionEnabled
+    case finderExtensionDisabled
+    case manageFinderExtension
     case notDeveloped
     case dockHoverPreviewStatusEnabled
     case dockHoverPreviewStatusDisabled

@@ -21,6 +21,7 @@ final class SettingsWindowController: NSObject, SettingsWindowPresenting {
     private let selection: SettingsWindowSelection
     private let appActivator: @MainActor () -> Void
     private var window: NSWindow?
+    private var activationObserver: NSObjectProtocol?
 
     init(
         settingsViewModel: SettingsViewModel,
@@ -39,6 +40,16 @@ final class SettingsWindowController: NSObject, SettingsWindowPresenting {
         self.selection = selection
         self.appActivator = appActivator
         super.init()
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.window?.isVisible == true else { return }
+                self.settingsViewModel.finderExtensionSettings.refresh()
+            }
+        }
     }
 
     func showSettings(selectedPage: SettingsPage) {

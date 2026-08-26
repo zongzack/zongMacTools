@@ -5,6 +5,7 @@ import Foundation
 final class SettingsViewModel: ObservableObject {
     let appSettings: AppSettingsViewModel
     let dockWindowQuickLookSettings: DockWindowQuickLookSettingsViewModel
+    let finderExtensionSettings: FinderExtensionSettingsViewModel
 
     private var cancellables: Set<AnyCancellable> = []
 
@@ -14,30 +15,32 @@ final class SettingsViewModel: ObservableObject {
 
     init(
         appSettings: AppSettingsViewModel,
-        dockWindowQuickLookSettings: DockWindowQuickLookSettingsViewModel
+        dockWindowQuickLookSettings: DockWindowQuickLookSettingsViewModel,
+        finderExtensionSettings: FinderExtensionSettingsViewModel = FinderExtensionSettingsViewModel()
     ) {
         self.appSettings = appSettings
         self.dockWindowQuickLookSettings = dockWindowQuickLookSettings
+        self.finderExtensionSettings = finderExtensionSettings
 
-        appSettings.objectWillChange
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.objectWillChange.send()
-                }
-            }
-            .store(in: &cancellables)
-
-        dockWindowQuickLookSettings.objectWillChange
-            .sink { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.objectWillChange.send()
-                }
-            }
-            .store(in: &cancellables)
+        bind(appSettings.objectWillChange)
+        bind(dockWindowQuickLookSettings.objectWillChange)
+        bind(finderExtensionSettings.objectWillChange)
     }
 
     func refreshForSettingsPresentation() {
         appSettings.refresh()
         dockWindowQuickLookSettings.refreshForSettingsPresentation()
+        finderExtensionSettings.refresh()
+    }
+
+    private func bind<P: Publisher>(_ publisher: P)
+    where P.Output == Void, P.Failure == Never {
+        publisher
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.objectWillChange.send()
+                }
+            }
+            .store(in: &cancellables)
     }
 }

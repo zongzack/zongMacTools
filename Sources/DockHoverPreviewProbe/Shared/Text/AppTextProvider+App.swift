@@ -33,6 +33,14 @@ extension AppTextProvider {
             "Support"
         case .contextMenuExtension:
             "Right-click Extension"
+        case .finderExtensionSubtitle:
+            "Finder background menu"
+        case .finderExtensionEnabled:
+            "Finder extension: Enabled"
+        case .finderExtensionDisabled:
+            "Finder extension: Not Enabled"
+        case .manageFinderExtension:
+            "Manage Finder Extension"
         case .notDeveloped:
             "Not Developed"
         case .language:
@@ -74,6 +82,14 @@ extension AppTextProvider {
             "\u{652F}\u{6301}"
         case .contextMenuExtension:
             "\u{53F3}\u{952E}\u{6269}\u{5C55}"
+        case .finderExtensionSubtitle:
+            "Finder \u{80CC}\u{666F}\u{83DC}\u{5355}"
+        case .finderExtensionEnabled:
+            "Finder \u{6269}\u{5C55}\u{FF1A}\u{5DF2}\u{542F}\u{7528}"
+        case .finderExtensionDisabled:
+            "Finder \u{6269}\u{5C55}\u{FF1A}\u{672A}\u{542F}\u{7528}"
+        case .manageFinderExtension:
+            "\u{7BA1}\u{7406} Finder \u{6269}\u{5C55}"
         case .notDeveloped:
             "\u{672A}\u{5F00}\u{53D1}"
         case .language:

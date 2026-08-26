@@ -22,11 +22,11 @@ extension ToolDescriptor {
         badgeKey: nil
     )
 
-    static let contextMenuExtensionPlaceholder = ToolDescriptor(
+    static let contextMenuExtension = ToolDescriptor(
         id: .contextMenuExtension,
         titleKey: .contextMenuExtension,
         systemImage: "contextualmenu.and.cursorarrow",
-        settingsPage: nil,
-        badgeKey: .notDeveloped
+        settingsPage: .finderExtension,
+        badgeKey: nil
     )
 }

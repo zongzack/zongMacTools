@@ -10,8 +10,13 @@ let package = Package(
         .executable(name: "DockHoverPreviewProbe", targets: ["DockHoverPreviewProbe"])
     ],
     targets: [
+        .target(
+            name: "FinderNewFileCore",
+            path: "Sources/FinderNewFileCore"
+        ),
         .executableTarget(
             name: "DockHoverPreviewProbe",
+            dependencies: ["FinderNewFileCore"],
             path: "Sources/DockHoverPreviewProbe",
             exclude: ["Info.plist"],
             linkerSettings: [
@@ -19,12 +24,23 @@ let package = Package(
                 .linkedFramework("ApplicationServices"),
                 .linkedFramework("CoreGraphics"),
                 .linkedFramework("ServiceManagement"),
-                .linkedFramework("ScreenCaptureKit")
+                .linkedFramework("ScreenCaptureKit"),
+                .linkedFramework("FinderSync")
+            ]
+        ),
+        .executableTarget(
+            name: "FinderSyncExtension",
+            dependencies: ["FinderNewFileCore"],
+            path: "Sources/FinderSyncExtension",
+            exclude: ["Info.plist", "FinderSyncExtension.entitlements"],
+            linkerSettings: [
+                .linkedFramework("AppKit"),
+                .linkedFramework("FinderSync")
             ]
         ),
         .testTarget(
             name: "DockHoverPreviewProbeTests",
-            dependencies: ["DockHoverPreviewProbe"],
+            dependencies: ["DockHoverPreviewProbe", "FinderNewFileCore"],
             path: "Tests/DockHoverPreviewProbeTests"
         )
     ]
