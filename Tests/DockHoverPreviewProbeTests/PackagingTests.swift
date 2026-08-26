@@ -41,6 +41,20 @@ final class PackagingTests: XCTestCase {
         XCTAssertEqual(extensionDictionary["NSExtensionPointIdentifier"] as? String, "com.apple.FinderSync")
     }
 
+    func testFinderSyncRegistersTheRealAccountHomeInsteadOfExtensionContainerHome() throws {
+        let source = try String(
+            contentsOf: packageRoot()
+                .appendingPathComponent("Sources")
+                .appendingPathComponent("FinderSyncExtension")
+                .appendingPathComponent("FinderSyncExtension.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("getpwuid(getuid())"))
+        XCTAssertTrue(source.contains("realUserHomeDirectory"))
+        XCTAssertFalse(source.contains("FileManager.default.homeDirectoryForCurrentUser"))
+    }
+
     func testPackagingScriptsPassBashSyntaxValidation() throws {
         for script in [
             "build_probe_app.sh",

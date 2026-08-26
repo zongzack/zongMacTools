@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import FinderSync
 import FinderNewFileCore
 
@@ -13,7 +14,16 @@ final class FinderSyncExtension: FIFinderSync {
             errorPresenter: AlertFinderErrorPresenter()
         )
         super.init()
-        FIFinderSyncController.default().directoryURLs = [FileManager.default.homeDirectoryForCurrentUser]
+        if let homeDirectory = Self.realUserHomeDirectory() {
+            FIFinderSyncController.default().directoryURLs = [homeDirectory]
+        } else {
+            FIFinderSyncController.default().directoryURLs = []
+        }
+    }
+
+    private static func realUserHomeDirectory() -> URL? {
+        guard let passwd = getpwuid(getuid()), let homePath = passwd.pointee.pw_dir else { return nil }
+        return URL(fileURLWithPath: String(cString: homePath), isDirectory: true)
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
