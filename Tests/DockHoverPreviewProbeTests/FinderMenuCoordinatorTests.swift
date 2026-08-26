@@ -51,9 +51,10 @@ final class FinderMenuCoordinatorTests: XCTestCase {
         let validator = RecordingDirectoryValidator(validURLs: [directory])
         let coordinator = FinderNewFileCoordinator(directoryValidator: validator, publisher: RecordingPublisher(), isSimplifiedChinese: { true })
         let plan = coordinator.menuPlan(for: FinderMenuRequest(kind: .contextualMenuForContainer, targetedURL: directory, selectedURLs: []))
-        XCTAssertEqual(plan.map(\.format), [.txt, .markdown, .json])
-        XCTAssertEqual(plan.map(\.title), ["TXT 文件", "Markdown 文件", "JSON 文件"])
-        XCTAssertTrue(plan.allSatisfy(\.isEnabled))
+        XCTAssertEqual(plan.map(\.format), [.txt, .markdown, .json, nil, .word, .excel, .powerpoint])
+        XCTAssertEqual(plan.map(\.title), ["TXT 文件", "Markdown 文件", "JSON 文件", "", "Word 文件", "Excel 文件", "PowerPoint 文件"])
+        XCTAssertEqual(plan[3].identifier, "\(FinderNewFileCoordinator.newFileIdentifier).separator")
+        XCTAssertTrue(plan.filter { $0.format != nil }.allSatisfy(\.isEnabled))
 
         let publisher = RecordingPublisher()
         let selector = RecordingSelector()
@@ -64,6 +65,15 @@ final class FinderMenuCoordinatorTests: XCTestCase {
         XCTAssertEqual(publisher.data, [Data("{}\n".utf8)])
         XCTAssertEqual(publisher.fileNames, ["New Document.json"])
         XCTAssertEqual(selector.urls, [directory.appendingPathComponent("New Document.json")])
+    }
+
+    func testOfficeTemplatesAreEmbeddedAndFormatSpecific() throws {
+        for format in [FinderNewFileFormat.word, .excel, .powerpoint] {
+            let data = try format.contentData()
+            XCTAssertGreaterThan(data.count, 100)
+            XCTAssertEqual(Array(data.prefix(2)), [0x50, 0x4b])
+        }
+        XCTAssertTrue(try FinderNewFileFormat.excel.contentData().count > FinderNewFileFormat.word.contentData().count)
     }
 
     func testNameConflictsAdvanceAndExhaustionPresentsOneError() {

@@ -7,13 +7,38 @@ public struct FinderMenuRequest: Sendable {
 }
 
 public enum FinderNewFileFormat: String, CaseIterable, Sendable {
-    case txt, markdown, json
-    public var fileExtension: String { switch self { case .txt: "txt"; case .markdown: "md"; case .json: "json" } }
+    case txt, markdown, json, word, excel, powerpoint
+    public var fileExtension: String {
+        switch self {
+        case .txt: "txt"
+        case .markdown: "md"
+        case .json: "json"
+        case .word: "docx"
+        case .excel: "xlsx"
+        case .powerpoint: "pptx"
+        }
+    }
     public func menuTitle(isSimplifiedChinese: Bool) -> String {
-        let name: String; switch self { case .txt: name = "TXT"; case .markdown: name = "Markdown"; case .json: name = "JSON" }
+        let name: String
+        switch self {
+        case .txt: name = "TXT"
+        case .markdown: name = "Markdown"
+        case .json: name = "JSON"
+        case .word: name = "Word"
+        case .excel: name = "Excel"
+        case .powerpoint: name = "PowerPoint"
+        }
         return isSimplifiedChinese ? "\(name) 文件" : "\(name) File"
     }
-    public var contents: Data { switch self { case .txt, .markdown: Data(); case .json: Data("{}\n".utf8) } }
+    public var isOfficeFormat: Bool { self == .word || self == .excel || self == .powerpoint }
+    public var contents: Data { (try? contentData()) ?? Data() }
+    public func contentData() throws -> Data {
+        switch self {
+        case .txt, .markdown: Data()
+        case .json: Data("{}\n".utf8)
+        case .word, .excel, .powerpoint: try FinderOfficeTemplateProvider.data(for: self)
+        }
+    }
 }
 public enum FinderNewFileLanguage {
     public static func isSimplifiedChinese(_ locale: Locale = .current) -> Bool {
@@ -53,14 +78,20 @@ public struct FinderNewFileCoordinator {
     public init(directoryValidator: FinderDirectoryValidating = LocalFinderDirectoryValidator(), publisher: FinderFilePublishing = SecureAtomicFilePublisher(), selector: FinderFileSelecting = NoopFinderFileSelector(), errorPresenter: FinderErrorPresenting = NoopFinderErrorPresenter(), isSimplifiedChinese: @escaping () -> Bool = FinderNewFileCoordinator.defaultLanguage) { self.directoryValidator = directoryValidator; self.publisher = publisher; self.selector = selector; self.errorPresenter = errorPresenter; self.isSimplifiedChinese = isSimplifiedChinese }
     public func menuPlan(for request: FinderMenuRequest) -> [FinderMenuItemPlan] {
         guard request.kind == .contextualMenuForContainer, request.selectedURLs?.isEmpty ?? true, let url = request.targetedURL, directoryValidator.isValidDirectory(url) else { return [] }
-        return FinderNewFileFormat.allCases.map { FinderMenuItemPlan(identifier: "\(Self.newFileIdentifier).\($0.rawValue)", title: $0.menuTitle(isSimplifiedChinese: isSimplifiedChinese()), isEnabled: true, format: $0) }
+        let formatItems = FinderNewFileFormat.allCases.map {
+            FinderMenuItemPlan(identifier: "\(Self.newFileIdentifier).\($0.rawValue)", title: $0.menuTitle(isSimplifiedChinese: isSimplifiedChinese()), isEnabled: true, format: $0)
+        }
+        guard let officeStart = formatItems.firstIndex(where: { $0.format?.isOfficeFormat == true }) else { return formatItems }
+        var result = formatItems
+        result.insert(FinderMenuItemPlan(identifier: "\(Self.newFileIdentifier).separator", title: "", isEnabled: false), at: officeStart)
+        return result
     }
     public func create(format: FinderNewFileFormat, in directoryURL: URL) -> FinderNewFileOutcome {
         guard directoryValidator.isValidDirectory(directoryURL) else { let error = FinderNewFileError.invalidDirectory; errorPresenter.present(error: error); return FinderNewFileOutcome(fileURL: nil, error: error) }
         let stem = isSimplifiedChinese() ? "新建文稿" : "New Document"
         for index in 1...10_000 {
             let suffix = index == 1 ? "" : " \(index)", name = "\(stem)\(suffix).\(format.fileExtension)"
-            do { let url = try publisher.publish(data: format.contents, directoryURL: directoryURL, fileName: name); selector.select(fileURL: url); return FinderNewFileOutcome(fileURL: url, error: nil) }
+            do { let url = try publisher.publish(data: try format.contentData(), directoryURL: directoryURL, fileName: name); selector.select(fileURL: url); return FinderNewFileOutcome(fileURL: url, error: nil) }
             catch FinderFilePublishError.nameOccupied { continue }
             catch { let result = FinderNewFileError.publishFailed((error as NSError).localizedDescription); errorPresenter.present(error: result); return FinderNewFileOutcome(fileURL: nil, error: result) }
         }

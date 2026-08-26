@@ -17,10 +17,14 @@ cd "$ROOT_DIR"
 swift build -c "$CONFIGURATION" >&2
 EXECUTABLE_PATH="$(swift build -c "$CONFIGURATION" --show-bin-path)/$EXECUTABLE_NAME"
 EXTENSION_EXECUTABLE_PATH="$(swift build -c "$CONFIGURATION" --show-bin-path)/FinderSyncExtension"
+SWIFT_BIN_DIR="$(swift build -c "$CONFIGURATION" --show-bin-path)"
+CORE_RESOURCE_BUNDLE="$SWIFT_BIN_DIR/DockHoverPreviewProbe_FinderNewFileCore.bundle"
 EXTENSION_ENTITLEMENTS_PATH="$ROOT_DIR/Sources/FinderSyncExtension/FinderSyncExtension.entitlements"
 
+[[ -d "$CORE_RESOURCE_BUNDLE" ]] || { echo "missing FinderNewFileCore resource bundle: $CORE_RESOURCE_BUNDLE" >&2; exit 1; }
+
 rm -rf "$APP_DIR"
-mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PLUGINS_DIR/$EXTENSION_BUNDLE_NAME/Contents/MacOS"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$PLUGINS_DIR/$EXTENSION_BUNDLE_NAME/Contents/MacOS" "$PLUGINS_DIR/$EXTENSION_BUNDLE_NAME/Contents/Resources"
 cp "$EXECUTABLE_PATH" "$MACOS_DIR/$EXECUTABLE_NAME"
 cp "$ROOT_DIR/Sources/DockHoverPreviewProbe/Info.plist" "$CONTENTS_DIR/Info.plist"
 chmod +x "$MACOS_DIR/$EXECUTABLE_NAME"
@@ -29,6 +33,7 @@ EXTENSION_DIR="$PLUGINS_DIR/$EXTENSION_BUNDLE_NAME"
 cp "$EXTENSION_EXECUTABLE_PATH" "$EXTENSION_DIR/Contents/MacOS/FinderSyncExtension"
 cp "$ROOT_DIR/Sources/FinderSyncExtension/Info.plist" "$EXTENSION_DIR/Contents/Info.plist"
 chmod +x "$EXTENSION_DIR/Contents/MacOS/FinderSyncExtension"
+cp -R "$CORE_RESOURCE_BUNDLE" "$EXTENSION_DIR/Contents/Resources/"
 
 ICON_SOURCE="$ROOT_DIR/Assets/AppIcon/zong-mac-tools-logo.png"
 cp "$ICON_SOURCE" "$RESOURCES_DIR/zong-mac-tools-logo.png"

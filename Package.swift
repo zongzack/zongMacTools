@@ -12,7 +12,13 @@ let package = Package(
     targets: [
         .target(
             name: "FinderNewFileCore",
-            path: "Sources/FinderNewFileCore"
+            path: "Sources/FinderNewFileCore",
+            exclude: ["Resources/BlankWord", "Resources/BlankExcel", "Resources/BlankPowerPoint"],
+            resources: [
+                .copy("Resources/BlankWord.zip"),
+                .copy("Resources/BlankExcel.zip"),
+                .copy("Resources/BlankPowerPoint.zip")
+            ]
         ),
         .executableTarget(
             name: "DockHoverPreviewProbe",

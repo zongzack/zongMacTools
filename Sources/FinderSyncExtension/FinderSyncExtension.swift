@@ -32,7 +32,10 @@ final class FinderSyncExtension: FIFinderSync {
         guard !plans.isEmpty, let target else { return nil }
         let menu = NSMenu(title: Self.localizedNewFileTitle())
         for plan in plans {
-            guard let format = plan.format else { continue }
+            guard let format = plan.format else {
+                menu.addItem(.separator())
+                continue
+            }
             let item = NSMenuItem(title: plan.title, action: #selector(createFile(_:)), keyEquivalent: "")
             item.target = self
             item.identifier = NSUserInterfaceItemIdentifier(plan.identifier)
