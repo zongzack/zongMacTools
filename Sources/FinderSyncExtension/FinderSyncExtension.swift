@@ -2,9 +2,11 @@ import AppKit
 import Darwin
 import FinderSync
 import FinderNewFileCore
+import UniformTypeIdentifiers
 
 final class FinderSyncExtension: FIFinderSync {
     private let menuCoordinator: FinderNewFileCoordinator
+    private var actionTargets: [FinderNewFileMenuActionTarget] = []
 
     override init() {
         let directoryValidator = LocalFinderDirectoryValidator()
@@ -41,18 +43,26 @@ final class FinderSyncExtension: FIFinderSync {
         let selectedURLs = controller.selectedItemURLs()
         let request = FinderMenuRequest(kind: kind, targetedURL: target, selectedURLs: selectedURLs)
         let plans = menuCoordinator.menuPlan(for: request)
-        guard !plans.isEmpty, target != nil else { return nil }
+        guard !plans.isEmpty, let target else {
+            actionTargets = []
+            return nil
+        }
+        actionTargets = plans.map { plan in
+            FinderNewFileMenuActionTarget(itemID: plan.identifier, directoryURL: target) { [menuCoordinator] itemID, directoryURL in
+                _ = menuCoordinator.create(itemID: itemID, in: directoryURL)
+            }
+        }
         let menu = NSMenu(title: Self.localizedNewFileTitle())
         let submenu = NSMenu(title: Self.localizedNewFileTitle())
-        for plan in plans {
-            guard let format = plan.format else {
-                submenu.addItem(.separator())
-                continue
-            }
-            let item = NSMenuItem(title: plan.title, action: #selector(createFile(_:)), keyEquivalent: "")
-            item.target = self
+        for (plan, actionTarget) in zip(plans, actionTargets) {
+            let item = NSMenuItem(title: plan.title, action: #selector(FinderNewFileMenuActionTarget.createFile(_:)), keyEquivalent: "")
+            item.target = actionTarget
             item.identifier = NSUserInterfaceItemIdentifier(plan.identifier)
-            item.image = NSWorkspace.shared.icon(forFileType: format.fileExtension)
+            item.isEnabled = plan.isEnabled
+            if let fileExtension = plan.fileExtension {
+                let type = UTType(filenameExtension: fileExtension) ?? .data
+                item.image = NSWorkspace.shared.icon(for: type)
+            }
             submenu.addItem(item)
         }
         let newFileItem = NSMenuItem(title: Self.localizedNewFileTitle(), action: nil, keyEquivalent: "")
@@ -61,17 +71,6 @@ final class FinderSyncExtension: FIFinderSync {
         newFileItem.submenu = submenu
         menu.addItem(newFileItem)
         return menu
-    }
-
-    @objc private func createFile(_ sender: NSMenuItem) {
-        // Finder rebuilds the menu item when presenting it, so representedObject,
-        // identifier, and tag do not survive into the action. The item title and
-        // targetedURL() are preserved, so recover the format from the localized
-        // title and the directory from the controller.
-        guard let target = FIFinderSyncController.default().targetedURL() else { return }
-        let simplifiedChinese = FinderNewFileLanguage.isSimplifiedChinese()
-        guard let format = FinderNewFileFormat.allCases.first(where: { $0.menuTitle(isSimplifiedChinese: simplifiedChinese) == sender.title }) else { return }
-        _ = menuCoordinator.create(format: format, in: target)
     }
 
     private static func localizedNewFileTitle() -> String {
@@ -84,6 +83,22 @@ private struct WorkspaceFinderFileSelector: FinderFileSelecting {
 }
 private struct AlertFinderErrorPresenter: FinderErrorPresenting {
     nonisolated func present(error: FinderNewFileError) { Task { @MainActor in let alert = NSAlert(); alert.alertStyle = .warning; alert.messageText = "无法新建文件"; alert.informativeText = error.localizedDescription; alert.addButton(withTitle: "好"); alert.runModal() } }
+}
+
+private final class FinderNewFileMenuActionTarget: NSObject {
+    private let itemID: String
+    private let directoryURL: URL
+    private let create: (String, URL) -> Void
+
+    init(itemID: String, directoryURL: URL, create: @escaping (String, URL) -> Void) {
+        self.itemID = itemID
+        self.directoryURL = directoryURL
+        self.create = create
+    }
+
+    @objc func createFile(_ sender: NSMenuItem) {
+        create(itemID, directoryURL)
+    }
 }
 
 @main

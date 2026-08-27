@@ -71,7 +71,7 @@ final class PackagingTests: XCTestCase {
         XCTAssertEqual(plist["com.apple.security.temporary-exception.files.home-relative-path.read-write"] as? [String], ["/"])
     }
 
-    func testFinderSyncActionRecoversFormatFromTitleBecauseFinderStripsRepresentedObject() throws {
+    func testFinderSyncActionUsesStableItemIDInsteadOfTitleLookup() throws {
         let source = try String(
             contentsOf: packageRoot()
                 .appendingPathComponent("Sources")
@@ -80,9 +80,11 @@ final class PackagingTests: XCTestCase {
             encoding: .utf8
         )
 
-        XCTAssertTrue(source.contains("menuTitle(isSimplifiedChinese:"))
+        XCTAssertTrue(source.contains("FinderNewFileMenuActionTarget"))
+        XCTAssertTrue(source.contains("create(itemID:"))
+        XCTAssertTrue(source.contains("item.identifier = NSUserInterfaceItemIdentifier(plan.identifier)"))
         XCTAssertTrue(source.contains("targetedURL()"))
-        XCTAssertFalse(source.contains("representedObject = FinderActionPayload"))
+        XCTAssertFalse(source.contains("first(where: { $0.menuTitle"))
     }
 
     func testPackagingScriptsPassBashSyntaxValidation() throws {

@@ -61,6 +61,7 @@ final class FinderMenuCoordinatorTests: XCTestCase {
         ))
         XCTAssertFalse(plan.isEmpty)
         XCTAssertEqual(plan.map(\.format), [.txt, .markdown, .json, .word, .excel, .powerpoint])
+        XCTAssertEqual(plan.map(\.identifier), FinderNewFileFormat.allCases.map(\.stableID))
 
         // A genuine item selection still suppresses the menu.
         let selectedItem = directory.appendingPathComponent("file.txt")
@@ -77,6 +78,8 @@ final class FinderMenuCoordinatorTests: XCTestCase {
         let coordinator = FinderNewFileCoordinator(directoryValidator: validator, publisher: RecordingPublisher(), isSimplifiedChinese: { true })
         let plan = coordinator.menuPlan(for: FinderMenuRequest(kind: .contextualMenuForContainer, targetedURL: directory, selectedURLs: []))
         XCTAssertEqual(plan.map(\.format), [.txt, .markdown, .json, .word, .excel, .powerpoint])
+        XCTAssertEqual(plan.map(\.identifier), FinderNewFileFormat.allCases.map(\.stableID))
+        XCTAssertEqual(plan.map(\.fileExtension), ["txt", "md", "json", "docx", "xlsx", "pptx"])
         XCTAssertEqual(plan.map(\.title), ["TXT", "Markdown", "JSON", "Word", "Excel", "PowerPoint"])
         XCTAssertTrue(plan.allSatisfy(\.isEnabled))
 
@@ -95,6 +98,188 @@ final class FinderMenuCoordinatorTests: XCTestCase {
         XCTAssertEqual(publisher.data, [Data("{}\n".utf8)])
         XCTAssertEqual(publisher.fileNames, ["New Document.json"])
         XCTAssertEqual(selector.urls, [directory.appendingPathComponent("New Document.json")])
+    }
+
+    func testMenuPlanConsumesOrderedCatalogAndFiltersDisabledItems() {
+        let directory = URL(fileURLWithPath: "/tmp/catalog")
+        let validator = RecordingDirectoryValidator(validURLs: [directory])
+        let catalog = FinderNewFileCatalog(
+            items: [
+                FinderNewFileCatalogItem(
+                    id: FinderNewFileFormat.json.stableID,
+                    source: .builtIn,
+                    builtInFormat: .json,
+                    displayName: "JSON",
+                    fileExtension: "json",
+                    isEnabled: false,
+                    sortOrder: 0
+                ),
+                FinderNewFileCatalogItem(
+                    id: "custom.alpha",
+                    source: .custom,
+                    displayName: "Project Note",
+                    fileExtension: "txt",
+                    isEnabled: true,
+                    sortOrder: 1,
+                    templateReference: FinderNewFileTemplateReference(relativePath: "alpha.template")
+                ),
+                FinderNewFileCatalogItem(
+                    id: FinderNewFileFormat.markdown.stableID,
+                    source: .builtIn,
+                    builtInFormat: .markdown,
+                    displayName: "Project Note",
+                    fileExtension: "md",
+                    isEnabled: true,
+                    sortOrder: 2
+                )
+            ],
+            templateDirectoryURL: URL(fileURLWithPath: "/tmp/catalog-templates", isDirectory: true)
+        )
+        let coordinator = FinderNewFileCoordinator(
+            directoryValidator: validator,
+            publisher: RecordingPublisher(),
+            catalogProvider: StaticCatalogProvider(catalog: catalog),
+            isSimplifiedChinese: { false }
+        )
+
+        let plan = coordinator.menuPlan(for: FinderMenuRequest(
+            kind: .contextualMenuForContainer,
+            targetedURL: directory,
+            selectedURLs: []
+        ))
+
+        XCTAssertEqual(plan.map(\.identifier), ["custom.alpha", FinderNewFileFormat.markdown.stableID])
+        XCTAssertEqual(plan.map(\.title), ["Project Note", "Project Note"])
+        XCTAssertEqual(plan.map(\.format), [nil, .markdown])
+        XCTAssertEqual(plan.map(\.fileExtension), ["txt", "md"])
+    }
+
+    func testEmptyEnabledCatalogHidesTheMenuEntry() {
+        let directory = URL(fileURLWithPath: "/tmp/catalog")
+        let validator = RecordingDirectoryValidator(validURLs: [directory])
+        let catalog = FinderNewFileCatalog(
+            items: FinderNewFileCatalog.defaultCatalog().items.map {
+                var item = $0
+                item.isEnabled = false
+                return item
+            }
+        )
+        let coordinator = FinderNewFileCoordinator(
+            directoryValidator: validator,
+            publisher: RecordingPublisher(),
+            catalogProvider: StaticCatalogProvider(catalog: catalog)
+        )
+
+        XCTAssertTrue(coordinator.menuPlan(for: FinderMenuRequest(
+            kind: .contextualMenuForContainer,
+            targetedURL: directory,
+            selectedURLs: []
+        )).isEmpty)
+    }
+
+    func testCreateByStableIDUsesConfiguredItemInsteadOfDisplayNameOrLanguage() throws {
+        let directory = URL(fileURLWithPath: "/tmp/stable-id")
+        let templateDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("finder-new-file-templates-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: templateDirectory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: templateDirectory) }
+        try Data("custom bytes".utf8).write(to: templateDirectory.appendingPathComponent("template.bin"))
+
+        let catalog = FinderNewFileCatalog(
+            items: [
+                FinderNewFileCatalogItem(
+                    id: FinderNewFileFormat.json.stableID,
+                    source: .builtIn,
+                    builtInFormat: .json,
+                    displayName: "Same Name",
+                    fileExtension: "json",
+                    isEnabled: true,
+                    sortOrder: 0
+                ),
+                FinderNewFileCatalogItem(
+                    id: "custom.same-name",
+                    source: .custom,
+                    displayName: "Same Name",
+                    fileExtension: "txt",
+                    isEnabled: true,
+                    sortOrder: 1,
+                    templateReference: FinderNewFileTemplateReference(relativePath: "template.bin")
+                )
+            ],
+            templateDirectoryURL: templateDirectory
+        )
+        let publisher = RecordingPublisher()
+        let selector = RecordingSelector()
+        let coordinator = FinderNewFileCoordinator(
+            directoryValidator: RecordingDirectoryValidator(validURLs: [directory]),
+            publisher: publisher,
+            selector: selector,
+            catalogProvider: StaticCatalogProvider(catalog: catalog),
+            isSimplifiedChinese: { false }
+        )
+
+        XCTAssertTrue(coordinator.create(itemID: "custom.same-name", in: directory).isSuccess)
+        XCTAssertTrue(coordinator.create(itemID: FinderNewFileFormat.json.stableID, in: directory).isSuccess)
+
+        XCTAssertEqual(publisher.fileNames, ["Same Name.txt", "New Document.json"])
+        XCTAssertEqual(publisher.data, [Data("custom bytes".utf8), Data("{}\n".utf8)])
+        XCTAssertEqual(selector.urls, [
+            directory.appendingPathComponent("Same Name.txt"),
+            directory.appendingPathComponent("New Document.json")
+        ])
+    }
+
+    func testCustomTemplateCreationUsesDisplayNameExtensionAndConflictIncrementing() throws {
+        let directory = URL(fileURLWithPath: "/tmp/custom-template")
+        let templateDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("finder-new-file-templates-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: templateDirectory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: templateDirectory) }
+        try Data("# Template\n".utf8).write(to: templateDirectory.appendingPathComponent("note.md"))
+
+        let catalog = FinderNewFileCatalog(
+            items: [
+                FinderNewFileCatalogItem(
+                    id: "custom.note",
+                    source: .custom,
+                    displayName: "Project Note",
+                    fileExtension: "md",
+                    isEnabled: true,
+                    sortOrder: 0,
+                    templateReference: FinderNewFileTemplateReference(relativePath: "note.md")
+                )
+            ],
+            templateDirectoryURL: templateDirectory
+        )
+        let publisher = RecordingPublisher(occupied: ["Project Note.md"])
+        let selector = RecordingSelector()
+        let coordinator = FinderNewFileCoordinator(
+            directoryValidator: RecordingDirectoryValidator(validURLs: [directory]),
+            publisher: publisher,
+            selector: selector,
+            catalogProvider: StaticCatalogProvider(catalog: catalog),
+            isSimplifiedChinese: { false }
+        )
+
+        XCTAssertTrue(coordinator.create(itemID: "custom.note", in: directory).isSuccess)
+
+        XCTAssertEqual(publisher.fileNames, ["Project Note.md", "Project Note 2.md"])
+        XCTAssertEqual(publisher.data, [Data("# Template\n".utf8), Data("# Template\n".utf8)])
+        XCTAssertEqual(selector.urls, [directory.appendingPathComponent("Project Note 2.md")])
+    }
+
+    func testUnknownStableIDPresentsUnavailableItemError() {
+        let directory = URL(fileURLWithPath: "/tmp/unknown")
+        let publisher = RecordingPublisher()
+        let errors = RecordingErrors()
+        let coordinator = FinderNewFileCoordinator(
+            directoryValidator: RecordingDirectoryValidator(validURLs: [directory]),
+            publisher: publisher,
+            errorPresenter: errors,
+            catalogProvider: StaticCatalogProvider(catalog: .defaultCatalog())
+        )
+
+        XCTAssertEqual(coordinator.create(itemID: "custom.missing", in: directory).error, .itemUnavailable("custom.missing"))
+        XCTAssertTrue(publisher.fileNames.isEmpty)
+        XCTAssertEqual(errors.errors, [.itemUnavailable("custom.missing")])
     }
 
     func testOfficeTemplatesAreEmbeddedAndFormatSpecific() throws {
@@ -175,3 +360,11 @@ private final class RecordingPublisher: FinderFilePublishing {
 }
 private final class RecordingSelector: FinderFileSelecting { var urls: [URL] = []; func select(fileURL: URL) { urls.append(fileURL) } }
 private final class RecordingErrors: FinderErrorPresenting { var errors: [FinderNewFileError] = []; func present(error: FinderNewFileError) { errors.append(error) } }
+
+private struct StaticCatalogProvider: FinderNewFileCatalogProviding {
+    let catalog: FinderNewFileCatalog
+
+    func loadCatalog() -> FinderNewFileCatalog {
+        catalog
+    }
+}
