@@ -11,7 +11,12 @@ public enum FinderNewFileCatalogStoreError: Error, Equatable, LocalizedError, Se
     }
 }
 
-public struct JSONFinderNewFileCatalogStore: FinderNewFileCatalogProviding {
+/// Storage seam shared by the settings app (writer) and Finder extension (reader).
+public protocol FinderNewFileCatalogStoring: FinderNewFileCatalogProviding {
+    func saveCatalog(_ catalog: FinderNewFileCatalog) throws
+}
+
+public struct JSONFinderNewFileCatalogStore: FinderNewFileCatalogStoring {
     public static let currentVersion = 1
 
     private let catalogURL: URL

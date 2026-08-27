@@ -1,4 +1,5 @@
 import XCTest
+import FinderNewFileCore
 @testable import DockHoverPreviewProbe
 
 @MainActor
@@ -26,6 +27,53 @@ final class FinderExtensionSettingsViewModelTests: XCTestCase {
         XCTAssertEqual(presenter.openCount, 1)
         XCTAssertTrue(viewModel.state.isEnabled)
     }
+
+    func testBuiltInCatalogLoadsAndTogglePersistsEvenWhenExtensionIsDisabled() {
+        let status = FakeFinderExtensionStatusProvider(isEnabled: false)
+        let store = InMemoryCatalogStore()
+        let viewModel = FinderExtensionSettingsViewModel(
+            statusProvider: status,
+            managementPresenter: FakeFinderExtensionManagementPresenter(),
+            catalogStore: store
+        )
+
+        XCTAssertEqual(viewModel.state.items.map(\.id), FinderNewFileFormat.allCases.map(\.stableID))
+        XCTAssertTrue(viewModel.setItemEnabled(false, for: FinderNewFileFormat.json.stableID))
+        XCTAssertFalse(viewModel.state.items.first(where: { $0.builtInFormat == .json })!.isEnabled)
+        XCTAssertFalse(store.savedCatalog!.item(withID: FinderNewFileFormat.json.stableID)!.isEnabled)
+    }
+
+    func testRenameRejectsEmptyAndIllegalNamesButAllowsDuplicateValidNames() {
+        let store = InMemoryCatalogStore()
+        let viewModel = FinderExtensionSettingsViewModel(
+            statusProvider: FakeFinderExtensionStatusProvider(isEnabled: false),
+            managementPresenter: FakeFinderExtensionManagementPresenter(),
+            catalogStore: store
+        )
+        let txtID = FinderNewFileFormat.txt.stableID
+        let markdownID = FinderNewFileFormat.markdown.stableID
+
+        XCTAssertFalse(viewModel.updateDisplayName("   ", for: txtID))
+        XCTAssertFalse(viewModel.updateDisplayName("bad/name", for: txtID))
+        XCTAssertNil(store.savedCatalog)
+        XCTAssertTrue(viewModel.updateDisplayName("Notes", for: txtID))
+        XCTAssertTrue(viewModel.updateDisplayName("Notes", for: markdownID))
+        XCTAssertEqual(viewModel.state.items.filter { $0.displayName == "Notes" }.count, 2)
+    }
+
+    func testBuiltInExtensionIsLockedAndMovePersistsOrder() {
+        let store = InMemoryCatalogStore()
+        let viewModel = FinderExtensionSettingsViewModel(
+            statusProvider: FakeFinderExtensionStatusProvider(isEnabled: false),
+            managementPresenter: FakeFinderExtensionManagementPresenter(),
+            catalogStore: store
+        )
+
+        XCTAssertEqual(viewModel.state.items.first(where: { $0.id == FinderNewFileFormat.txt.stableID })?.fileExtension, "txt")
+        XCTAssertTrue(viewModel.moveItem(withID: FinderNewFileFormat.powerpoint.stableID, beforeID: FinderNewFileFormat.txt.stableID))
+        XCTAssertEqual(viewModel.state.items.map(\.builtInFormat), [.powerpoint, .txt, .markdown, .json, .word, .excel])
+        XCTAssertEqual(store.savedCatalog!.orderedItems.map(\.sortOrder), Array(0..<6))
+    }
 }
 
 @MainActor
@@ -49,5 +97,21 @@ private final class FakeFinderExtensionManagementPresenter: FinderExtensionManag
     func showManagementInterface() {
         openCount += 1
         action()
+    }
+}
+
+private final class InMemoryCatalogStore: FinderNewFileCatalogStoring {
+    private(set) var savedCatalog: FinderNewFileCatalog?
+    private var catalog: FinderNewFileCatalog
+
+    init(catalog: FinderNewFileCatalog = .defaultCatalog(templateDirectoryURL: URL(fileURLWithPath: "/tmp/finder-templates", isDirectory: true))) {
+        self.catalog = catalog
+    }
+
+    func loadCatalog() -> FinderNewFileCatalog { catalog }
+
+    func saveCatalog(_ catalog: FinderNewFileCatalog) throws {
+        self.catalog = catalog
+        savedCatalog = catalog
     }
 }

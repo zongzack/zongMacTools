@@ -177,6 +177,22 @@ final class FinderMenuCoordinatorTests: XCTestCase {
         )).isEmpty)
     }
 
+    func testCreateByStableIDRejectsItemDisabledAfterMenuWasBuilt() {
+        let directory = URL(fileURLWithPath: "/tmp/disabled-item")
+        var disabled = FinderNewFileCatalogItem.builtInItem(for: .txt, sortOrder: 0)
+        disabled.isEnabled = false
+        let errors = RecordingErrors()
+        let coordinator = FinderNewFileCoordinator(
+            directoryValidator: RecordingDirectoryValidator(validURLs: [directory]),
+            publisher: RecordingPublisher(),
+            errorPresenter: errors,
+            catalogProvider: StaticCatalogProvider(catalog: FinderNewFileCatalog(items: [disabled]))
+        )
+
+        XCTAssertEqual(coordinator.create(itemID: disabled.id, in: directory).error, .itemUnavailable(disabled.id))
+        XCTAssertEqual(errors.errors, [.itemUnavailable(disabled.id)])
+    }
+
     func testCreateByStableIDUsesConfiguredItemInsteadOfDisplayNameOrLanguage() throws {
         let directory = URL(fileURLWithPath: "/tmp/stable-id")
         let templateDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("finder-new-file-templates-\(UUID().uuidString)")

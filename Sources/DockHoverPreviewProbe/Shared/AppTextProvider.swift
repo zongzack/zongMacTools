@@ -25,6 +25,11 @@ enum LocalizedTextKey: String, CaseIterable {
     case finderExtensionEnabled
     case finderExtensionDisabled
     case manageFinderExtension
+    case finderNewFileFormats
+    case finderNewFileFormatName
+    case finderNewFileFormatExtension
+    case finderNewFileFormatEnabled
+    case finderNewFileFormatDisabled
     case notDeveloped
     case dockHoverPreviewStatusEnabled
     case dockHoverPreviewStatusDisabled

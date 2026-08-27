@@ -115,7 +115,7 @@ public struct FinderNewFileCoordinator {
     }
     public func create(itemID: String, in directoryURL: URL) -> FinderNewFileOutcome {
         let catalog = catalogProvider.loadCatalog()
-        guard let item = catalog.item(withID: itemID) else {
+        guard let item = catalog.item(withID: itemID), item.isEnabled else {
             let error = FinderNewFileError.itemUnavailable(itemID)
             errorPresenter.present(error: error)
             return FinderNewFileOutcome(fileURL: nil, error: error)

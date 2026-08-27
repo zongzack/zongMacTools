@@ -41,6 +41,16 @@ extension AppTextProvider {
             "Finder extension: Not Enabled"
         case .manageFinderExtension:
             "Manage Finder Extension"
+        case .finderNewFileFormats:
+            "New File Formats"
+        case .finderNewFileFormatName:
+            "Name"
+        case .finderNewFileFormatExtension:
+            "Extension"
+        case .finderNewFileFormatEnabled:
+            "Enabled"
+        case .finderNewFileFormatDisabled:
+            "Disabled"
         case .notDeveloped:
             "Not Developed"
         case .language:
@@ -90,6 +100,16 @@ extension AppTextProvider {
             "Finder \u{6269}\u{5C55}\u{FF1A}\u{672A}\u{542F}\u{7528}"
         case .manageFinderExtension:
             "\u{7BA1}\u{7406} Finder \u{6269}\u{5C55}"
+        case .finderNewFileFormats:
+            "\u{65B0}\u{5EFA}\u{6587}\u{4EF6}\u{683C}\u{5F0F}"
+        case .finderNewFileFormatName:
+            "\u{540D}\u{79F0}"
+        case .finderNewFileFormatExtension:
+            "\u{540E}\u{7F00}"
+        case .finderNewFileFormatEnabled:
+            "\u{5DF2}\u{542F}\u{7528}"
+        case .finderNewFileFormatDisabled:
+            "\u{5DF2}\u{505C}\u{7528}"
         case .notDeveloped:
             "\u{672A}\u{5F00}\u{53D1}"
         case .language:
