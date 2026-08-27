@@ -7,8 +7,9 @@ final class FinderSyncExtension: FIFinderSync {
     private let menuCoordinator: FinderNewFileCoordinator
 
     override init() {
+        let directoryValidator = LocalFinderDirectoryValidator()
         menuCoordinator = FinderNewFileCoordinator(
-            directoryValidator: LocalFinderDirectoryValidator(),
+            directoryValidator: directoryValidator,
             publisher: SecureAtomicFilePublisher(),
             selector: WorkspaceFinderFileSelector(),
             errorPresenter: AlertFinderErrorPresenter()
@@ -37,39 +38,45 @@ final class FinderSyncExtension: FIFinderSync {
         }
         let controller = FIFinderSyncController.default()
         let target = controller.targetedURL()
-        let request = FinderMenuRequest(kind: kind, targetedURL: target, selectedURLs: controller.selectedItemURLs())
+        let selectedURLs = controller.selectedItemURLs()
+        let request = FinderMenuRequest(kind: kind, targetedURL: target, selectedURLs: selectedURLs)
         let plans = menuCoordinator.menuPlan(for: request)
-        guard !plans.isEmpty, let target else { return nil }
+        guard !plans.isEmpty, target != nil else { return nil }
         let menu = NSMenu(title: Self.localizedNewFileTitle())
+        let submenu = NSMenu(title: Self.localizedNewFileTitle())
         for plan in plans {
             guard let format = plan.format else {
-                menu.addItem(.separator())
+                submenu.addItem(.separator())
                 continue
             }
             let item = NSMenuItem(title: plan.title, action: #selector(createFile(_:)), keyEquivalent: "")
             item.target = self
             item.identifier = NSUserInterfaceItemIdentifier(plan.identifier)
-            item.representedObject = FinderActionPayload(directoryURL: target, format: format)
             item.image = NSWorkspace.shared.icon(forFileType: format.fileExtension)
-            menu.addItem(item)
+            submenu.addItem(item)
         }
+        let newFileItem = NSMenuItem(title: Self.localizedNewFileTitle(), action: nil, keyEquivalent: "")
+        newFileItem.identifier = NSUserInterfaceItemIdentifier(FinderNewFileCoordinator.newFileIdentifier)
+        newFileItem.isEnabled = true
+        newFileItem.submenu = submenu
+        menu.addItem(newFileItem)
         return menu
     }
 
     @objc private func createFile(_ sender: NSMenuItem) {
-        guard let payload = sender.representedObject as? FinderActionPayload else { return }
-        _ = menuCoordinator.create(format: payload.format, in: payload.directoryURL)
+        // Finder rebuilds the menu item when presenting it, so representedObject,
+        // identifier, and tag do not survive into the action. The item title and
+        // targetedURL() are preserved, so recover the format from the localized
+        // title and the directory from the controller.
+        guard let target = FIFinderSyncController.default().targetedURL() else { return }
+        let simplifiedChinese = FinderNewFileLanguage.isSimplifiedChinese()
+        guard let format = FinderNewFileFormat.allCases.first(where: { $0.menuTitle(isSimplifiedChinese: simplifiedChinese) == sender.title }) else { return }
+        _ = menuCoordinator.create(format: format, in: target)
     }
 
     private static func localizedNewFileTitle() -> String {
         FinderNewFileLanguage.isSimplifiedChinese() ? "新建文件" : "New File"
     }
-}
-
-private final class FinderActionPayload: NSObject {
-    let directoryURL: URL
-    let format: FinderNewFileFormat
-    init(directoryURL: URL, format: FinderNewFileFormat) { self.directoryURL = directoryURL; self.format = format }
 }
 
 private struct WorkspaceFinderFileSelector: FinderFileSelecting {
@@ -81,9 +88,10 @@ private struct AlertFinderErrorPresenter: FinderErrorPresenting {
 
 @main
 enum FinderSyncExtensionMain {
-    static func main() { let delegate = FinderSyncExtensionDelegate(); NSApplication.shared.delegate = delegate; NSApplication.shared.run() }
+    static func main() { NSExtensionMain() }
 }
-private final class FinderSyncExtensionDelegate: NSObject, NSApplicationDelegate {
-    private var extensionObject: FinderSyncExtension?
-    func applicationDidFinishLaunching(_ notification: Notification) { extensionObject = FinderSyncExtension() }
-}
+
+// SwiftPM builds this target as an executable, so explicitly forward to the
+// App Extension runtime entry point that Xcode supplies for extension targets.
+@_silgen_name("NSExtensionMain")
+private func NSExtensionMain()

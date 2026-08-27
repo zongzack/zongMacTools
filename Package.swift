@@ -41,7 +41,8 @@ let package = Package(
             exclude: ["Info.plist", "FinderSyncExtension.entitlements"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
-                .linkedFramework("FinderSync")
+                .linkedFramework("FinderSync"),
+                .unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])
             ]
         ),
         .testTarget(

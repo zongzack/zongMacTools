@@ -31,5 +31,7 @@
         <key>NSExtensionPrincipalClass</key>
         <string>FinderSyncExtension.FinderSyncExtension</string>
     </dict>
+    <key>LSUIElement</key>
+    <true/>
 </dict>
 </plist>

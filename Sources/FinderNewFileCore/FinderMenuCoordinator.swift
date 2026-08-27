@@ -28,7 +28,7 @@ public enum FinderNewFileFormat: String, CaseIterable, Sendable {
         case .excel: name = "Excel"
         case .powerpoint: name = "PowerPoint"
         }
-        return isSimplifiedChinese ? "\(name) 文件" : "\(name) File"
+        return isSimplifiedChinese ? name : "\(name) File"
     }
     public var isOfficeFormat: Bool { self == .word || self == .excel || self == .powerpoint }
     public var contents: Data { (try? contentData()) ?? Data() }
@@ -42,6 +42,15 @@ public enum FinderNewFileFormat: String, CaseIterable, Sendable {
 }
 public enum FinderNewFileLanguage {
     public static func isSimplifiedChinese(_ locale: Locale = .current) -> Bool {
+        // System-launched processes such as Finder Sync extensions can report a
+        // region-format `Locale.current` (e.g. en_US) even when the user prefers
+        // Simplified Chinese. Prefer AppleLanguages to decide menu/file naming.
+        if let preferred = Locale.preferredLanguages.first {
+            let language = Locale(identifier: preferred).language
+            if language.languageCode?.identifier == "zh" {
+                return language.script?.identifier != "Hant"
+            }
+        }
         let language = locale.language
         return language.languageCode?.identifier == "zh" && language.script?.identifier == "Hans"
     }
@@ -77,14 +86,17 @@ public struct FinderNewFileCoordinator {
     private let directoryValidator: FinderDirectoryValidating; private let publisher: FinderFilePublishing; private let selector: FinderFileSelecting; private let errorPresenter: FinderErrorPresenting; private let isSimplifiedChinese: () -> Bool
     public init(directoryValidator: FinderDirectoryValidating = LocalFinderDirectoryValidator(), publisher: FinderFilePublishing = SecureAtomicFilePublisher(), selector: FinderFileSelecting = NoopFinderFileSelector(), errorPresenter: FinderErrorPresenting = NoopFinderErrorPresenter(), isSimplifiedChinese: @escaping () -> Bool = FinderNewFileCoordinator.defaultLanguage) { self.directoryValidator = directoryValidator; self.publisher = publisher; self.selector = selector; self.errorPresenter = errorPresenter; self.isSimplifiedChinese = isSimplifiedChinese }
     public func menuPlan(for request: FinderMenuRequest) -> [FinderMenuItemPlan] {
-        guard request.kind == .contextualMenuForContainer, request.selectedURLs?.isEmpty ?? true, let url = request.targetedURL, directoryValidator.isValidDirectory(url) else { return [] }
+        guard request.kind == .contextualMenuForContainer, let url = request.targetedURL, directoryValidator.isValidDirectory(url) else { return [] }
+        // Finder reports the container URL itself in `selectedItemURLs` for the
+        // window-background menu, so a selection that only contains the targeted
+        // directory must be treated as an empty selection. Only genuine item
+        // selections (any URL other than the container) suppress the menu.
+        let selected = (request.selectedURLs ?? []).filter { $0.standardizedFileURL != url.standardizedFileURL }
+        guard selected.isEmpty else { return [] }
         let formatItems = FinderNewFileFormat.allCases.map {
             FinderMenuItemPlan(identifier: "\(Self.newFileIdentifier).\($0.rawValue)", title: $0.menuTitle(isSimplifiedChinese: isSimplifiedChinese()), isEnabled: true, format: $0)
         }
-        guard let officeStart = formatItems.firstIndex(where: { $0.format?.isOfficeFormat == true }) else { return formatItems }
-        var result = formatItems
-        result.insert(FinderMenuItemPlan(identifier: "\(Self.newFileIdentifier).separator", title: "", isEnabled: false), at: officeStart)
-        return result
+        return formatItems
     }
     public func create(format: FinderNewFileFormat, in directoryURL: URL) -> FinderNewFileOutcome {
         guard directoryValidator.isValidDirectory(directoryURL) else { let error = FinderNewFileError.invalidDirectory; errorPresenter.present(error: error); return FinderNewFileOutcome(fileURL: nil, error: error) }

@@ -36,6 +36,7 @@ final class PackagingTests: XCTestCase {
         let plist = try XCTUnwrap(object as? [String: Any])
 
         XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "zongMacTools")
+        XCTAssertEqual(plist["LSUIElement"] as? Bool, true)
         let extensionDictionary = try XCTUnwrap(plist["NSExtension"] as? [String: Any])
         XCTAssertNotNil(extensionDictionary["NSExtensionAttributes"] as? [String: Any])
         XCTAssertEqual(extensionDictionary["NSExtensionPointIdentifier"] as? String, "com.apple.FinderSync")
@@ -53,6 +54,35 @@ final class PackagingTests: XCTestCase {
         XCTAssertTrue(source.contains("getpwuid(getuid())"))
         XCTAssertTrue(source.contains("realUserHomeDirectory"))
         XCTAssertFalse(source.contains("FileManager.default.homeDirectoryForCurrentUser"))
+    }
+
+    func testFinderSyncUsesTheAppExtensionRuntimeAsItsExecutableEntryPoint() throws {
+        let source = try String(contentsOf: packageRoot().appendingPathComponent("Package.swift"), encoding: .utf8)
+
+        XCTAssertTrue(source.contains("\"-Xlinker\""))
+        XCTAssertTrue(source.contains("\"-e\""))
+        XCTAssertTrue(source.contains("\"_NSExtensionMain\""))
+    }
+
+    func testFinderSyncEntitlementsGrantHomeReadWriteAndRemainSandboxed() throws {
+        let data = try Data(contentsOf: packageRoot().appendingPathComponent("Sources/FinderSyncExtension/FinderSyncExtension.entitlements"))
+        let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any])
+        XCTAssertEqual(plist["com.apple.security.app-sandbox"] as? Bool, true)
+        XCTAssertEqual(plist["com.apple.security.temporary-exception.files.home-relative-path.read-write"] as? [String], ["/"])
+    }
+
+    func testFinderSyncActionRecoversFormatFromTitleBecauseFinderStripsRepresentedObject() throws {
+        let source = try String(
+            contentsOf: packageRoot()
+                .appendingPathComponent("Sources")
+                .appendingPathComponent("FinderSyncExtension")
+                .appendingPathComponent("FinderSyncExtension.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("menuTitle(isSimplifiedChinese:"))
+        XCTAssertTrue(source.contains("targetedURL()"))
+        XCTAssertFalse(source.contains("representedObject = FinderActionPayload"))
     }
 
     func testPackagingScriptsPassBashSyntaxValidation() throws {
@@ -100,6 +130,7 @@ final class PackagingTests: XCTestCase {
         XCTAssertTrue(source.contains("codesign --verify --strict \"$EXTENSION_PATH\""))
         XCTAssertTrue(source.contains("codesign --verify --strict \"$APP_PATH\""))
         XCTAssertTrue(source.contains("com.apple.security.app-sandbox"))
+        XCTAssertTrue(source.contains("com.apple.security.temporary-exception.files.home-relative-path.read-write"))
         XCTAssertTrue(source.contains("missing signing order trace"))
         XCTAssertTrue(source.contains("artifact app-cdhash"))
         XCTAssertTrue(source.contains("artifact extension-cdhash"))

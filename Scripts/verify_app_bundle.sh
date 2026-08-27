@@ -111,6 +111,7 @@ grep -q 'Identifier=com.zong.zongMacTools.finder-sync' <<<"$EXTENSION_SIGNING_SU
 EXTENSION_ENTITLEMENTS="$TEMP_DIR/extension-entitlements.plist"
 codesign -d --entitlements :- "$EXTENSION_PATH" > "$EXTENSION_ENTITLEMENTS" 2>/dev/null || fail "unable to read extension entitlements"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.app-sandbox' "$EXTENSION_ENTITLEMENTS" 2>/dev/null || true)" == "true" ]] || fail "extension is not signed with app sandbox entitlement"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.temporary-exception.files.home-relative-path.read-write:0' "$EXTENSION_ENTITLEMENTS" 2>/dev/null || true)" == "/" ]] || fail "extension is missing home-relative read-write temporary exception"
 
 [[ -f "$SIGNING_TRACE_PATH" ]] || fail "missing signing order trace: $SIGNING_TRACE_PATH"
 TRACE_CONTENT="$(cat "$SIGNING_TRACE_PATH")"

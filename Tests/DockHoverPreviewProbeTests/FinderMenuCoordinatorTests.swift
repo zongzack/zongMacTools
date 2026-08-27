@@ -46,15 +46,45 @@ final class FinderMenuCoordinatorTests: XCTestCase {
         XCTAssertTrue(validator.checkedURLs.isEmpty)
     }
 
+    func testContainerURLInSelectedURLsIsTreatedAsEmptySelection() {
+        // Real Finder behavior: for the window-background menu,
+        // selectedItemURLs() reports the container URL itself. The menu must
+        // still appear because that is not a genuine item selection.
+        let directory = URL(fileURLWithPath: "/tmp/container")
+        let validator = RecordingDirectoryValidator(validURLs: [directory])
+        let coordinator = FinderNewFileCoordinator(directoryValidator: validator, publisher: RecordingPublisher(), isSimplifiedChinese: { true })
+
+        let plan = coordinator.menuPlan(for: FinderMenuRequest(
+            kind: .contextualMenuForContainer,
+            targetedURL: directory,
+            selectedURLs: [directory]
+        ))
+        XCTAssertFalse(plan.isEmpty)
+        XCTAssertEqual(plan.map(\.format), [.txt, .markdown, .json, .word, .excel, .powerpoint])
+
+        // A genuine item selection still suppresses the menu.
+        let selectedItem = directory.appendingPathComponent("file.txt")
+        XCTAssertTrue(coordinator.menuPlan(for: FinderMenuRequest(
+            kind: .contextualMenuForContainer,
+            targetedURL: directory,
+            selectedURLs: [directory, selectedItem]
+        )).isEmpty)
+    }
+
     func testNewFileMenuContainsLocalizedFormatsAndCreationUsesFrozenDirectory() {
         let directory = URL(fileURLWithPath: "/tmp/frozen")
         let validator = RecordingDirectoryValidator(validURLs: [directory])
         let coordinator = FinderNewFileCoordinator(directoryValidator: validator, publisher: RecordingPublisher(), isSimplifiedChinese: { true })
         let plan = coordinator.menuPlan(for: FinderMenuRequest(kind: .contextualMenuForContainer, targetedURL: directory, selectedURLs: []))
-        XCTAssertEqual(plan.map(\.format), [.txt, .markdown, .json, nil, .word, .excel, .powerpoint])
-        XCTAssertEqual(plan.map(\.title), ["TXT 文件", "Markdown 文件", "JSON 文件", "", "Word 文件", "Excel 文件", "PowerPoint 文件"])
-        XCTAssertEqual(plan[3].identifier, "\(FinderNewFileCoordinator.newFileIdentifier).separator")
-        XCTAssertTrue(plan.filter { $0.format != nil }.allSatisfy(\.isEnabled))
+        XCTAssertEqual(plan.map(\.format), [.txt, .markdown, .json, .word, .excel, .powerpoint])
+        XCTAssertEqual(plan.map(\.title), ["TXT", "Markdown", "JSON", "Word", "Excel", "PowerPoint"])
+        XCTAssertTrue(plan.allSatisfy(\.isEnabled))
+
+        let englishCoordinator = FinderNewFileCoordinator(directoryValidator: validator, publisher: RecordingPublisher(), isSimplifiedChinese: { false })
+        XCTAssertEqual(
+            englishCoordinator.menuPlan(for: FinderMenuRequest(kind: .contextualMenuForContainer, targetedURL: directory, selectedURLs: [])).map(\.title),
+            ["TXT File", "Markdown File", "JSON File", "Word File", "Excel File", "PowerPoint File"]
+        )
 
         let publisher = RecordingPublisher()
         let selector = RecordingSelector()
