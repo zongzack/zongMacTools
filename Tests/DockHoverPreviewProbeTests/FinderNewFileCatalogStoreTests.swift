@@ -120,7 +120,7 @@ final class FinderNewFileCatalogStoreTests: XCTestCase {
             "version": 1,
             "items": [
                 [
-                    "id": "custom.valid",
+                    "id": "notes-1",
                     "source": "custom",
                     "displayName": "Valid",
                     "fileExtension": "TXT",
@@ -130,7 +130,7 @@ final class FinderNewFileCatalogStoreTests: XCTestCase {
                     "templateReference": ["relativePath": "valid.template"]
                 ],
                 [
-                    "id": "custom.valid",
+                    "id": "notes-1",
                     "source": "custom",
                     "displayName": "Duplicate",
                     "fileExtension": "txt",
@@ -154,7 +154,7 @@ final class FinderNewFileCatalogStoreTests: XCTestCase {
 
         let loaded = store.loadCatalog()
 
-        XCTAssertEqual(loaded.orderedItems.map(\.id), ["custom.valid"])
+        XCTAssertEqual(loaded.orderedItems.map(\.id), ["notes-1"])
         XCTAssertEqual(loaded.orderedItems.first?.fileExtension, "txt")
         XCTAssertEqual(loaded.orderedItems.first?.iconHint.fileExtension, "txt")
     }

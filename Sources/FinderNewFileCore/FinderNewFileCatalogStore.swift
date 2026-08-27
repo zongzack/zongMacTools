@@ -147,7 +147,6 @@ public struct JSONFinderNewFileCatalogStore: FinderNewFileCatalogProviding {
             )
         case .custom:
             guard item.builtInFormat == nil,
-                  item.id.hasPrefix("custom."),
                   let reference = item.templateReference,
                   let relativePath = normalizedTemplateRelativePath(reference.relativePath)
             else {
