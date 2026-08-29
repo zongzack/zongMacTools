@@ -51,6 +51,28 @@ extension AppTextProvider {
             "Enabled"
         case .finderNewFileFormatDisabled:
             "Disabled"
+        case .finderNewFileImport:
+            "Import Templates"
+        case .finderNewFileRestoreDefaults:
+            "Restore Defaults"
+        case .finderNewFileDeleteTemplate:
+            "Delete Template"
+        case .finderNewFileDeleteConfirmationTitle:
+            "Delete Template?"
+        case .finderNewFileDeleteConfirmationMessage:
+            "The template and its managed copy will be deleted."
+        case .finderNewFileRestoreConfirmationTitle:
+            "Restore Defaults?"
+        case .finderNewFileRestoreConfirmationMessage:
+            "All custom templates will be deleted and built-in formats re-enabled."
+        case .finderNewFileConfirm:
+            "Restore"
+        case .finderNewFileCancel:
+            "Cancel"
+        case .finderNewFileImportResult:
+            "Template Import Result"
+        case .finderNewFileDone:
+            "Done"
         case .notDeveloped:
             "Not Developed"
         case .language:
@@ -110,6 +132,28 @@ extension AppTextProvider {
             "\u{5DF2}\u{542F}\u{7528}"
         case .finderNewFileFormatDisabled:
             "\u{5DF2}\u{505C}\u{7528}"
+        case .finderNewFileImport:
+            "\u{5BFC}\u{5165}\u{6A21}\u{677F}"
+        case .finderNewFileRestoreDefaults:
+            "\u{6062}\u{590D}\u{9ED8}\u{8BA4}"
+        case .finderNewFileDeleteTemplate:
+            "\u{5220}\u{9664}\u{6A21}\u{677F}"
+        case .finderNewFileDeleteConfirmationTitle:
+            "\u{5220}\u{9664}\u{6A21}\u{677F}\u{FF1F}"
+        case .finderNewFileDeleteConfirmationMessage:
+            "\u{5C06}\u{5220}\u{9664}\u{6A21}\u{677F}\u{53CA}\u{5176}\u{526F}\u{672C}\u{3002}"
+        case .finderNewFileRestoreConfirmationTitle:
+            "\u{6062}\u{590D}\u{9ED8}\u{8BA4}\u{FF1F}"
+        case .finderNewFileRestoreConfirmationMessage:
+            "\u{8FD9}\u{4F1A}\u{5220}\u{9664}\u{6240}\u{6709}\u{81EA}\u{5B9A}\u{4E49}\u{6A21}\u{677F}\u{FF0C}\u{5E76}\u{542F}\u{7528}\u{5168}\u{90E8}\u{5185}\u{7F6E}\u{683C}\u{5F0F}\u{3002}"
+        case .finderNewFileConfirm:
+            "\u{6062}\u{590D}"
+        case .finderNewFileCancel:
+            "\u{53D6}\u{6D88}"
+        case .finderNewFileImportResult:
+            "\u{6A21}\u{677F}\u{5BFC}\u{5165}\u{7ED3}\u{679C}"
+        case .finderNewFileDone:
+            "\u{5B8C}\u{6210}"
         case .notDeveloped:
             "\u{672A}\u{5F00}\u{53D1}"
         case .language:

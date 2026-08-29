@@ -74,6 +74,102 @@ final class FinderExtensionSettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.state.items.map(\.builtInFormat), [.powerpoint, .txt, .markdown, .json, .word, .excel])
         XCTAssertEqual(store.savedCatalog!.orderedItems.map(\.sortOrder), Array(0..<6))
     }
+
+    func testBatchImportSkipsExtensionlessFilesAndKeepsIndependentCopies() throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let templates = root.appendingPathComponent("Templates", isDirectory: true)
+        let sourceA = root.appendingPathComponent("Note.md")
+        let sourceB = root.appendingPathComponent("Other.MD")
+        let noExtension = root.appendingPathComponent("README")
+        try Data("A".utf8).write(to: sourceA)
+        try Data("B".utf8).write(to: sourceB)
+        try Data("skip".utf8).write(to: noExtension)
+
+        let store = InMemoryCatalogStore(catalog: .defaultCatalog(templateDirectoryURL: templates))
+        let viewModel = FinderExtensionSettingsViewModel(
+            statusProvider: FakeFinderExtensionStatusProvider(isEnabled: false),
+            managementPresenter: FakeFinderExtensionManagementPresenter(),
+            catalogStore: store
+        )
+
+        let result = viewModel.importTemplates(from: [sourceA, sourceB, noExtension])
+
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.failures.map(\.fileName), ["README"])
+        let custom = viewModel.state.items.filter { $0.source == .custom }
+        XCTAssertEqual(custom.map(\.displayName), ["Note", "Other"])
+        XCTAssertEqual(custom.map(\.fileExtension), ["md", "md"])
+        XCTAssertEqual(Set(custom.map(\.id)).count, 2)
+        XCTAssertTrue(custom.allSatisfy { $0.isEnabled })
+        for item in custom {
+            let reference = try XCTUnwrap(item.templateReference?.relativePath)
+            XCTAssertEqual(try Data(contentsOf: templates.appendingPathComponent(reference)), item.displayName == "Note" ? Data("A".utf8) : Data("B".utf8))
+        }
+    }
+
+    func testDuplicateImportCreatesIndependentStableItemsAndMissingFileIsSummarized() throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = root.appendingPathComponent("Template.txt")
+        try Data("bytes".utf8).write(to: source)
+        let missing = root.appendingPathComponent("missing.txt")
+        let templates = root.appendingPathComponent("Templates", isDirectory: true)
+        let store = InMemoryCatalogStore(catalog: .defaultCatalog(templateDirectoryURL: templates))
+        let viewModel = FinderExtensionSettingsViewModel(
+            statusProvider: FakeFinderExtensionStatusProvider(isEnabled: true),
+            managementPresenter: FakeFinderExtensionManagementPresenter(),
+            catalogStore: store
+        )
+
+        let result = viewModel.importTemplates(from: [source, source, missing])
+
+        XCTAssertEqual(result.importedCount, 2)
+        XCTAssertEqual(result.failures.map(\.fileName), ["missing.txt"])
+        let custom = viewModel.state.items.filter { $0.source == .custom }
+        XCTAssertEqual(custom.count, 2)
+        XCTAssertNotEqual(custom[0].id, custom[1].id)
+        XCTAssertNotEqual(custom[0].templateReference?.relativePath, custom[1].templateReference?.relativePath)
+    }
+
+    func testCustomExtensionValidationDeleteAndRestoreDefaultsCleanCopies() throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let templates = root.appendingPathComponent("Templates", isDirectory: true)
+        let source = root.appendingPathComponent("Plan.txt")
+        try Data("plan".utf8).write(to: source)
+        let store = InMemoryCatalogStore(catalog: .defaultCatalog(templateDirectoryURL: templates))
+        let viewModel = FinderExtensionSettingsViewModel(
+            statusProvider: FakeFinderExtensionStatusProvider(isEnabled: false),
+            managementPresenter: FakeFinderExtensionManagementPresenter(),
+            catalogStore: store
+        )
+
+        let imported = viewModel.importTemplates(from: [source]).importedItemIDs
+        let itemID = try XCTUnwrap(imported.first)
+        XCTAssertFalse(viewModel.updateFileExtension("bad/name", for: itemID))
+        XCTAssertTrue(viewModel.updateFileExtension("md", for: itemID))
+        let reference = try XCTUnwrap(viewModel.state.catalog.item(withID: itemID)?.templateReference?.relativePath)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: templates.appendingPathComponent(reference).path))
+        XCTAssertFalse(viewModel.deleteCustomItem(withID: itemID, confirmed: false))
+        XCTAssertTrue(viewModel.deleteCustomItem(withID: itemID, confirmed: true))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: templates.appendingPathComponent(reference).path))
+
+        let second = viewModel.importTemplates(from: [source]).importedItemIDs
+        XCTAssertEqual(second.count, 1)
+        let secondReference = try XCTUnwrap(viewModel.state.catalog.item(withID: second[0])?.templateReference?.relativePath)
+        XCTAssertTrue(viewModel.restoreDefaults(confirmed: false) == false)
+        XCTAssertTrue(viewModel.restoreDefaults(confirmed: true))
+        XCTAssertEqual(viewModel.state.items.map(\.id), FinderNewFileFormat.allCases.map(\.stableID))
+        XCTAssertTrue(viewModel.state.items.allSatisfy(\.isEnabled))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: templates.appendingPathComponent(secondReference).path))
+    }
+
+    private func makeTemporaryRoot() throws -> URL {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("finder-settings-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false)
+        return root
+    }
 }
 
 @MainActor

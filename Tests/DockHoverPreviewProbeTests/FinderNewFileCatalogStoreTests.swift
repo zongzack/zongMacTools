@@ -159,6 +159,40 @@ final class FinderNewFileCatalogStoreTests: XCTestCase {
         XCTAssertEqual(loaded.orderedItems.first?.iconHint.fileExtension, "txt")
     }
 
+    func testMissingCustomTemplateFallsBackToCompleteBuiltInDefaults() throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let catalogURL = root.appendingPathComponent("catalog.json")
+        let templateDirectory = root.appendingPathComponent("Templates", isDirectory: true)
+        let store = JSONFinderNewFileCatalogStore(catalogURL: catalogURL, templateDirectoryURL: templateDirectory)
+        let customized = FinderNewFileCatalog(
+            items: FinderNewFileCatalog.defaultCatalog(templateDirectoryURL: templateDirectory).items.map {
+                var item = $0
+                item.displayName = "Renamed"
+                return item
+            } + [FinderNewFileCatalogItem(
+                id: "custom.missing",
+                source: .custom,
+                displayName: "Missing",
+                fileExtension: "txt",
+                isEnabled: true,
+                sortOrder: 6,
+                templateReference: FinderNewFileTemplateReference(relativePath: "gone.txt")
+            )],
+            templateDirectoryURL: templateDirectory
+        )
+        // saveCatalog rejects a missing copy, so write the document directly to
+        // exercise the extension-side read path.
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(StorageDocumentForTest(version: 1, items: customized.items))
+        try FileManager.default.createDirectory(at: catalogURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: catalogURL)
+
+        let loaded = store.loadCatalog()
+        XCTAssertEqual(loaded.orderedItems.map(\.id), FinderNewFileFormat.allCases.map(\.stableID))
+        XCTAssertTrue(loaded.orderedItems.allSatisfy { $0.displayName == $0.builtInFormat?.defaultDisplayName })
+    }
+
     func testSavingAllDisabledBuiltInsDoesNotTriggerDefaultFallback() throws {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -220,6 +254,11 @@ final class FinderNewFileCatalogStoreTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: url)
     }
+}
+
+private struct StorageDocumentForTest: Codable {
+    let version: Int
+    let items: [FinderNewFileCatalogItem]
 }
 
 private struct ReplacementFailingCatalogDiskAccess: FinderNewFileCatalogDiskAccess {

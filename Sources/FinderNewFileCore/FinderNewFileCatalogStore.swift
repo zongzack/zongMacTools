@@ -60,6 +60,13 @@ public struct JSONFinderNewFileCatalogStore: FinderNewFileCatalogStoring {
         guard !items.isEmpty else {
             return fallbackCatalog()
         }
+        // A configuration that only contains invalid custom references must not
+        // leave the user with a partial menu. Restore the complete built-in set.
+        let declaredCustomCount = document.items.filter { $0.source == .custom }.count
+        let validCustomCount = items.filter { $0.source == .custom }.count
+        if declaredCustomCount > 0, validCustomCount == 0 {
+            return fallbackCatalog()
+        }
         return FinderNewFileCatalog(items: items, templateDirectoryURL: templateDirectoryURL)
     }
 

@@ -9,6 +9,12 @@ struct FinderExtensionSettingsView: View {
     let text: AppTextProvider
     @State private var editingItemID: String?
     @State private var draftName = ""
+    @State private var editingExtensionItemID: String?
+    @State private var draftExtension = ""
+    @State private var isImporting = false
+    @State private var pendingDeleteItem: FinderNewFileCatalogItem?
+    @State private var isConfirmingRestore = false
+    @State private var importFailureMessage: String?
     @FocusState private var isNameFieldFocused: Bool
 
     var body: some View {
@@ -34,6 +40,11 @@ struct FinderExtensionSettingsView: View {
                 Divider()
 
                 SettingsGroup(title: text.string(.finderNewFileFormats)) {
+                    HStack {
+                        Button(text.string(.finderNewFileImport)) { isImporting = true }
+                        Spacer()
+                        Button(text.string(.finderNewFileRestoreDefaults)) { isConfirmingRestore = true }
+                    }
                     HStack(spacing: 12) {
                         Text(text.string(.finderNewFileFormatName))
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,6 +84,40 @@ struct FinderExtensionSettingsView: View {
             else { return }
             finishEditing(item)
         }
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result {
+                let importResult = viewModel.importTemplates(from: urls)
+                if !importResult.failures.isEmpty {
+                    importFailureMessage = importResult.failures.map { "\($0.fileName): \($0.reason)" }.joined(separator: "\n")
+                }
+            }
+        }
+        .alert(text.string(.finderNewFileImportResult), isPresented: Binding(
+            get: { importFailureMessage != nil },
+            set: { if !$0 { importFailureMessage = nil } }
+        )) {
+            Button(text.string(.finderNewFileDone), role: .cancel) { importFailureMessage = nil }
+        } message: {
+            Text(importFailureMessage ?? "")
+        }
+        .alert(text.string(.finderNewFileDeleteConfirmationTitle), isPresented: Binding(
+            get: { pendingDeleteItem != nil },
+            set: { if !$0 { pendingDeleteItem = nil } }
+        ), presenting: pendingDeleteItem) { item in
+            Button(text.string(.finderNewFileDeleteTemplate), role: .destructive) {
+                _ = viewModel.deleteCustomItem(withID: item.id, confirmed: true)
+                pendingDeleteItem = nil
+            }
+            Button(text.string(.finderNewFileCancel), role: .cancel) { pendingDeleteItem = nil }
+        } message: { item in
+            Text("\(text.string(.finderNewFileDeleteConfirmationMessage)) \(item.displayName)")
+        }
+        .alert(text.string(.finderNewFileRestoreConfirmationTitle), isPresented: $isConfirmingRestore) {
+            Button(text.string(.finderNewFileConfirm), role: .destructive) { _ = viewModel.restoreDefaults(confirmed: true) }
+            Button(text.string(.finderNewFileCancel), role: .cancel) {}
+        } message: {
+            Text(text.string(.finderNewFileRestoreConfirmationMessage))
+        }
     }
 
     @ViewBuilder
@@ -100,10 +145,25 @@ struct FinderExtensionSettingsView: View {
                 }
             }
 
-            Text(".\(item.fileExtension)")
-                .font(.system(.body, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .frame(width: 90, alignment: .leading)
+            Group {
+                if editingExtensionItemID == item.id, item.source == .custom {
+                    TextField(".\(item.fileExtension)", text: $draftExtension)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { finishEditingExtension(item) }
+                        .onExitCommand { cancelEditingExtension() }
+                } else {
+                    Text(".\(item.fileExtension)")
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 2) {
+                            guard item.source == .custom else { return }
+                            editingExtensionItemID = item.id
+                            draftExtension = item.fileExtension
+                        }
+                }
+            }
+            .frame(width: 90, alignment: .leading)
 
             Toggle(
                 item.isEnabled ? text.string(.finderNewFileFormatEnabled) : text.string(.finderNewFileFormatDisabled),
@@ -123,6 +183,8 @@ struct FinderExtensionSettingsView: View {
             if item.source == .builtIn {
                 Text(text.string(.finderNewFileFormatExtension))
                     .foregroundStyle(.secondary)
+            } else {
+                Button(text.string(.finderNewFileDeleteTemplate), role: .destructive) { pendingDeleteItem = item }
             }
         }
     }
@@ -140,6 +202,19 @@ struct FinderExtensionSettingsView: View {
         editingItemID = nil
         draftName = ""
         isNameFieldFocused = false
+    }
+
+    private func finishEditingExtension(_ item: FinderNewFileCatalogItem) {
+        if viewModel.updateFileExtension(draftExtension, for: item.id) {
+            editingExtensionItemID = nil
+        } else {
+            draftExtension = item.fileExtension
+        }
+    }
+
+    private func cancelEditingExtension() {
+        editingExtensionItemID = nil
+        draftExtension = ""
     }
 
     private func fileTypeIcon(for fileExtension: String) -> Image {
