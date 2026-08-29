@@ -108,7 +108,7 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
 
     /// Imports ordinary files, retaining successful copies when another file fails.
     @discardableResult
-    func importTemplates(from urls: [URL]) -> FinderTemplateImportResult {
+    func importTemplates(from urls: [URL], textProvider: AppTextProvider? = nil) -> FinderTemplateImportResult {
         let templateDirectory = state.catalog.templateDirectoryURL
         var ordered = state.items
         var importedIDs: [String] = []
@@ -130,16 +130,16 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
         for url in urls {
             let fileName = url.lastPathComponent
             guard url.isFileURL, isRegularFile(url) else {
-                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportRegularOnly)))
+                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportRegularOnly, textProvider: textProvider)))
                 continue
             }
             guard let fileExtension = FinderNewFileCatalogItem.normalizedFileExtension(url.pathExtension) else {
-                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportInvalidExtension)))
+                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportInvalidExtension, textProvider: textProvider)))
                 continue
             }
             let displayName = url.deletingPathExtension().lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !displayName.isEmpty, displayName.range(of: #"[/\0]"#, options: .regularExpression) == nil else {
-                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportInvalidName)))
+                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportInvalidName, textProvider: textProvider)))
                 continue
             }
 
@@ -172,7 +172,7 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
                 try? FileManager.default.removeItem(at: templateDirectory.appendingPathComponent(reference))
             }
             failures.append(contentsOf: importedFileNames.map {
-                FinderTemplateImportFailure(fileName: $0, reason: lastSaveError ?? localizedImportReason(.finderNewFileImportSaveFailed))
+                FinderTemplateImportFailure(fileName: $0, reason: lastSaveError ?? localizedImportReason(.finderNewFileImportSaveFailed, textProvider: textProvider))
             })
             importedIDs.removeAll()
         }
@@ -225,7 +225,12 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
         for reference in customReferences {
             try? FileManager.default.removeItem(at: templateDirectory.appendingPathComponent(reference))
         }
-        // Only remove copies referenced by the catalog; leave unrelated files alone.
+        // Remove orphaned copies created by this feature while leaving unrelated files alone.
+        if let entries = try? FileManager.default.contentsOfDirectory(at: templateDirectory, includingPropertiesForKeys: [.isDirectoryKey]) {
+            for entry in entries where entry.lastPathComponent.hasPrefix("custom.") {
+                try? FileManager.default.removeItem(at: entry)
+            }
+        }
         return true
     }
 
@@ -237,7 +242,8 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
         return true
     }
 
-    private func localizedImportReason(_ key: LocalizedTextKey) -> String {
+    private func localizedImportReason(_ key: LocalizedTextKey, textProvider: AppTextProvider?) -> String {
+        if let textProvider { return textProvider.string(key) }
         let language: DisplayLanguage = FinderNewFileLanguage.isSimplifiedChinese() ? .simplifiedChinese : .english
         return AppTextProvider(language: language).string(key)
     }

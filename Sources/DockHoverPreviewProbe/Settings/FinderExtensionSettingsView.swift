@@ -86,7 +86,7 @@ struct FinderExtensionSettingsView: View {
         }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result {
-                let importResult = viewModel.importTemplates(from: urls)
+                let importResult = viewModel.importTemplates(from: urls, textProvider: text)
                 if !importResult.failures.isEmpty {
                     importFailureMessage = importResult.failures.map { "\($0.fileName): \($0.reason)" }.joined(separator: "\n")
                 }
