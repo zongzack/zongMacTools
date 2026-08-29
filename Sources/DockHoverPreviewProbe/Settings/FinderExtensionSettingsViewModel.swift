@@ -130,16 +130,16 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
         for url in urls {
             let fileName = url.lastPathComponent
             guard url.isFileURL, isRegularFile(url) else {
-                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(chinese: "仅支持普通文件。", english: "Only regular files are supported.")))
+                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportRegularOnly)))
                 continue
             }
             guard let fileExtension = FinderNewFileCatalogItem.normalizedFileExtension(url.pathExtension) else {
-                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(chinese: "文件必须具有有效后缀。", english: "The file must have a valid extension.")))
+                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportInvalidExtension)))
                 continue
             }
             let displayName = url.deletingPathExtension().lastPathComponent.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !displayName.isEmpty, displayName.range(of: #"[/\0]"#, options: .regularExpression) == nil else {
-                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(chinese: "文件名无效。", english: "The file name is invalid.")))
+                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: localizedImportReason(.finderNewFileImportInvalidName)))
                 continue
             }
 
@@ -172,7 +172,7 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
                 try? FileManager.default.removeItem(at: templateDirectory.appendingPathComponent(reference))
             }
             failures.append(contentsOf: importedFileNames.map {
-                FinderTemplateImportFailure(fileName: $0, reason: lastSaveError ?? localizedImportReason(chinese: "配置保存失败。", english: "Failed to save configuration."))
+                FinderTemplateImportFailure(fileName: $0, reason: lastSaveError ?? localizedImportReason(.finderNewFileImportSaveFailed))
             })
             importedIDs.removeAll()
         }
@@ -237,8 +237,9 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
         return true
     }
 
-    private func localizedImportReason(chinese: String, english: String) -> String {
-        FinderNewFileLanguage.isSimplifiedChinese() ? chinese : english
+    private func localizedImportReason(_ key: LocalizedTextKey) -> String {
+        let language: DisplayLanguage = FinderNewFileLanguage.isSimplifiedChinese() ? .simplifiedChinese : .english
+        return AppTextProvider(language: language).string(key)
     }
 
     @discardableResult

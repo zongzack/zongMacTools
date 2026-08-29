@@ -73,6 +73,14 @@ extension AppTextProvider {
             "Template Import Result"
         case .finderNewFileDone:
             "Done"
+        case .finderNewFileImportRegularOnly:
+            "Only regular files are supported."
+        case .finderNewFileImportInvalidExtension:
+            "The file must have a valid extension."
+        case .finderNewFileImportInvalidName:
+            "The file name is invalid."
+        case .finderNewFileImportSaveFailed:
+            "Failed to save configuration."
         case .notDeveloped:
             "Not Developed"
         case .language:
@@ -154,6 +162,14 @@ extension AppTextProvider {
             "\u{6A21}\u{677F}\u{5BFC}\u{5165}\u{7ED3}\u{679C}"
         case .finderNewFileDone:
             "\u{5B8C}\u{6210}"
+        case .finderNewFileImportRegularOnly:
+            "\u{4EC5}\u{652F}\u{6301}\u{666E}\u{901A}\u{6587}\u{4EF6}\u{3002}"
+        case .finderNewFileImportInvalidExtension:
+            "\u{6587}\u{4EF6}\u{5FC5}\u{987B}\u{5177}\u{6709}\u{6709}\u{6548}\u{540E}\u{7F00}\u{3002}"
+        case .finderNewFileImportInvalidName:
+            "\u{6587}\u{4EF6}\u{540D}\u{65E0}\u{6548}\u{3002}"
+        case .finderNewFileImportSaveFailed:
+            "\u{914D}\u{7F6E}\u{4FDD}\u{5B58}\u{5931}\u{8D25}\u{3002}"
         case .notDeveloped:
             "\u{672A}\u{5F00}\u{53D1}"
         case .language:

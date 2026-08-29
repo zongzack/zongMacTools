@@ -41,6 +41,10 @@ enum LocalizedTextKey: String, CaseIterable {
     case finderNewFileCancel
     case finderNewFileImportResult
     case finderNewFileDone
+    case finderNewFileImportRegularOnly
+    case finderNewFileImportInvalidExtension
+    case finderNewFileImportInvalidName
+    case finderNewFileImportSaveFailed
     case notDeveloped
     case dockHoverPreviewStatusEnabled
     case dockHoverPreviewStatusDisabled
