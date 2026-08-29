@@ -81,6 +81,10 @@ extension AppTextProvider {
             "The file name is invalid."
         case .finderNewFileImportSaveFailed:
             "Failed to save configuration."
+        case .finderNewFileImportDirectoryFailed:
+            "Unable to prepare the template directory."
+        case .finderNewFileImportCopyFailed:
+            "Unable to copy the template file."
         case .notDeveloped:
             "Not Developed"
         case .language:
@@ -170,6 +174,10 @@ extension AppTextProvider {
             "\u{6587}\u{4EF6}\u{540D}\u{65E0}\u{6548}\u{3002}"
         case .finderNewFileImportSaveFailed:
             "\u{914D}\u{7F6E}\u{4FDD}\u{5B58}\u{5931}\u{8D25}\u{3002}"
+        case .finderNewFileImportDirectoryFailed:
+            "\u{65E0}\u{6CD5}\u{51C6}\u{5907}\u{6A21}\u{677F}\u{76EE}\u{5F55}\u{3002}"
+        case .finderNewFileImportCopyFailed:
+            "\u{65E0}\u{6CD5}\u{590D}\u{5236}\u{6A21}\u{677F}\u{6587}\u{4EF6}\u{3002}"
         case .notDeveloped:
             "\u{672A}\u{5F00}\u{53D1}"
         case .language:

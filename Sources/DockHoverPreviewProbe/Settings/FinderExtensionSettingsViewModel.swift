@@ -121,7 +121,12 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
         } catch {
             let result = FinderTemplateImportResult(
                 importedItemIDs: [],
-                failures: urls.map { FinderTemplateImportFailure(fileName: $0.lastPathComponent, reason: error.localizedDescription) }
+                failures: urls.map {
+                    FinderTemplateImportFailure(
+                        fileName: $0.lastPathComponent,
+                        reason: localizedImportReason(.finderNewFileImportDirectoryFailed, textProvider: textProvider)
+                    )
+                }
             )
             lastImportResult = result
             return result
@@ -162,7 +167,10 @@ final class FinderExtensionSettingsViewModel: ObservableObject {
                 importedIDs.append(id)
                 importedFileNames.append(fileName)
             } catch {
-                failures.append(FinderTemplateImportFailure(fileName: fileName, reason: error.localizedDescription))
+                failures.append(FinderTemplateImportFailure(
+                    fileName: fileName,
+                    reason: localizedImportReason(.finderNewFileImportCopyFailed, textProvider: textProvider)
+                ))
             }
         }
 

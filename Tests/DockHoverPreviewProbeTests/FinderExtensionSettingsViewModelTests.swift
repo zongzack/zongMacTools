@@ -132,6 +132,27 @@ final class FinderExtensionSettingsViewModelTests: XCTestCase {
         XCTAssertNotEqual(custom[0].templateReference?.relativePath, custom[1].templateReference?.relativePath)
     }
 
+    func testImportDirectoryFailureIsSummarizedWithoutSystemErrorText() throws {
+        let root = try makeTemporaryRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = root.appendingPathComponent("Template.txt")
+        try Data("bytes".utf8).write(to: source)
+        let templatePath = root.appendingPathComponent("Templates")
+        try Data("not a directory".utf8).write(to: templatePath)
+        let store = InMemoryCatalogStore(catalog: .defaultCatalog(templateDirectoryURL: templatePath))
+        let viewModel = FinderExtensionSettingsViewModel(
+            statusProvider: FakeFinderExtensionStatusProvider(isEnabled: true),
+            managementPresenter: FakeFinderExtensionManagementPresenter(),
+            catalogStore: store
+        )
+
+        let result = viewModel.importTemplates(from: [source], textProvider: AppTextProvider(language: .english))
+
+        XCTAssertEqual(result.importedCount, 0)
+        XCTAssertEqual(result.failures.map(\.fileName), ["Template.txt"])
+        XCTAssertEqual(result.failures.first?.reason, "Unable to prepare the template directory.")
+    }
+
     func testCustomExtensionValidationDeleteAndRestoreDefaultsCleanCopies() throws {
         let root = try makeTemporaryRoot()
         defer { try? FileManager.default.removeItem(at: root) }
