@@ -23,11 +23,26 @@ plist_value() {
 
 [[ -d "$APP_PATH" ]] || fail "missing app bundle: $APP_PATH"
 [[ "$APP_PATH" == *.app ]] || fail "path is not an .app bundle: $APP_PATH"
+
+# User configuration and imported template bytes live in the account's
+# Application Support domain. They must never be copied into the signed app;
+# doing so would make the bundle stale and could leak user data into releases.
+assert_runtime_path_absent() {
+  local kind="$1"
+  local name="$2"
+  local message="$3"
+  if find "$APP_PATH/Contents" -type "$kind" -name "$name" -print -quit | grep -q .; then
+    fail "$message"
+  fi
+}
+
+assert_runtime_path_absent f 'catalog.json' 'runtime catalog.json must not be embedded in the app bundle'
+assert_runtime_path_absent d 'Templates' 'runtime Templates directory must not be embedded in the app bundle'
+
 [[ -f "$INFO_PLIST" ]] || fail "missing Info.plist"
 [[ -x "$EXECUTABLE_PATH" ]] || fail "missing executable: $EXECUTABLE_PATH"
 [[ -f "$ICON_PATH" ]] || fail "missing icon: $ICON_PATH"
 [[ -d "$PLUGINS_DIR" ]] || fail "missing PlugIns directory"
-
 FINDER_EXTENSIONS=()
 while IFS= read -r extension_path; do
   FINDER_EXTENSIONS+=("$extension_path")

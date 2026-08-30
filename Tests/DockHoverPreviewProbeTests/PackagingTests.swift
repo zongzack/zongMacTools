@@ -1,5 +1,10 @@
 import Foundation
 import XCTest
+import FinderNewFileCore
+
+#if canImport(Darwin)
+import Darwin
+#endif
 
 final class PackagingTests: XCTestCase {
     func testInfoPlistUsesZongMacToolsDisplayNameAndIcon() throws {
@@ -69,6 +74,59 @@ final class PackagingTests: XCTestCase {
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any])
         XCTAssertEqual(plist["com.apple.security.app-sandbox"] as? Bool, true)
         XCTAssertEqual(plist["com.apple.security.temporary-exception.files.home-relative-path.read-write"] as? [String], ["/"])
+    }
+
+    func testFinderNewFileRuntimePathsStayInSharedApplicationSupportDomain() {
+        #if canImport(Darwin)
+        if let passwd = getpwuid(getuid()), let homePath = passwd.pointee.pw_dir {
+            let expectedSupport = URL(fileURLWithPath: String(cString: homePath), isDirectory: true)
+                .appendingPathComponent("Library", isDirectory: true)
+                .appendingPathComponent("Application Support", isDirectory: true)
+            XCTAssertEqual(FinderNewFileCatalogPaths.defaultApplicationSupportURL(), expectedSupport)
+        } else {
+            XCTFail("The current account must have a passwd home directory")
+        }
+        #endif
+
+        let directory = FinderNewFileCatalogPaths.defaultDirectoryURL()
+        let catalogURL = FinderNewFileCatalogPaths.defaultCatalogURL()
+        let templateDirectory = FinderNewFileCatalogPaths.defaultTemplateDirectoryURL()
+
+        XCTAssertEqual(directory.lastPathComponent, FinderNewFileCatalogPaths.catalogFolderName)
+        XCTAssertEqual(directory.deletingLastPathComponent().lastPathComponent, FinderNewFileCatalogPaths.applicationSupportFolderName)
+        XCTAssertEqual(directory.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent, "Application Support")
+        XCTAssertEqual(catalogURL.deletingLastPathComponent(), directory)
+        XCTAssertEqual(templateDirectory.deletingLastPathComponent(), directory)
+        XCTAssertEqual(catalogURL.lastPathComponent, FinderNewFileCatalogPaths.catalogFileName)
+        XCTAssertEqual(templateDirectory.lastPathComponent, FinderNewFileCatalogPaths.templatesFolderName)
+        XCTAssertNotEqual(catalogURL, templateDirectory)
+    }
+
+    func testBundleVerifierRejectsEmbeddedRuntimeConfigurationAndTemplateCopies() throws {
+        let source = try scriptSource(named: "verify_app_bundle.sh")
+
+        XCTAssertTrue(source.contains("runtime catalog.json must not be embedded in the app bundle"))
+        XCTAssertTrue(source.contains("runtime Templates directory must not be embedded in the app bundle"))
+        XCTAssertTrue(source.contains("assert_runtime_path_absent f 'catalog.json'"))
+        XCTAssertTrue(source.contains("assert_runtime_path_absent d 'Templates'"))
+
+        let scriptURL = packageRoot().appendingPathComponent("Scripts/verify_app_bundle.sh")
+        let fixtureRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("finder-bundle-verifier-" + UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: fixtureRoot) }
+
+        let catalogFixture = fixtureRoot.appendingPathComponent("catalog.app/Contents", isDirectory: true)
+        try FileManager.default.createDirectory(at: catalogFixture, withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: catalogFixture.appendingPathComponent("catalog.json"))
+        let catalogResult = try runVerifier(scriptURL: scriptURL, appURL: fixtureRoot.appendingPathComponent("catalog.app"))
+        XCTAssertNotEqual(catalogResult.status, 0)
+        XCTAssertTrue(catalogResult.output.contains("runtime catalog.json must not be embedded"))
+
+        let templateFixture = fixtureRoot.appendingPathComponent("template.app/Contents/Templates", isDirectory: true)
+        try FileManager.default.createDirectory(at: templateFixture, withIntermediateDirectories: true)
+        let templateResult = try runVerifier(scriptURL: scriptURL, appURL: fixtureRoot.appendingPathComponent("template.app"))
+        XCTAssertNotEqual(templateResult.status, 0)
+        XCTAssertTrue(templateResult.output.contains("runtime Templates directory must not be embedded"))
     }
 
     func testFinderSyncActionUsesStableItemIDInsteadOfTitleLookup() throws {
@@ -460,5 +518,18 @@ final class PackagingTests: XCTestCase {
                 .appendingPathComponent(name),
             encoding: .utf8
         )
+    }
+
+    private func runVerifier(scriptURL: URL, appURL: URL) throws -> (status: Int32, output: String) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [scriptURL.path, appURL.path]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try process.run()
+        process.waitUntilExit()
+        let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        return (process.terminationStatus, output)
     }
 }
