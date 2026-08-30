@@ -94,7 +94,7 @@
 - 环境：macOS 26.6.2（25G83），`arm64`；WPS/Office 和真实 Finder 操作未在本次自动化会话中执行。
 - 构建：`swift test`（325 项，0 failures）；`swift build`（pass）。
 - 打包：`Scripts/build_probe_app.sh`（pass）；`Scripts/verify_app_bundle.sh build/zongMacTools.app`（pass）；主 App 与嵌套 Finder Sync 扩展均为 ad-hoc `arm64` 签名，扩展签名先于主 App，资源 ZIP/XML、entitlement 和 CDHash 校验通过。
-- 发布归档：`Scripts/package_release_app.sh`（pass）；解压后的 `.app` 再次通过 `Scripts/verify_app_bundle.sh`；ZIP SHA-256：`0b787badcc8850a7df6c1afeffa70dfe159f6cd3f80ebb092e785650b18e51e2`。
+- 发布归档：`Scripts/package_release_app.sh`（pass）；解压后的 `.app` 再次通过 `Scripts/verify_app_bundle.sh`；ZIP SHA-256：`e0cf34fa2a4ffc19c5ba299a69aedd8b8ca11fb4a5cb06f8f19533e9649e67bf`（release metadata `gitCommit=381a731`）。
 - 配置/模板目录：自动测试验证路径位于用户 `Application Support/com.zong.zongMacTools/FinderNewFile`，模板目录独立且运行时文件不嵌入 bundle；扩展 entitlement 保留 home-relative read-write `/`。
 - Dock Window Quick Look：现有 XCTest 全量通过；未执行真实 Dock 悬停、屏幕录制权限和窗口操作人工 smoke test。
 
