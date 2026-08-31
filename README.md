@@ -1,380 +1,161 @@
 # zongMacTools
 
-`zongMacTools` 当前主要包含一个 macOS Dock 悬停窗口预览工具原型：`DockHoverPreviewProbe`。它是一个菜单栏常驻应用，用 Swift、AppKit、SwiftUI 和 ScreenCaptureKit 实现类似 Windows 任务栏窗口预览的最小可用能力：鼠标悬停在 Dock 应用图标上时，显示该应用当前可见窗口的横向预览面板，点击卡片即可切换到对应窗口。
+`zongMacTools` 是一组 macOS 桌面效率工具，目前包含 Dock 窗口速览和 Finder 右键助手。
 
-项目目前处于 MVP/P0 验证完成、P1 基础设置完成、P2 界面打磨实现与人工验证完成、P3 窗口操作增强实现与自动验证完成、P4 正式应用化实现与自动验证完成的状态。核心悬停预览路径已经可用；P1 新增设置持久化、排除 app、语言切换、Launch at Login 和 `zongMacTools.app` 打包名称；当前设置入口已迁移为“极简菜单 + 独立设置窗口”；P2 改善预览面板的缩略图显示、占位状态、动画和浅色/深色视觉规则；P3 为预览卡片增加右键窗口操作菜单；P4 增加稳定签名配置、关于与状态、诊断导出和 release packaging 流程。P2 人工视觉验证已由用户反馈完成，结果正常；P3、P4 和多工具源码重组后的人工验收尚未执行。
+- **Dock 窗口速览**：将鼠标悬停在 Dock 中正在运行的应用上，查看该应用的窗口缩略图并快速切换。
+- **Finder 右键助手**：在 Finder 文件夹或桌面空白处右键新建常用文件，也可以使用自己的模板。
 
-## 功能概览
+## 功能
 
-- Dock 图标悬停触发窗口预览。
-- 使用非激活的浮动 `NSPanel` 展示预览，不抢占当前应用焦点。
-- SwiftUI 卡片列表，默认最多显示 8 个窗口；P1 菜单可切换为 3、5、8、12。
-- 每张卡片包含应用图标、窗口标题、静态缩略图或占位图。
-- P2 缩略图默认裁切填满；窄窗口自动完整显示，避免 Typora 等窄窗口被过度裁切。
-- P2 区分加载中与不可用占位状态；缩略图不可用时显示本地化 `No thumbnail` / `无缩略图`。
-- 点击预览卡片后尝试激活对应窗口，并隐藏预览面板。
-- 右键预览卡片可打开窗口操作菜单：激活窗口、隐藏应用、关闭窗口、最小化窗口，并显示保守的屏幕提示。
-- P3 窗口操作只使用公开接口；关闭和最小化依赖公开辅助功能按钮或属性，失败时安静降级并记录日志。
-- 鼠标快速离开 Dock 图标时取消过期预览，避免 stale panel 残留。
-- 鼠标从 Dock 图标移动到预览面板时保持面板显示。
-- 鼠标离开 Dock 图标和预览面板后自动隐藏。
-- 按 `Esc` 可隐藏预览面板。
-- 屏幕录制权限缺失时静默抑制预览 UI，不弹出重复干扰提示。
-- Dock 重启后可重新订阅 Dock Accessibility 事件。
-- 菜单栏提供极简入口：打开设置、启用/停用 Dock 窗口速览、关于与状态、导出诊断和退出。
-- 独立设置窗口提供通用、Dock 窗口速览、权限与状态、关于与状态页面，并保留右键扩展的禁用占位。
-- Dock 窗口速览设置页承载 P1 设置能力：启停、悬停延迟、面板保留手感、最大卡片数、排除当前可排除 App、手动添加 `.app` 和排除列表管理。
-- 菜单栏和设置窗口都可主动导出本地诊断文件，便于查看版本、build、bundle id、权限、登录项、签名和设置摘要。
-- 预览面板显示/隐藏使用轻量动画，并尊重系统减少动态效果设置；浅色/深色外观下的边框、阴影、占位区域使用集中视觉规则。
+### Dock 窗口速览
 
-## 当前状态
+- 悬停 Dock 图标显示窗口预览面板。
+- 点击卡片切换到对应窗口。
+- 支持最多 3、5、8 或 12 张预览卡片。
+- 右键卡片可激活窗口、隐藏应用、关闭窗口或最小化窗口。
+- 支持排除指定 App、调整悬停延迟和面板保留时间。
+- 支持浅色/深色外观、减少动态效果和中英文界面。
 
-MVP/P0 UI 状态：`pass with note`；P1 基础设置状态：`complete`；P2 界面打磨自动与人工验证状态：`complete`。P3 窗口操作增强和 P4 正式应用化均已完成实现与自动验证，人工验收待执行。多工具源码重组后的人工 smoke test 也待执行。
+### Finder 右键助手
 
-已验证内容：
+启用 Finder Sync 扩展后，在 Finder 普通目录或桌面空白处右键即可使用“新建文件 / New File”菜单。默认格式包括：
 
-- `swift test`：2026-07-03 13:31:05 Asia/Shanghai，130 XCTest，0 failures，exit 0。
-- P3 `swift test`：2026-07-06 CST，164 XCTest，0 failures，exit 0。
-- 多工具设置窗口复验 `swift test`：2026-07-07 Asia/Shanghai，192 XCTest，0 failures，exit 0。
-- 多工具源码结构文档复验：2026-07-09 Asia/Shanghai，`git diff --check`、`swift test`（212 XCTest，0 failures）、`swift build`、`Scripts/build_probe_app.sh` 通过；打包输出 `build/zongMacTools.app`，executable `DockHoverPreviewProbe`，bundle id `com.zong.zongMacTools`。
-- `swift build`：通过，exit 0。
-- `Scripts/build_probe_app.sh`：通过，exit 0，输出 `/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app`，Info.plist OK，替换 existing signature。
-- 系统辅助功能与屏幕录制授权后，日志确认 Dock 监听订阅成功。
-- VS Code、Chrome、Typora、IINA、WPS 的主流程由人工反馈为功能正常。
-- 点击激活、快速离开取消 stale preview、进入 panel 保持显示、离开隐藏、移动到相邻未启动 Dock app 时隐藏旧 panel、`Esc` 隐藏、`killall Dock` 恢复均由人工反馈为功能正常。
-- P2 人工视觉验证已由用户反馈完成，覆盖底部程序坞、左右程序坞、程序坞自动隐藏、台前调度、浅色/深色外观、减少动态效果、Typora 窄窗口、多窗口应用、屏幕录制权限缺失和快速悬停失效取消，结果正常。
-- P3 自动测试覆盖窗口操作模型与文案、公开辅助功能窗口操作服务、右键菜单模型、菜单期间会话保留、操作成功/失败路由、旧会话动作保护和屏幕提示匹配；`swift build`、`Scripts/build_probe_app.sh` 和 `git diff --check` 均通过。
+| 格式 | 创建内容 |
+| --- | --- |
+| TXT | 零字节 `.txt` 文件 |
+| Markdown | 零字节 `.md` 文件 |
+| JSON | UTF-8 编码的 `{}` |
+| Word | 空白 `.docx` 文档 |
+| Excel | 带 `Sheet1` 的空白 `.xlsx` 工作簿 |
+| PowerPoint | 包含一张空白幻灯片的 `.pptx` 演示文稿 |
 
-仍需继续验证的内容：
+右键助手还支持：
 
-- Multiple displays 因当前硬件不可用仍是 `blocked / not available`。
-- P3 真实 app 人工验收尚未执行。
-- P4 正式应用化人工验收尚未执行。
-- 多工具源码结构重组后的人工 smoke test 尚未执行：需从 `build/zongMacTools.app` 启动，打开设置并切换 General language 后确认 sidebar/detail 刷新，并确认窗口重新显示时 title 使用当前语言；确认 Dock Window Quick Look 设置仍写入且预览行为响应，确认右键扩展仍只是设置里的禁用占位，覆盖 Dock 悬停预览、右键窗口操作菜单、诊断导出/关于状态、Launch at Login 状态/打开设置路径等主流程。ad-hoc 重新签名后 TCC 可能需要重新添加。
+- 单独启用或停用格式。
+- 拖拽调整菜单顺序。
+- 修改显示名称。
+- 导入普通文件作为自定义模板。
+- 修改自定义模板后缀、删除模板或恢复默认配置。
+- 文件重名时自动尝试 ` 2`、` 3` 等后缀，不覆盖已有文件。
+- 创建成功后自动选中新文件。
 
-稳定的技术设计见 `docs/architecture/dock-hover-preview-technical-design.md`。
-
-## 运行环境
+## 系统要求
 
 - macOS 14 或更新版本。
-- Swift 6 / SwiftPM。
-- Xcode Command Line Tools 或完整 Xcode。
-- 需要系统授予：
-  - Accessibility，用于监听 Dock Accessibility 事件和窗口激活。
-  - Screen Recording，用于 ScreenCaptureKit 窗口枚举和缩略图截图。
+- Apple Silicon 或 Intel Mac。
+- Swift 6 / Xcode Command Line Tools（仅从源码构建时需要）。
 
-当前 `Package.swift` 链接框架：
+首次运行需要在“系统设置 > 隐私与安全性”中授予：
 
-- AppKit
-- ApplicationServices
-- CoreGraphics
-- ServiceManagement
-- ScreenCaptureKit
+1. **辅助功能**：用于监听 Dock 事件和执行窗口操作。
+2. **屏幕录制**：用于枚举窗口并生成静态缩略图。
+3. **Finder 扩展**：在“扩展 > Finder”中启用 `zongMacTools` Finder Sync 扩展。
 
-## 快速开始
+如果只使用 Finder 右键助手，不需要安装 WPS 或 Microsoft Office；Office 应用仅用于打开和编辑创建出的 Office 文件。
 
-### 1. 构建并打包 app
+## 安装与运行
+
+### 从 GitHub Releases 安装
+
+普通用户可以直接从 [GitHub Releases](https://github.com/zongzack/zongMacTools/releases) 下载最新公开测试版：
+
+1. 下载对应版本的 `zongMacTools-<version>-<build>.zip`。
+2. 可选：按照同一发布页提供的 `SHA256SUMS.txt` 校验文件完整性。
+3. 解压后将 `zongMacTools.app` 移动到 `/Applications`，然后打开应用。
+4. 首次打开未公证的 ad-hoc 应用时，如果 macOS 阻止启动，请在 Finder 中按住 Control 点击应用，选择“打开”，再确认启动。
+5. 按照下面的权限和 Finder 扩展步骤完成配置。
+
+发行版当前是未公证的公开测试包，需要用户手动授予辅助功能、屏幕录制权限，并手动启用 Finder Sync 扩展。替换应用版本后，macOS 可能要求重新授予权限或重新启用扩展。
+
+### 从源码构建
 
 ```bash
 Scripts/build_probe_app.sh
 ```
 
-成功后会输出：
+构建产物为：
 
 ```text
-/Users/zong/Desktop/Project/zongMacTools/build/zongMacTools.app
+build/zongMacTools.app
 ```
 
-脚本会执行以下动作：
+脚本会同时打包主程序、`FinderSyncExtension.appex` 和内置 Office 模板资源。
 
-- 运行 `swift build`。
-- 创建 `build/zongMacTools.app` 目录结构。
-- 复制 `DockHoverPreviewProbe` 可执行文件和 `Info.plist`。
-- 从 `Assets/AppIcon/zong-mac-tools-logo.png` 生成 `zongMacTools.icns`。
-- 校验 `Info.plist`。
-- 使用 `CODE_SIGN_IDENTITY` 指定的身份签名；未指定时使用 ad-hoc fallback。
-- 分别对嵌套 Finder Sync 扩展和外层 App 运行 `codesign --verify --strict`，并记录签名顺序。
-
-默认 ad-hoc 签名适合无证书本地开发，但每次重新签名都可能让系统辅助功能和屏幕录制权限需要重新添加。若本机有稳定证书，可使用：
-
-```bash
-CODE_SIGN_IDENTITY="Developer ID Application: Example" Scripts/build_probe_app.sh
-```
-
-不要把个人证书名称、Apple ID、team id、notary password 或 keychain profile 写入仓库。
-
-### 2. 验证 app bundle
-
-```bash
-Scripts/verify_app_bundle.sh build/zongMacTools.app
-```
-
-验证内容包括 Info.plist、executable、icon、bundle id、嵌套 Finder Sync 扩展、架构、模板资源、实际沙盒 entitlement，以及扩展和外层 App 分别执行的严格签名校验。ad-hoc 签名会通过验证，但脚本会提示 TCC caveat；构建脚本同时写入 `build/signing-order.log`，记录扩展签名成功后才开始外层 App 签名。
-
-### 3. 构建并打开 app
+启动应用：
 
 ```bash
 Scripts/run_probe_app.sh
 ```
 
-这个脚本会先调用 `Scripts/build_probe_app.sh`，然后用 `open` 启动打包后的 app。
+### 启用 Finder 右键助手
 
-### 4. 手动授权权限
+1. 将 `zongMacTools.app` 放在固定位置，推荐 `/Applications/zongMacTools.app`。
+2. 启动应用并打开菜单栏中的 `Open Settings...` / `打开设置`。
+3. 进入 `Right-click Extension` / `右键扩展`。
+4. 点击 `Manage Finder Extension` / `管理 Finder 扩展`。
+5. 在“系统设置 > 隐私与安全性 > 扩展 > Finder”中启用 `zongMacTools`。
+6. 返回设置窗口，确认扩展状态为“已启用”。
 
-首次运行后，需要在系统设置中授权：
-
-1. 打开 系统设置 > 隐私与安全性 > 辅助功能。
-2. 添加并启用 `build/zongMacTools.app`。
-3. 打开 系统设置 > 隐私与安全性 > 屏幕录制。
-4. 添加并启用 `build/zongMacTools.app`。
-5. 退出并重新打开 `zongMacTools.app`。
-
-权限生效后，日志中应能看到类似内容：
+右键助手的配置和自定义模板保存在用户目录，不会写入 app bundle：
 
 ```text
-permissions.refresh accessibility=true screenRecording=true
-orchestrator.start accessibility=true screenRecording=true
-dock.subscribed pid=...
+~/Library/Application Support/com.zong.zongMacTools/FinderNewFile/catalog.json
+~/Library/Application Support/com.zong.zongMacTools/FinderNewFile/Templates/
 ```
 
-## 网站公开测试版发布
+## 使用方式
 
-当前仓库的公开测试版使用 `ad-hoc` 签名，未使用 Developer ID 签名或 Apple 公证。它适合愿意手动安装和授权的测试用户，不应宣传为已通过 Gatekeeper 验证的正式发行版。发布前先更新 `Info.plist` 中的版本号、build number 和 `docs/releases/CHANGELOG.md`，然后生成 release artifact：
+### Dock 窗口速览
+
+1. 启动 `zongMacTools.app`。
+2. 确认辅助功能和屏幕录制权限已授权。
+3. 将鼠标悬停在 Dock 中正在运行的应用图标上。
+4. 预览面板出现后，点击窗口卡片即可切换。
+5. 按 `Esc`，或将鼠标移出 Dock 图标和预览面板，隐藏面板。
+
+菜单栏中的设置窗口还可以配置语言、开机启动、卡片数量、悬停延迟、排除 App 和 Finder 新建文件格式。
+
+### Finder 新建文件
+
+1. 确认 Finder Sync 扩展已启用。
+2. 在 Finder 普通目录或桌面空白处右键。
+3. 选择 `New File` / `新建文件`，再选择文件格式。
+4. 新文件会在当前目录创建并由 Finder 自动选中。
+
+右键助手只响应容器背景菜单。选中文件或文件夹、多选项目、侧边栏、工具栏、最近使用、搜索结果等位置不会显示该菜单。
+
+## 发布包
+
+仓库当前提供未公证的 ad-hoc 公开测试包。发布前请使用：
 
 ```bash
 Scripts/package_release_app.sh
 ```
 
-脚本默认使用 `CONFIGURATION=release`，调用 `Scripts/build_probe_app.sh` 和 `Scripts/verify_app_bundle.sh build/zongMacTools.app`，并把产物写入 ignored 的 `dist/zongMacTools-<version>-<build>/`。目录中包含 `zongMacTools-<version>-<build>.zip`、`SHA256SUMS.txt`、`release-metadata.txt`、`README-install.txt` 和 `CHANGELOG.md`。
+生成的 ZIP、校验和与安装说明位于 `dist/`。首次打开未公证应用时，macOS 可能需要在 Finder 中按住 Control 点击应用并选择“打开”。替换 ad-hoc 签名的应用后，系统可能要求重新授予权限并重新启用 Finder 扩展。
 
-### GitHub Draft Release
+正式发行仍需要 Developer ID 签名、Apple 公证和干净环境验证。
 
-GitHub 发布标签必须与 `Sources/DockHoverPreviewProbe/Info.plist` 中的 `CFBundleShortVersionString` 完全一致，格式为 `v<version>`。例如版本号为 `0.1.0` 时：
+## 已知限制
 
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
+- Dock 速览当前显示静态缩略图，不提供实时视频预览。
+- 只展示当前可见、可枚举且未最小化的普通窗口，不自动切换其他 Space。
+- Finder 右键助手依赖用户手动启用 Finder Sync 扩展。
+- Finder 虚拟位置、云盘/文件提供程序和其他非普通目录的兼容性不作保证。
+- Word、Excel、PowerPoint 文件使用内置静态空白模板；在 WPS/Office 中的实际兼容性需要在目标机器上确认。
+- 多显示器场景尚未完成完整验证。
 
-匹配的标签会触发 GitHub Action：运行测试、打包 `ad-hoc` 公开测试版、校验 SHA-256 checksum，然后创建私有 Draft Release。Draft 只会附加 ZIP、`SHA256SUMS.txt`、release metadata、安装指南和 changelog；不会附加其他构建产物。该流程不改变现有签名或公证配置。
-
-维护者必须先下载并检查 Draft 中的资产，再发布；发布时可在适当情况下将其标记为 prerelease。
-
-上传到网站的文件是 ZIP，而不是整个 `build/` 目录，也不要直接上传 `.app` 目录：
-
-- 上传 `zongMacTools-<version>-<build>.zip`。
-- 同时提供 `SHA256SUMS.txt` 中的 SHA-256 值、版本号、build number、发布日期和 release notes。
-- 下载页标注 macOS 14 或更新版本、需要系统辅助功能与屏幕录制权限、当前为未公证公开测试版，以及多显示器尚未验证等已知限制。
-- 说明诊断导出仅在用户主动触发时本地生成；统一日志可能包含本机 app 名称、窗口标题、bundle id 和环境细节。
-
-用户下载 ZIP 后应解压，将 `zongMacTools.app` 移到 `/Applications`，再打开。因为当前是未获 Developer ID 信任的包，Gatekeeper 可能阻止首次启动；用户可在 Finder 中按住 Control 点击 app，选择“打开”并在确认后继续。不要建议用户关闭 Gatekeeper 或执行绕过系统安全策略的命令。首次运行或 app 身份变化后，用户还需要在系统设置中为 `/Applications/zongMacTools.app` 授予系统辅助功能和屏幕录制权限。
-
-下载者可用以下命令校验 ZIP 是否完整：
-
-```bash
-shasum -a 256 zongMacTools-<version>-<build>.zip
-```
-
-## 正式本地安装
-
-轻量本地更新流程是：校验 checksum，把 `zongMacTools.app` 复制到 `/Applications` 或你的固定安装目录，然后按需重新确认系统辅助功能和屏幕录制权限。P4 不直接启用 Sparkle 自动更新；更新策略见 `docs/architecture/release-update-strategy.md`。
-
-面向普通用户的正式站外发行应改用 Developer ID Application 签名、Apple 公证、票据装订和干净环境安装验证；在这些步骤完成前，继续将下载包标记为公开测试版。
-
-## 使用方式
-
-1. 启动 `zongMacTools.app`。
-2. 菜单栏会显示 `zongMacTools` 的菜单栏 template logo。该图标是适合状态栏尺寸的单色标记，不直接使用全彩 app icon。
-3. 确认 Accessibility 和 Screen Recording 都已授权。
-4. 将鼠标移动到 Dock 中某个正在运行的应用图标上。
-5. 默认停留约 250 ms 后，屏幕上会出现预览面板。
-6. 点击某个窗口卡片，应用会尝试切换到对应窗口，随后隐藏预览面板。
-7. 按 `Esc` 或移出 Dock 图标和预览面板区域，面板会隐藏。
-
-菜单栏中的 `Open Settings...` 会打开独立设置窗口，并默认进入 Dock 窗口速览页。菜单栏只保留启用/停用 Dock 窗口速览、关于与状态、导出诊断和退出等快捷操作。
-
-设置窗口左侧分为应用、工具和支持。通用页提供显示语言和开机启动；Dock 窗口速览页提供总开关、悬停延迟、面板保留手感、最大卡片数和排除规则；排除规则既支持排除当前可排除 App，也支持通过 `添加...` 选择 `.app` 应用包写入排除列表。权限与状态页提供权限状态、系统设置入口、刷新和导出诊断；关于与状态页显示版本、build、bundle id、权限、登录项、签名和设置摘要。悬停延迟、面板保留手感和最大卡片数使用离散预设滑杆，只写入既有合法设置值。
-
-菜单栏和设置窗口中的 `About & Status` / `关于与状态` 会打开设置窗口内的关于与状态页，显示版本、build、bundle id、bundle path、权限状态、Launch at Login 状态、签名状态和设置摘要，并提供 Copy Status。Copy Status 只包含本工具状态摘要，不包含第三方窗口标题或第三方 app 名称。
-
-## 架构说明
-
-代码集中在 `Sources/DockHoverPreviewProbe` 下。当前源码结构面向多工具导航拆分目录，但运行时仍是一个 SwiftPM executable / target：`DockHoverPreviewProbe`；没有引入 plugin system、多 target runtime、额外 product 或新 executable。`ToolDescriptor` 只作为设置侧栏/详情页导航 metadata，不是运行时插件、菜单栏或状态抽象。当前唯一真实工具是 Dock Window Quick Look。
-
-- `App/`：app launch、菜单栏、状态栏 app shell、Launch at Login 和 app delegate wiring。
-- `Settings/`：设置模型、`SettingsStore`、view models、独立设置窗口、sidebar/detail 页面，以及仅供设置导航使用的 `ToolDescriptor` registry。
-- `Support/`：权限、状态、关于与状态、诊断导出等支持界面和服务。
-- `Shared/`：共享校验、日志和 text provider base；本地化静态文案拆在 `Shared/Text/`。
-- `Tools/DockWindowQuickLook/`：Dock Window Quick Look 的 domain folder，也是当前唯一真实工具实现。这里包含 Dock hover monitor、target tracking、orchestrator、窗口查询、缩略图、激活/窗口操作、预览 panel/session，以及 Dock Window Quick Look 设置页和 view model。
-
-## 测试
-
-运行全部测试：
-
-```bash
-swift test
-```
-
-运行构建：
-
-```bash
-swift build
-```
-
-如果菜单栏 app 正在运行，建议先退出或执行：
-
-```bash
-pkill -x DockHoverPreviewProbe
-```
-
-再运行测试。最终验收时曾观察到正在运行的 probe app 会让一次 `swift test` 在 build 后未及时退出；退出 app 后测试正常完成。
-
-当前测试覆盖重点包括：
-
-- 几何与坐标转换。
-- P1 settings 默认值、非法值回退、`UserDefaults` 持久化和 observer 通知。
-- English / 简体中文静态文案。
-- 极简菜单迁移、设置窗口 controller、设置 view model、excluded apps、手动添加 `.app` 排除、Launch at Login fake service 和菜单刷新。
-- 预览面板布局引擎。
-- 预览 view model 的卡片数量限制、缩略图更新、fit/fill 模式、unavailable 状态和可访问性标签。
-- SwiftUI render plan 的 fill / fit 分支、loading spinner 和 unavailable 文案分支。
-- 预览 session 的 Screen Recording 缺失抑制、无窗口隐藏、max cards、retention、缩略图更新、本地化 unavailable 文案、stale cancellation、点击激活、Dock 到 panel 的桥接保留和相邻 Dock item hover-lost 隐藏。
-- P3 窗口操作服务的关闭、最小化、隐藏应用、激活委托、失败阶段与 AX code 记录。
-- P3 右键菜单模型、禁用项不触发动作、菜单跟踪期间保留会话、旧会话动作不影响新会话、屏幕提示匹配。
-- 预览 panel controller 的 show/hide animation、Reduce Motion 降级、隐藏后命中测试和 update 不重复触发 show animation。
-- Light / Dark visual token 的边框、阴影、hover state 和 placeholder surface 基础约束。
-- 静态缩略图 cache、ScreenCaptureKit/CoreGraphics fallback 日志。
-- 窗口 AX 匹配诊断日志。
-- orchestrator frontmost preview 权限抑制。
-- app 打包名称/icon 脚本和 AppDelegate wiring。
-
-## 常用命令
+## 开发命令
 
 ```bash
 # 运行测试
 swift test
 
-# 构建 SwiftPM executable
+# 构建 SwiftPM targets
 swift build
 
-# 打包 .app
-Scripts/build_probe_app.sh
-
-# 打包并打开 .app
-Scripts/run_probe_app.sh
-
-# 查看 probe 日志
-/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.zongMacTools"'
-
-# 退出正在运行的 probe app
-pkill -x DockHoverPreviewProbe
+# 校验 app bundle
+Scripts/verify_app_bundle.sh build/zongMacTools.app
 ```
 
-## 日志与排障
-
-### 看不到预览面板
-
-先确认权限日志：
-
-```bash
-/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "com.zong.zongMacTools"'
-```
-
-重点查找：
-
-- `permissions.refresh accessibility=true screenRecording=true`
-- `orchestrator.start accessibility=true screenRecording=true`
-- `dock.subscribed pid=...`
-
-如果 Accessibility 为 false，Dock 监听不会启动。需要在系统设置中重新授权辅助功能，并重启 app。
-
-如果 Screen Recording 为 false，预览 UI 会被静默抑制，这是预期行为。需要在系统设置中重新授权屏幕录制，并重启 app。
-
-### 悬停后没有出现预览
-
-检查日志中是否有：
-
-- `dock.hover ...`
-- `dock.hoverDelayed ... matches=true mouseInside=true`
-- `windows.query ... count=...`
-- `preview.panel.show ...`
-
-如果出现 `dock.selectedStale`、`mouseInside=false` 或 `hoverValidationFailed`，说明鼠标已经离开或 Dock 当前选中项过期，预览被取消，这是 stale hover 防护的一部分。
-
-### 缩略图显示为占位图
-
-可能原因：
-
-- ScreenCaptureKit 截图失败。
-- CoreGraphics fallback 也失败。
-- 目标窗口不在当前可交互 Space 或不满足当前窗口过滤条件。
-
-对应日志通常包含：
-
-- `thumbnail.sckFailed ...`
-- `thumbnail.cgFailed ...`
-- `thumbnail.failed ...`
-
-## 导出诊断
-
-菜单栏选择 `Export Diagnostics...` 后可保存本地诊断文本。诊断文件只在用户主动触发后本地生成，不自动上传，也不后台定时采集。
-
-诊断内容包括：
-
-- App 状态快照：版本、build、bundle id、bundle path、权限、Launch at Login、签名和设置摘要。
-- 最近 15 分钟本工具统一日志。
-- `codesign -dv --verbose=4` 签名摘要。
-- `Scripts/verify_app_bundle.sh` bundle 验证摘要。
-
-诊断文件不包含截图、缩略图图像、屏幕录制内容或用户文件内容。统一日志可能包含本机 app 名称、窗口标题、bundle id 和环境细节，因此只应在需要排障时由用户主动保存和分享。
-
-## 已知限制
-
-- 只展示当前可见、可枚举、非最小化的普通应用窗口。
-- 不展示或恢复已最小化窗口，不展示其他 Space 中的窗口，也不做全屏 Space 自动切换。
-- 不提供实时视频缩略图，当前是静态截图。
-- 不提供卡片内关闭、最小化或全屏按钮；P3 右键菜单只发出公开接口窗口操作请求。
-- 不提供搜索窗口或键盘切换器。
-- Launch at Login 依赖公开 `ServiceManagement`，真实状态以 `SMAppService.mainApp.status` 为准。
-- 只使用公开 API。
-- 多显示器场景仍需额外手动验证。
-
-## 设计边界
-
-本项目参考了 DockDoor 的产品形态和交互方向，但只作为视觉和行为参考。实现不复制、翻译或机械改写 DockDoor 的 GPLv3 源码、文件结构、helper、注释或私有 API wrapper。
-
-MVP 阶段坚持以下边界：
-
-- 使用公开 API。
-- 保持菜单栏工具形态，不出现在 Dock 中。
-- 权限缺失时通过菜单栏/日志表达，不在 Dock hover 路径弹窗打扰。
-- 保持子系统拆分：Dock 监听、窗口查询、缩略图、激活、UI 会话、面板展示彼此独立。
-- stale hover cancellation 是一等状态，不能让过期 hover 弹出或残留面板。
-
-## 项目目录
-
-```text
-.
-├── Package.swift
-├── Scripts
-│   ├── build_probe_app.sh
-│   └── run_probe_app.sh
-├── Sources
-│   └── DockHoverPreviewProbe
-├── Tests
-│   └── DockHoverPreviewProbeTests
-└── docs
-    ├── architecture
-    ├── verification
-    ├── roadmap.md
-    └── archive
-```
-
-## 后续建议
-
-优先级从高到低：
-
-1. 继续补跑多显示器验证；当前硬件不可用时保持 `blocked / not available`。
-2. 执行 P3 窗口操作增强人工验收，重点覆盖右键菜单、关闭/最小化失败降级、菜单期间会话保留和屏幕录制权限缺失。
-3. 执行 P4 正式应用化人工验收，重点覆盖稳定签名、TCC、关于与状态、诊断导出、release artifact、Launch at Login 和屏幕录制权限缺失静默抑制。
-4. 在上述验收完成前，不扩展新产品功能。
+详细的 Finder 人工验收步骤见 [`docs/verification/finder-new-file-manual-acceptance.md`](docs/verification/finder-new-file-manual-acceptance.md)，发布策略见 [`docs/architecture/release-update-strategy.md`](docs/architecture/release-update-strategy.md)。
