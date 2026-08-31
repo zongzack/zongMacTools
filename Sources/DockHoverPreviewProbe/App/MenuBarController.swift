@@ -1,4 +1,5 @@
 import AppKit
+import FinderSync
 
 @MainActor
 protocol AppNameResolving: AnyObject {
@@ -38,6 +39,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let diagnosticExportPresenter: DiagnosticExportPresenting
     private let settingsWindowPresenter: SettingsWindowPresenting
     private let logger: ProbeLogger
+    private let finderExtensionEnabled: @MainActor () -> Bool
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
     init(
@@ -45,13 +47,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         settingsStore: DockHoverPreviewSettingsStore,
         diagnosticExportPresenter: DiagnosticExportPresenting = NoopDiagnosticExportPresenter(),
         settingsWindowPresenter: SettingsWindowPresenting = NoopSettingsWindowPresenter(),
-        logger: ProbeLogger
+        logger: ProbeLogger,
+        finderExtensionEnabled: @escaping @MainActor () -> Bool = { FIFinderSyncController.isExtensionEnabled }
     ) {
         self.permissionService = permissionService
         self.settingsStore = settingsStore
         self.diagnosticExportPresenter = diagnosticExportPresenter
         self.settingsWindowPresenter = settingsWindowPresenter
         self.logger = logger
+        self.finderExtensionEnabled = finderExtensionEnabled
         super.init()
     }
 
@@ -98,15 +102,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let statusKey: LocalizedTextKey = settings.isDockHoverPreviewEnabled
             ? .dockHoverPreviewStatusEnabled
             : .dockHoverPreviewStatusDisabled
-        let toggleKey: LocalizedTextKey = settings.isDockHoverPreviewEnabled
-            ? .disableDockHoverPreview
-            : .enableDockHoverPreview
-
         menu.addItem(disabledItem("zongMacTools"))
         menu.addItem(disabledItem(text.string(statusKey)))
+        let finderStatusKey: LocalizedTextKey = finderExtensionEnabled()
+            ? .finderContextMenuExtensionEnabled
+            : .finderContextMenuExtensionDisabled
+        menu.addItem(disabledItem(text.string(finderStatusKey)))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(actionItem(text.string(.openSettings), #selector(openSettings)))
-        menu.addItem(actionItem(text.string(toggleKey), #selector(toggleDockHoverPreview)))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(actionItem(text.string(.aboutStatus), #selector(showAboutStatus)))
         menu.addItem(actionItem(text.string(.exportDiagnostics), #selector(exportDiagnostics)))
@@ -157,13 +160,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func openSettings() {
         settingsWindowPresenter.showSettings(selectedPage: .dockWindowQuickLook)
-    }
-
-    @objc private func toggleDockHoverPreview() {
-        settingsStore.update { settings in
-            settings.isDockHoverPreviewEnabled.toggle()
-        }
-        rebuildMenu()
     }
 
     @objc private func quit() {

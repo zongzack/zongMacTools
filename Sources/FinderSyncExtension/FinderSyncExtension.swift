@@ -6,7 +6,10 @@ import UniformTypeIdentifiers
 
 final class FinderSyncExtension: FIFinderSync {
     private let menuCoordinator: FinderNewFileCoordinator
-    private var actionTargets: [FinderNewFileMenuActionTarget] = []
+    // Finder may rebuild menu items before dispatching the action. Keep the
+    // plans for the latest menu so the extension can recover the stable item
+    // ID even when Finder drops NSMenuItem metadata during that rebuild.
+    private var actionPlans: [FinderMenuActionPlan] = []
 
     override init() {
         let directoryValidator = LocalFinderDirectoryValidator()
@@ -44,20 +47,20 @@ final class FinderSyncExtension: FIFinderSync {
         let request = FinderMenuRequest(kind: kind, targetedURL: target, selectedURLs: selectedURLs)
         let plans = menuCoordinator.menuPlan(for: request)
         guard !plans.isEmpty, let target else {
-            actionTargets = []
+            actionPlans = []
             return nil
         }
-        actionTargets = plans.map { plan in
-            FinderNewFileMenuActionTarget(itemID: plan.identifier, directoryURL: target) { [menuCoordinator] itemID, directoryURL in
-                _ = menuCoordinator.create(itemID: itemID, in: directoryURL)
-            }
-        }
+        actionPlans = plans.map { FinderMenuActionPlan(itemID: $0.identifier, title: $0.title, directoryURL: target) }
         let menu = NSMenu(title: Self.localizedNewFileTitle())
         let submenu = NSMenu(title: Self.localizedNewFileTitle())
-        for (plan, actionTarget) in zip(plans, actionTargets) {
-            let item = NSMenuItem(title: plan.title, action: #selector(FinderNewFileMenuActionTarget.createFile(_:)), keyEquivalent: "")
-            item.target = actionTarget
+        for plan in plans {
+            let item = NSMenuItem(title: plan.title, action: #selector(FinderSyncExtension.createFile(_:)), keyEquivalent: "")
+            // Finder Sync actions must be received by the extension object.
+            // A detached NSObject target can be discarded when Finder
+            // reconstructs the contextual menu before presenting it.
+            item.target = self
             item.identifier = NSUserInterfaceItemIdentifier(plan.identifier)
+            item.representedObject = plan.identifier
             item.isEnabled = plan.isEnabled
             if let fileExtension = plan.fileExtension {
                 let type = UTType(filenameExtension: fileExtension) ?? .data
@@ -73,6 +76,29 @@ final class FinderSyncExtension: FIFinderSync {
         return menu
     }
 
+    @objc func createFile(_ sender: NSMenuItem) {
+        guard let actionPlan = actionPlan(for: sender) else { return }
+        _ = menuCoordinator.create(itemID: actionPlan.itemID, in: actionPlan.directoryURL)
+    }
+
+    private func actionPlan(for sender: NSMenuItem) -> FinderMenuActionPlan? {
+        if let itemID = sender.representedObject as? String,
+           let plan = actionPlans.first(where: { $0.itemID == itemID }) {
+            return plan
+        }
+        if let itemID = sender.identifier?.rawValue,
+           let plan = actionPlans.first(where: { $0.itemID == itemID }) {
+            return plan
+        }
+        if let menu = sender.menu {
+            let index = menu.index(of: sender)
+            if index >= 0, index < actionPlans.count {
+                return actionPlans[index]
+            }
+        }
+        return actionPlans.first(where: { $0.title == sender.title })
+    }
+
     private static func localizedNewFileTitle() -> String {
         FinderNewFileLanguage.isSimplifiedChinese() ? "新建文件" : "New File"
     }
@@ -85,20 +111,10 @@ private struct AlertFinderErrorPresenter: FinderErrorPresenting {
     nonisolated func present(error: FinderNewFileError) { Task { @MainActor in let alert = NSAlert(); alert.alertStyle = .warning; alert.messageText = "无法新建文件"; alert.informativeText = error.localizedDescription; alert.addButton(withTitle: "好"); alert.runModal() } }
 }
 
-private final class FinderNewFileMenuActionTarget: NSObject {
-    private let itemID: String
-    private let directoryURL: URL
-    private let create: (String, URL) -> Void
-
-    init(itemID: String, directoryURL: URL, create: @escaping (String, URL) -> Void) {
-        self.itemID = itemID
-        self.directoryURL = directoryURL
-        self.create = create
-    }
-
-    @objc func createFile(_ sender: NSMenuItem) {
-        create(itemID, directoryURL)
-    }
+private struct FinderMenuActionPlan {
+    let itemID: String
+    let title: String
+    let directoryURL: URL
 }
 
 @main

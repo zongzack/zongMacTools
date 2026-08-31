@@ -138,11 +138,27 @@ final class PackagingTests: XCTestCase {
             encoding: .utf8
         )
 
-        XCTAssertTrue(source.contains("FinderNewFileMenuActionTarget"))
+        XCTAssertTrue(source.contains("item.target = self"))
         XCTAssertTrue(source.contains("create(itemID:"))
         XCTAssertTrue(source.contains("item.identifier = NSUserInterfaceItemIdentifier(plan.identifier)"))
         XCTAssertTrue(source.contains("targetedURL()"))
         XCTAssertFalse(source.contains("first(where: { $0.menuTitle"))
+    }
+
+    func testFinderSyncMenuActionsTargetTheFinderSyncExtensionReceiver() throws {
+        let source = try String(
+            contentsOf: packageRoot()
+                .appendingPathComponent("Sources")
+                .appendingPathComponent("FinderSyncExtension")
+                .appendingPathComponent("FinderSyncExtension.swift"),
+            encoding: .utf8
+        )
+
+        // Finder Sync dispatches contextual-menu actions back to the extension
+        // object. A detached NSObject target can be lost when Finder rebuilds
+        // the menu before presenting it.
+        XCTAssertTrue(source.contains("item.target = self"))
+        XCTAssertTrue(source.contains("@objc func createFile(_ sender: NSMenuItem)"))
     }
 
     func testPackagingScriptsPassBashSyntaxValidation() throws {

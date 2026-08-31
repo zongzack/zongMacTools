@@ -1,3 +1,4 @@
+import FinderSync
 import SwiftUI
 
 @MainActor
@@ -26,6 +27,7 @@ struct SupportSettingsView: View {
             SettingsGroup {
                 PermissionStatusRow(title: text.accessibilityStatus(granted: permissionState.accessibilityGranted))
                 PermissionStatusRow(title: text.screenRecordingStatus(granted: permissionState.screenRecordingGranted))
+                PermissionStatusRow(title: finderExtensionStatusText)
 
                 Divider()
 
@@ -54,6 +56,16 @@ struct SupportSettingsView: View {
                     diagnosticExportPresenter.exportDiagnostics()
                 }
             }
+        }
+    }
+
+    private var finderExtensionStatusText: String {
+        let enabled = FIFinderSyncController.isExtensionEnabled
+        switch text.language {
+        case .english:
+            return "Right-click Extension: \(enabled ? "Enabled" : "Not Enabled")"
+        case .simplifiedChinese:
+            return "\u{53F3}\u{952E}\u{6269}\u{5C55}\u{FF1A}\(enabled ? "\u{5DF2}\u{542F}\u{7528}" : "\u{672A}\u{542F}\u{7528}")"
         }
     }
 }

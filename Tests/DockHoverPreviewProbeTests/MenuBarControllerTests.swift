@@ -103,8 +103,8 @@ final class MenuBarControllerTests: XCTestCase {
             [
                 "zongMacTools",
                 "Dock Window Quick Look: Enabled",
+                "Right-click Extension: Enabled",
                 "Open Settings...",
-                "Disable Dock Window Quick Look",
                 "About & Status",
                 "Export Diagnostics...",
                 "Quit"
@@ -112,14 +112,16 @@ final class MenuBarControllerTests: XCTestCase {
         )
     }
 
-    func testMinimalMenuShowsEnableActionWhenDockWindowQuickLookIsDisabled() {
+    func testMinimalMenuShowsStatusesWithoutToggleActions() {
         let harness = MenuHarness(settings: .defaultsWith(enabled: false))
 
         let menu = harness.makeMenu()
 
         XCTAssertNotNil(menu.findItem(title: "Dock Window Quick Look: Disabled"))
-        XCTAssertNotNil(menu.findItem(title: "Enable Dock Window Quick Look"))
+        XCTAssertNotNil(menu.findItem(title: "Right-click Extension: Enabled"))
+        XCTAssertNil(menu.findItem(title: "Enable Dock Window Quick Look"))
         XCTAssertNil(menu.findItem(title: "Disable Dock Window Quick Look"))
+        XCTAssertNil(menu.findItem(title: "Manage Finder Extension"))
     }
 
     func testMinimalMenuDoesNotContainLegacySettingsOrDebugEntries() {
@@ -178,19 +180,6 @@ final class MenuBarControllerTests: XCTestCase {
         XCTAssertEqual(settingsWindowPresenter.selectedPages, [.dockWindowQuickLook])
     }
 
-    func testToggleDockWindowQuickLookOnlyWritesSettingsAndRebuildsMenu() {
-        let harness = MenuHarness()
-        harness.controller.install()
-
-        harness.installedMenu.performItem(title: "Disable Dock Window Quick Look")
-        XCTAssertFalse(harness.settingsStore.snapshot.isDockHoverPreviewEnabled)
-        XCTAssertNotNil(harness.installedMenu.findItem(title: "Enable Dock Window Quick Look"))
-
-        harness.installedMenu.performItem(title: "Enable Dock Window Quick Look")
-        XCTAssertTrue(harness.settingsStore.snapshot.isDockHoverPreviewEnabled)
-        XCTAssertNotNil(harness.installedMenu.findItem(title: "Disable Dock Window Quick Look"))
-    }
-
     func testAboutStatusOpensEmbeddedSettingsPageAndExportDiagnosticsCallsInjectedService() {
         let diagnosticPresenter = FakeDiagnosticExportPresenter()
         let settingsWindowPresenter = FakeSettingsWindowPresenter()
@@ -220,8 +209,8 @@ final class MenuBarControllerTests: XCTestCase {
             [
                 "zongMacTools",
                 "\u{0044}\u{006f}\u{0063}\u{006b} \u{7A97}\u{53E3}\u{901F}\u{89C8}\u{FF1A}\u{5DF2}\u{542F}\u{7528}",
+                "\u{53F3}\u{952E}\u{6269}\u{5C55}\u{FF1A}\u{5DF2}\u{542F}\u{7528}",
                 "\u{6253}\u{5F00}\u{8BBE}\u{7F6E}...",
-                "\u{505C}\u{7528} \u{0044}\u{006f}\u{0063}\u{006b} \u{7A97}\u{53E3}\u{901F}\u{89C8}",
                 "\u{5173}\u{4E8E}\u{4E0E}\u{72B6}\u{6001}",
                 "\u{5BFC}\u{51FA}\u{8BCA}\u{65AD}...",
                 "\u{9000}\u{51FA}"
@@ -248,7 +237,8 @@ private final class MenuHarness {
             settingsStore: settingsStore,
             diagnosticExportPresenter: diagnosticExportPresenter,
             settingsWindowPresenter: settingsWindowPresenter,
-            logger: ProbeLogger()
+            logger: ProbeLogger(),
+            finderExtensionEnabled: { true }
         )
     }
 

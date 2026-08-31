@@ -39,10 +39,16 @@ extension AppTextProvider {
             "Finder extension: Enabled"
         case .finderExtensionDisabled:
             "Finder extension: Not Enabled"
+        case .finderContextMenuExtensionEnabled:
+            "Right-click Extension: Enabled"
+        case .finderContextMenuExtensionDisabled:
+            "Right-click Extension: Not Enabled"
         case .manageFinderExtension:
             "Manage Finder Extension"
         case .finderNewFileFormats:
             "New File Formats"
+        case .finderNewFileInteractionHint:
+            "Drag the handle to reorder. Double-click a name to rename. Custom templates can be deleted with the trash button."
         case .finderNewFileFormatName:
             "Name"
         case .finderNewFileFormatExtension:
@@ -97,6 +103,8 @@ extension AppTextProvider {
             "Launch at Login: Requires Approval"
         case .launchAtLoginNotFound:
             "Launch at Login: Not Found"
+        case .launchAtLoginNotFoundHelp:
+            "macOS could not find this app as a login item. Move zongMacTools.app to /Applications, relaunch it, then check Login Items."
         case .enableLaunchAtLogin:
             "Enable Launch at Login"
         case .disableLaunchAtLogin:
@@ -132,10 +140,16 @@ extension AppTextProvider {
             "Finder \u{6269}\u{5C55}\u{FF1A}\u{5DF2}\u{542F}\u{7528}"
         case .finderExtensionDisabled:
             "Finder \u{6269}\u{5C55}\u{FF1A}\u{672A}\u{542F}\u{7528}"
+        case .finderContextMenuExtensionEnabled:
+            "\u{53F3}\u{952E}\u{6269}\u{5C55}\u{FF1A}\u{5DF2}\u{542F}\u{7528}"
+        case .finderContextMenuExtensionDisabled:
+            "\u{53F3}\u{952E}\u{6269}\u{5C55}\u{FF1A}\u{672A}\u{542F}\u{7528}"
         case .manageFinderExtension:
             "\u{7BA1}\u{7406} Finder \u{6269}\u{5C55}"
         case .finderNewFileFormats:
             "\u{65B0}\u{5EFA}\u{6587}\u{4EF6}\u{683C}\u{5F0F}"
+        case .finderNewFileInteractionHint:
+            "\u{62D6}\u{52A8}\u{5DE6}\u{4FA7}\u{628A}\u{624B}\u{53EF}\u{8C03}\u{6574}\u{987A}\u{5E8F}\u{FF1B}\u{53CC}\u{51FB}\u{540D}\u{79F0}\u{53EF}\u{91CD}\u{547D}\u{540D}\u{FF1B}\u{81EA}\u{5B9A}\u{4E49}\u{6A21}\u{677F}\u{53EF}\u{70B9}\u{51FB}\u{5783}\u{573E}\u{6876}\u{5220}\u{9664}\u{3002}"
         case .finderNewFileFormatName:
             "\u{540D}\u{79F0}"
         case .finderNewFileFormatExtension:
@@ -190,6 +204,8 @@ extension AppTextProvider {
             "\u{5F00}\u{673A}\u{542F}\u{52A8}\u{FF1A}\u{9700}\u{8981}\u{6279}\u{51C6}"
         case .launchAtLoginNotFound:
             "\u{5F00}\u{673A}\u{542F}\u{52A8}\u{FF1A}\u{672A}\u{627E}\u{5230}"
+        case .launchAtLoginNotFoundHelp:
+            "macOS \u{672A}\u{627E}\u{5230}\u{8BE5}\u{5E94}\u{7528}\u{7684}\u{767B}\u{5F55}\u{9879}\u{3002}\u{8BF7}\u{5C06} zongMacTools.app \u{79FB}\u{5165} /Applications \u{540E}\u{91CD}\u{65B0}\u{6253}\u{5F00}\u{FF0C}\u{518D}\u{68C0}\u{67E5}\u{767B}\u{5F55}\u{9879}\u{3002}"
         case .enableLaunchAtLogin:
             "\u{542F}\u{7528}\u{5F00}\u{673A}\u{542F}\u{52A8}"
         case .disableLaunchAtLogin:

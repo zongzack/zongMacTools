@@ -29,6 +29,13 @@ struct GeneralSettingsView: View {
                     Text(text.string(viewModel.state.launchAtLoginStatus.menuTextKey))
                         .foregroundStyle(.secondary)
 
+                    if viewModel.state.launchAtLoginStatus == .notFound {
+                        Text(text.string(.launchAtLoginNotFoundHelp))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
                     HStack(spacing: 10) {
                         Button(text.string(.enableLaunchAtLogin)) {
                             viewModel.enableLaunchAtLogin()

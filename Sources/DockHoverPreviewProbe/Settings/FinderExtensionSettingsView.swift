@@ -40,18 +40,30 @@ struct FinderExtensionSettingsView: View {
                 Divider()
 
                 SettingsGroup(title: text.string(.finderNewFileFormats)) {
+                    Text(text.string(.finderNewFileInteractionHint))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+
                     HStack {
                         Button(text.string(.finderNewFileImport)) { isImporting = true }
                         Spacer()
                         Button(text.string(.finderNewFileRestoreDefaults)) { isConfirmingRestore = true }
                     }
                     HStack(spacing: 12) {
+                        Text("")
+                            .frame(width: 18)
+                        Text("")
+                            .frame(width: 24)
                         Text(text.string(.finderNewFileFormatName))
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Text(text.string(.finderNewFileFormatExtension))
                             .frame(width: 90, alignment: .leading)
                         Text(text.string(.finderNewFileFormatEnabled))
                             .frame(width: 90, alignment: .center)
+                        Text("")
+                            .frame(width: 34)
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -123,6 +135,12 @@ struct FinderExtensionSettingsView: View {
     @ViewBuilder
     private func formatRow(_ item: FinderNewFileCatalogItem) -> some View {
         HStack(spacing: 12) {
+            Image(systemName: "line.3.horizontal")
+                .foregroundStyle(.tertiary)
+                .frame(width: 18, height: 24)
+                .contentShape(Rectangle())
+                .help(text.string(.finderNewFileInteractionHint))
+
             fileTypeIcon(for: item.fileExtension)
                 .frame(width: 24, height: 24)
 
@@ -176,6 +194,25 @@ struct FinderExtensionSettingsView: View {
             .toggleStyle(.switch)
             .frame(width: 90)
             .help(item.isEnabled ? text.string(.finderNewFileFormatEnabled) : text.string(.finderNewFileFormatDisabled))
+
+            if item.source == .custom {
+                Button {
+                    pendingDeleteItem = item
+                } label: {
+                    Image(systemName: "trash")
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.red)
+                .help(text.string(.finderNewFileDeleteTemplate))
+                .accessibilityLabel(text.string(.finderNewFileDeleteTemplate))
+            } else {
+                Image(systemName: "lock")
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 24, height: 24)
+                    .help(text.string(.finderNewFileFormatExtension))
+                    .accessibilityLabel(text.string(.finderNewFileFormatExtension))
+            }
         }
         .padding(.vertical, 4)
         .contextMenu {

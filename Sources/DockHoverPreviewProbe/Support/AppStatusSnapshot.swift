@@ -1,4 +1,5 @@
 import Foundation
+import FinderSync
 
 struct AppSettingsSummary: Equatable, Sendable {
     let isDockHoverPreviewEnabled: Bool
@@ -22,6 +23,7 @@ struct AppStatusSnapshot: Equatable, Sendable {
     let metadata: AppMetadata
     let permissionState: PermissionState
     let launchAtLoginStatus: LaunchAtLoginStatus
+    let finderExtensionEnabled: Bool
     let settingsSummary: AppSettingsSummary
     let generatedAt: Date
 
@@ -30,11 +32,13 @@ struct AppStatusSnapshot: Equatable, Sendable {
         permissionState: PermissionState,
         launchAtLoginStatus: LaunchAtLoginStatus,
         settings: DockHoverPreviewSettings,
+        finderExtensionEnabled: Bool = FIFinderSyncController.isExtensionEnabled,
         generatedAt: Date = Date()
     ) {
         self.metadata = metadata
         self.permissionState = permissionState
         self.launchAtLoginStatus = launchAtLoginStatus
+        self.finderExtensionEnabled = finderExtensionEnabled
         self.settingsSummary = AppSettingsSummary(settings: settings)
         self.generatedAt = generatedAt
     }
@@ -60,6 +64,11 @@ struct AppStatusSnapshot: Equatable, Sendable {
             text.accessibilityStatus(granted: permissionState.accessibilityGranted),
             text.screenRecordingStatus(granted: permissionState.screenRecordingGranted),
             statusLine(.launchAtLogin, launchAtLoginStatus.statusText(language: language), language: language),
+            localizedStatusLine(
+                label: text.string(.contextMenuExtension),
+                value: enabledStatus(finderExtensionEnabled, language: language),
+                language: language
+            ),
             statusLine(.signing, metadata.signingStatus.displayString(language: language), language: language),
             localizedStatusLine(
                 label: text.string(.dockWindowQuickLook),

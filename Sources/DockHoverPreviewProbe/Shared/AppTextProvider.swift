@@ -24,8 +24,11 @@ enum LocalizedTextKey: String, CaseIterable {
     case finderExtensionSubtitle
     case finderExtensionEnabled
     case finderExtensionDisabled
+    case finderContextMenuExtensionEnabled
+    case finderContextMenuExtensionDisabled
     case manageFinderExtension
     case finderNewFileFormats
+    case finderNewFileInteractionHint
     case finderNewFileFormatName
     case finderNewFileFormatExtension
     case finderNewFileFormatEnabled
@@ -66,6 +69,7 @@ enum LocalizedTextKey: String, CaseIterable {
     case launchAtLoginNotRegistered
     case launchAtLoginRequiresApproval
     case launchAtLoginNotFound
+    case launchAtLoginNotFoundHelp
     case enableLaunchAtLogin
     case disableLaunchAtLogin
     case openLoginItemsSettings
