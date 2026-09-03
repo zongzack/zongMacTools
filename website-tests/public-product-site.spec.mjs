@@ -1,10 +1,15 @@
+import { existsSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 test.use({ locale: "zh-CN" });
 
 const githubRepositoryUrl = "https://github.com/zongzack/zongMacTools";
+const githubLicenseUrl = `${githubRepositoryUrl}/blob/main/LICENSE`;
 const githubReleasesUrl = `${githubRepositoryUrl}/releases`;
 const githubReleasesApiUrl = "https://api.github.com/repos/zongzack/zongMacTools/releases?per_page=10";
+const localLicensePath = new URL("../LICENSE", import.meta.url);
+const quickLookDemoPath = new URL("../website/assets/quick-look-recording.mp4", import.meta.url);
+const rightClickDemoPath = new URL("../website/assets/right‑click-extension.mp4", import.meta.url);
 const publicRelease = {
   draft: false,
   tag_name: "v0.2.0",
@@ -49,14 +54,41 @@ test("首页完整呈现当前产品叙事", async ({ page }) => {
   await expect(page.locator(".feature-card")).toHaveCount(2);
   await expect(page.locator(".migration-row")).toHaveCount(2);
   await expect(page.locator(".cap-card")).toHaveCount(6);
-  await expect(page.locator(".faq-item")).toHaveCount(4);
+  await expect(page.locator(".faq-item")).toHaveCount(6);
+});
+
+test("常见问题覆盖安装、授权、故障处理、更新和卸载", async ({ page }) => {
+  await page.goto("/");
+
+  const items = page.locator("#faq .faq-item");
+  expect(await items.locator("summary > span:first-child").allTextContents()).toEqual([
+    "安装时提示「无法打开，因为无法验证开发者」怎么办？",
+    "需要哪些系统权限？",
+    "Dock 悬停后为什么没有出现窗口预览？",
+    "Finder 右键菜单里为什么没有「新建文件」？",
+    "如何更新到新版本？",
+    "如何彻底卸载？"
+  ]);
+  await expect(items.first()).toHaveAttribute("open", "");
+  for (let index = 1; index < 6; index += 1) {
+    await expect(items.nth(index)).not.toHaveAttribute("open", "");
+  }
+
+  await expect(page.getByText(/后者仅用于获取静态窗口缩略图/)).toContainText("不会录制系统声音，也不会持续录屏");
+  await expect(page.locator("#faq")).not.toContainText("支持 Intel Mac");
+  await expect(page.locator("#faq")).not.toContainText("当前公开测试版尚未完成 Apple 公证");
+  await expect(page.locator("#faq code")).toHaveCount(2);
 });
 
 test("顶栏提供产品导航和 GitHub 源码入口", async ({ page }) => {
   await page.goto("/");
 
   const navigation = page.getByRole("navigation", { name: "主导航" });
-  await expect(navigation.getByRole("link", { name: "zongMacTools 首页" })).toHaveAttribute("href", "#hero");
+  const home = navigation.getByRole("link", { name: "zongMacTools 首页" });
+  await expect(home).toHaveAttribute("href", "#hero");
+  await expect(home.locator("img.brand-logo")).toHaveAttribute("src", "assets/zong-mac-tools-logo.png");
+  await expect(home.locator("img.brand-logo")).toHaveAttribute("width", "36");
+  await expect(home.locator("img.brand-logo")).toHaveAttribute("height", "36");
   await expect(navigation.getByRole("link", { name: "功能" })).toHaveAttribute("href", "#features");
   await expect(navigation.getByRole("link", { name: "迁移" })).toHaveAttribute("href", "#migration");
   await expect(navigation.getByRole("link", { name: "下载" })).toHaveAttribute("href", "#download");
@@ -76,6 +108,41 @@ test("Hero 展示两项产品能力示意图", async ({ page }) => {
   await expect(page.locator(".popover-card")).toHaveCount(3);
   await expect(page.locator(".rc-submenu-item")).toHaveCount(6);
   await expect(page.locator(".rc-submenu-active")).toContainText("JSON");
+});
+
+test("核心功能提供按需加载的实机演示", async ({ page }) => {
+  await page.goto("/");
+
+  expect(existsSync(quickLookDemoPath)).toBe(true);
+  expect(existsSync(rightClickDemoPath)).toBe(true);
+
+  const triggers = page.getByRole("button", { name: "观看实机演示" });
+  const dialog = page.locator("[data-demo-dialog]");
+  const media = page.locator("[data-demo-media]");
+  const video = page.locator("[data-demo-video-player]");
+
+  await expect(triggers).toHaveCount(2);
+  await expect(dialog).not.toHaveAttribute("open", "");
+  await expect(video).not.toHaveAttribute("src", /.+/);
+  await expect(video).not.toHaveAttribute("poster", /.+/);
+
+  await triggers.first().click();
+  await expect(dialog).toHaveAttribute("open", "");
+  await expect(dialog.getByRole("heading", { level: 2, name: "Dock 窗口速览" })).toBeVisible();
+  await expect(video).toHaveAttribute("src", "assets/quick-look-recording.mp4");
+  await expect(video).not.toHaveAttribute("poster", /.+/);
+  expect((await media.boundingBox())?.height).toBeGreaterThan(0);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toHaveAttribute("open", "");
+  await expect(video).not.toHaveAttribute("src", /.+/);
+  await expect(triggers.first()).toBeFocused();
+
+  await triggers.nth(1).click();
+  await expect(dialog.getByRole("heading", { level: 2, name: "Finder 新建文件" })).toBeVisible();
+  await expect(video).toHaveAttribute("src", "assets/right‑click-extension.mp4");
+  await dialog.getByRole("button", { name: "关闭实机演示" }).click();
+  await expect(dialog).not.toHaveAttribute("open", "");
 });
 
 test("页面元数据使用产品 PNG 并指向公开站点", async ({ page }) => {
@@ -144,11 +211,11 @@ test("键盘用户可跳至主要内容并操作 FAQ", async ({ page }) => {
 
   const item = page.locator("#faq details").filter({ hasText: "需要哪些系统权限？" });
   const question = item.locator("summary");
-  await expect(item).toHaveAttribute("open", "");
-  await question.press("Enter");
   await expect(item).not.toHaveAttribute("open", "");
   await question.press("Enter");
   await expect(item).toHaveAttribute("open", "");
+  await question.press("Enter");
+  await expect(item).not.toHaveAttribute("open", "");
 });
 
 test("外部链接均采用安全的新标签页属性", async ({ page }) => {
@@ -162,6 +229,26 @@ test("外部链接均采用安全的新标签页属性", async ({ page }) => {
   expect(unsafeLinks).toEqual([]);
 });
 
+test("页脚 MIT License 链接指向仓库中存在的许可证文件", async ({ page }) => {
+  await page.goto("/");
+
+  const footer = page.getByRole("contentinfo");
+  const footerHome = footer.getByRole("link", { name: "zongMacTools 首页" });
+  await expect(footerHome.locator("img.brand-logo")).toHaveAttribute("src", "assets/zong-mac-tools-logo.png");
+  await expect(footerHome.locator("img.brand-logo")).toHaveAttribute("width", "32");
+  await expect(footerHome.locator("img.brand-logo")).toHaveAttribute("height", "32");
+
+  const license = footer.getByRole("link", { name: "MIT License" });
+  await expect(license).toHaveAttribute("href", githubLicenseUrl);
+  expect(existsSync(localLicensePath)).toBe(true);
+});
+
+test("页脚版权年份匹配项目首次发布年份", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("contentinfo")).toContainText("© 2026 zongMacTools. 开源免费。");
+});
+
 test("站点不加载追踪器、CDN 或第三方媒体", async ({ page }) => {
   const requests = [];
   page.on("request", (request) => requests.push(request.url()));
@@ -170,7 +257,10 @@ test("站点不加载追踪器、CDN 或第三方媒体", async ({ page }) => {
   await expect(page.locator('script[src*="analytics"], script[src*="gtag"], [data-theme]')).toHaveCount(0);
   expect(
     requests.filter(
-      (url) => !url.startsWith("http://127.0.0.1:4173") && url !== githubReleasesApiUrl
+      (url) =>
+        !url.startsWith("http://127.0.0.1:4173") &&
+        !url.startsWith("blob:http://127.0.0.1:4173") &&
+        url !== githubReleasesApiUrl
     )
   ).toEqual([]);
 

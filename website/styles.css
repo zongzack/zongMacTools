@@ -180,19 +180,17 @@ a {
   gap: 10px;
 }
 
-.brand-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.brand-logo {
+  display: block;
   width: 36px;
   height: 36px;
   border-radius: 9px;
-  background: linear-gradient(90deg, #527AFF 0%, #7A59F2 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  object-fit: cover;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   flex: none;
 }
 
-.brand-icon-sm {
+.brand-logo-sm {
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -858,6 +856,119 @@ main {
   color: var(--text-body);
 }
 
+.feature-demo-button {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  margin-top: auto;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-title);
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.feature-demo-button:hover {
+  transform: translateX(2px);
+  color: var(--accent-blue);
+}
+
+.feature-demo-button:active {
+  transform: translateX(1px);
+}
+
+.feature-demo-button svg {
+  flex: none;
+}
+
+/* ---------- 实机演示 ---------- */
+.demo-dialog {
+  width: min(960px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--radius-lg);
+  background: rgba(249, 250, 252, 0.92);
+  box-shadow: 0 32px 80px -16px rgba(10, 18, 51, 0.42), var(--inner-highlight);
+  color: var(--text-title);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+}
+
+.demo-dialog::backdrop {
+  background: rgba(19, 27, 47, 0.52);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.demo-dialog-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.demo-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.demo-dialog-title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.demo-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -4px -4px -4px 0;
+  padding: 0;
+  border: 1px solid rgba(82, 122, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--text-body);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.demo-dialog-close:hover {
+  transform: scale(1.04);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.demo-dialog-media {
+  width: 100%;
+  max-height: calc(100dvh - 148px);
+  aspect-ratio: var(--demo-video-aspect-ratio, 16 / 9);
+  border-radius: var(--radius-sm);
+  background: #111827;
+  overflow: hidden;
+}
+
+.demo-dialog-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #111827;
+  object-fit: contain;
+}
+
 /* 图标底色（10%  tinted） */
 .icon-blue { background: rgba(82, 113, 232, 0.1); }
 .icon-green { background: rgba(64, 196, 109, 0.1); }
@@ -1299,6 +1410,22 @@ main {
     min-height: 0;
   }
 
+  .demo-dialog {
+    width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    border-radius: var(--radius-md);
+  }
+
+  .demo-dialog-inner {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .demo-dialog-media {
+    max-height: calc(100dvh - 128px);
+    border-radius: var(--radius-xs);
+  }
+
   .cta-card {
     padding: 40px 24px;
   }
@@ -1323,6 +1450,8 @@ main {
   .btn,
   .nav-github,
   .cap-card,
+  .feature-demo-button,
+  .demo-dialog-close,
   .faq-chevron::before,
   .faq-chevron::after {
     transition: none;

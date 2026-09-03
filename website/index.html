@@ -17,7 +17,7 @@
     <meta name="twitter:description" content="Dock 悬停即出窗口缩略图，Finder 右键直接新建文件。开源免费的 macOS 效率工具。" data-page-node-id="v246DWblFvy5DLyh5RvAE0" />
     <link rel="icon" href="assets/zong-mac-tools-logo.png" type="image/png" data-page-node-id="fpDuHOqSWTqSaBEDMMTyAh" />
     <link rel="apple-touch-icon" href="assets/zong-mac-tools-logo.png" data-page-node-id="3pDBWiexhM9J1GYLf40ZoS" />
-    <link rel="stylesheet" href="styles.css?v=liquid-glass-3" data-page-node-id="zAVbI9mBk8dAbYSeeC6w7D" />
+    <link rel="stylesheet" href="styles.css?v=liquid-glass-4" data-page-node-id="zAVbI9mBk8dAbYSeeC6w7D" />
     <script type="module" src="app.js"></script>
   </head>
   <body data-page-node-id="I9CNnNj9qfDOJfFe4keIif">
@@ -34,12 +34,7 @@
     <header class="site-header" data-page-node-id="AK5zd0Xedty5DBwraqOveW">
       <nav class="nav-pill" aria-label="主导航" data-page-node-id="eR0uwNsHmx4aDDil7Dyn6u">
         <a class="brand" href="#hero" aria-label="zongMacTools 首页" data-page-node-id="4PkU1s4D5KQKAzMAEo5GSc">
-          <span class="brand-icon" aria-hidden="true" data-page-node-id="MLBdD7Pi56i9vrZgNggVAC">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="RrIpmW4LGgreMA0oGDx3Ae">
-              <rect x="3" y="3" width="14" height="14" rx="4" fill="white" fill-opacity="0.95" data-page-node-id="lrFxlEnMrSul41Hq1qAtEX" />
-              <path d="M6.5 8.5H13.5M6.5 11.5H10" stroke="#3D56D6" stroke-width="1.4" stroke-linecap="round" data-page-node-id="H5ck5KD1yIj8YhKaflxxUr" />
-            </svg>
-          </span>
+          <img class="brand-logo" src="assets/zong-mac-tools-logo.png" alt="" width="36" height="36" data-page-node-id="MLBdD7Pi56i9vrZgNggVAC" />
           <span class="brand-name" data-page-node-id="9xfCdyD36JAZspmUmEMpa6">zongMacTools</span>
         </a>
         <div class="nav-links" data-page-node-id="2bpuopnvpxBNndgGjAFUZV">
@@ -205,6 +200,20 @@
               <h3 data-page-node-id="WztsUztLXNHFBiPbWlRvHq">Dock 窗口速览</h3>
             </div>
             <p class="feature-desc" data-page-node-id="vGk1Hwe6lt9ogB1sIQVQR1">鼠标悬停在 Dock 图标上，即刻弹出该应用所有窗口的缩略图。点击即可切换，告别 Cmd+Tab 的盲目翻找。</p>
+            <button
+              class="feature-demo-button"
+              type="button"
+              data-demo-trigger
+              data-demo-title="Dock 窗口速览"
+              data-demo-video="assets/quick-look-recording.mp4"
+              data-demo-aspect-ratio="1600 / 848"
+            >
+              <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="11" fill="currentColor" />
+                <path d="M10 8.75V15.25L15.25 12L10 8.75Z" fill="white" />
+              </svg>
+              <span>观看实机演示</span>
+            </button>
           </article>
           <article class="feature-card" data-page-node-id="IHxEHqlhSn0ECKOcos51vf">
             <div class="feature-head" data-page-node-id="Tr54cJQyLUg2T22RI66UeE">
@@ -219,6 +228,20 @@
               <h3 data-page-node-id="hm9mDMeHNCNHEXBZFASApa">Finder 新建文件</h3>
             </div>
             <p class="feature-desc" data-page-node-id="Ce9PX8qVKtIY6gT5FpmMte">在 Finder 空白处右键，直接新建 TXT、MD、JSON 等常用文件。支持自定义模板，让「新建文件」像 Windows 一样自然。</p>
+            <button
+              class="feature-demo-button"
+              type="button"
+              data-demo-trigger
+              data-demo-title="Finder 新建文件"
+              data-demo-video="assets/right‑click-extension.mp4"
+              data-demo-aspect-ratio="996 / 750"
+            >
+              <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="11" fill="currentColor" />
+                <path d="M10 8.75V15.25L15.25 12L10 8.75Z" fill="white" />
+              </svg>
+              <span>观看实机演示</span>
+            </button>
           </article>
         </div>
       </section>
@@ -313,7 +336,7 @@
               </svg>
             </span>
             <h3 data-page-node-id="zcOJci4LT0VAI9y5qPymlB">原生级安全</h3>
-            <p data-page-node-id="z5gbxcXcwuRHIWUCbwzSRd">需要辅助功能权限，但绝不收集任何数据，开源可审计。</p>
+            <p data-page-node-id="z5gbxcXcwuRHIWUCbwzSRd">窗口速览需要辅助功能及录屏与系统录音权限，仅用于识别窗口和生成静态缩略图，无广告、无遥测。</p>
           </article>
         </div>
       </section>
@@ -327,28 +350,42 @@
               <span data-page-node-id="bf6T9KB8lEMoGBZw9Gmh5h">安装时提示「无法打开，因为无法验证开发者」怎么办？</span>
               <span class="faq-chevron" aria-hidden="true" data-page-node-id="dXzOGW5Ck8gaQExH9oZ28w"></span>
             </summary>
-            <p data-page-node-id="9RzOKUOYwm8ppZRZjMUsOO">首次安装未公证的 App 时，macOS 会拦截。请在「系统设置 → 隐私与安全性」中找到 zongMacTools，点击「仍要打开」。或者打开终端执行：<code data-page-node-id="ZUSKMkvEAVrauNvc11oLHF">xattr -dr com.apple.quarantine /Applications/zongMacTools.app</code></p>
+            <p data-page-node-id="9RzOKUOYwm8ppZRZjMUsOO">请确认安装包来自项目的 GitHub Releases，解压后将 zongMacTools.app 移到「应用程序」。按住 Control 键点击应用并选择「打开」；如果仍被拦截，请前往「系统设置 → 隐私与安全性」，找到相关提示并点击「仍要打开」。</p>
           </details>
-          <details class="faq-item" open data-page-node-id="sCF8E4oEz6CJ45csAm2E4k">
+          <details class="faq-item" data-page-node-id="sCF8E4oEz6CJ45csAm2E4k">
             <summary data-page-node-id="M8ctRLB3S5i7rjdu8BGA4v">
               <span data-page-node-id="7IfOHG7j90LqZK2TjEi4Uh">需要哪些系统权限？</span>
               <span class="faq-chevron" aria-hidden="true" data-page-node-id="3ohsecJJ1Z23YIkn0W85Fv"></span>
             </summary>
-            <p data-page-node-id="EUO5nUHIEy7wJJdXoVZnAA">仅需要「辅助功能」权限以监听 Dock 悬停事件和窗口信息。不访问网络、不读取文件内容、不上传任何数据。</p>
+            <p data-page-node-id="EUO5nUHIEy7wJJdXoVZnAA">Dock 窗口速览需要「辅助功能」和「录屏与系统录音」权限：前者用于监听 Dock、切换及操作窗口，后者仅用于获取静态窗口缩略图，不会录制系统声音，也不会持续录屏。如果需要 Finder 右键新建文件，还要在系统设置中启用 zongMacTools 的 Finder 扩展。</p>
           </details>
-          <details class="faq-item" open data-page-node-id="CUUOwJAqNBrYHKckQV1RDb">
+          <details class="faq-item">
             <summary data-page-node-id="4DbubaFiynW8R5kTlHhsCL">
-              <span data-page-node-id="KUNX9B7E81pf5A6m80jH9P">支持 Intel Mac 吗？</span>
+              <span data-page-node-id="KUNX9B7E81pf5A6m80jH9P">Dock 悬停后为什么没有出现窗口预览？</span>
               <span class="faq-chevron" aria-hidden="true" data-page-node-id="hFdHko1j8Y7FVfX9bydpU5"></span>
             </summary>
-            <p data-page-node-id="fgjAzPy5FHgoXL30sOQwJh">目前主要针对 Apple Silicon（M1/M2/M3/M4）优化。Intel 版本尚在评估中，欢迎到 GitHub 提交需求。</p>
+            <p data-page-node-id="fgjAzPy5FHgoXL30sOQwJh">请先在应用设置的「权限与状态」中确认辅助功能和录屏权限均已授权，然后退出并重新打开 zongMacTools。更新或替换应用后，macOS 可能要求重新授权。窗口速览目前只显示当前可见、可枚举且未最小化的普通窗口，不会自动切换到其他桌面空间。</p>
           </details>
-          <details class="faq-item" open data-page-node-id="IpQMZyn0tiZpBB3lI9l9RD">
+          <details class="faq-item">
+            <summary>
+              <span>Finder 右键菜单里为什么没有「新建文件」？</span>
+              <span class="faq-chevron" aria-hidden="true"></span>
+            </summary>
+            <p>请先将应用放在「应用程序」文件夹，打开 zongMacTools 设置中的「右键扩展」，点击「管理 Finder 扩展」，然后在系统设置中启用 zongMacTools。菜单只会出现在普通文件夹或桌面的空白区域；选中文件、侧边栏、「最近使用」、搜索结果、部分云盘或只读目录时可能不会出现。</p>
+          </details>
+          <details class="faq-item">
+            <summary>
+              <span>如何更新到新版本？</span>
+              <span class="faq-chevron" aria-hidden="true"></span>
+            </summary>
+            <p>当前版本暂不支持自动更新。退出 zongMacTools，从 GitHub Releases 下载新版本，然后替换「应用程序」中的 zongMacTools.app。已有设置和自定义模板通常会保留，但 macOS 可能要求重新授予辅助功能、录屏权限或重新启用 Finder 扩展。</p>
+          </details>
+          <details class="faq-item" data-page-node-id="IpQMZyn0tiZpBB3lI9l9RD">
             <summary data-page-node-id="plnLEJjIZAPulmz5cfXTe2">
-              <span data-page-node-id="rqmbfUxM1tEA5p0pEk0odM">如何卸载？</span>
+              <span data-page-node-id="rqmbfUxM1tEA5p0pEk0odM">如何彻底卸载？</span>
               <span class="faq-chevron" aria-hidden="true" data-page-node-id="uWdGZI9lSZcxQGw5HxDO4c"></span>
             </summary>
-            <p data-page-node-id="v8gSea8r0tyERsqpsDfLfv">将 zongMacTools.app 拖入废纸篓即可。配置项存储在 ~/Library/Preferences/，如需要彻底清理可一并删除相关 plist 文件。</p>
+            <p data-page-node-id="v8gSea8r0tyERsqpsDfLfv">先在应用设置中关闭开机启动，并在系统设置中停用 zongMacTools 的 Finder 扩展，然后退出应用并将其移入废纸篓。需要同时删除设置和自定义模板时，可清理 <code>~/Library/Preferences/com.zong.zongMacTools.plist</code> 和 <code>~/Library/Application Support/com.zong.zongMacTools/</code>。</p>
           </details>
         </div>
       </section>
@@ -368,20 +405,33 @@
             <a class="btn btn-primary" data-download href="https://github.com/zongzack/zongMacTools/releases" target="_blank" rel="noopener noreferrer" data-page-node-id="ySrrgsrGOnI3As1vFCu4BV">下载公开测试版</a>
             <a class="btn btn-ghost" href="https://github.com/zongzack/zongMacTools" target="_blank" rel="noopener noreferrer" data-page-node-id="cZGBn40LuYSOS1BRFr3RBE">查看源码</a>
           </div>
-          <p class="cta-hint" data-page-node-id="k2lVAvOG4Vs7lbQSpct492">macOS 14.0+ · Apple Silicon · 需要辅助功能权限</p>
+          <p class="cta-hint" data-page-node-id="k2lVAvOG4Vs7lbQSpct492">macOS 14.0+ · Apple Silicon · 需要辅助功能及录屏与系统录音权限</p>
         </div>
       </section>
     </main>
 
+    <dialog class="demo-dialog" aria-labelledby="demo-dialog-title" data-demo-dialog>
+      <div class="demo-dialog-inner">
+        <div class="demo-dialog-header">
+          <h2 class="demo-dialog-title" id="demo-dialog-title">实机演示</h2>
+          <button class="demo-dialog-close" type="button" aria-label="关闭实机演示" data-demo-close>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+        <div class="demo-dialog-media" data-demo-media>
+          <video class="demo-dialog-video" controls playsinline preload="none" data-demo-video-player>
+            抱歉，你的浏览器不支持视频播放。
+          </video>
+        </div>
+      </div>
+    </dialog>
+
     <footer class="site-footer" data-page-node-id="5FViGKiYsvJKFpRKl4AGFg">
       <div class="footer-inner" data-page-node-id="d3GCz30soCHfEM3XYw44G0">
         <a class="brand" href="#hero" aria-label="zongMacTools 首页" data-page-node-id="ev2lFWLv7JoFiKeDnZFDrF">
-          <span class="brand-icon brand-icon-sm" aria-hidden="true" data-page-node-id="HqY86fq2VvtMSKgaZHyURo">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="ksPuIxC3DfGcfPCV1iUKUL">
-              <rect x="3" y="3" width="14" height="14" rx="4" fill="white" fill-opacity="0.95" data-page-node-id="pxjATlHssQmTrFVtnyipIY" />
-              <path d="M6.5 8.5H13.5M6.5 11.5H10" stroke="#3D56D6" stroke-width="1.4" stroke-linecap="round" data-page-node-id="EmTswn1yTCGcddttqCLzRO" />
-            </svg>
-          </span>
+          <img class="brand-logo brand-logo-sm" src="assets/zong-mac-tools-logo.png" alt="" width="32" height="32" data-page-node-id="HqY86fq2VvtMSKgaZHyURo" />
           <span class="brand-name" data-page-node-id="HmXQH3AZBcqQZezixhQ3ZK">zongMacTools</span>
         </a>
         <div class="footer-links" data-page-node-id="DBWOjAGp19WDiCofYVVpRW">
@@ -389,7 +439,7 @@
           <a href="https://github.com/zongzack/zongMacTools/issues" target="_blank" rel="noopener noreferrer" data-page-node-id="wlSHOpPfLztLaI5XRgFihT">问题反馈</a>
           <a href="https://github.com/zongzack/zongMacTools" target="_blank" rel="noopener noreferrer" data-page-node-id="4uYWzDINOV7bwQVMfZ3rgg">GitHub</a>
         </div>
-        <p class="footer-copy" data-page-node-id="lu5x6CrPo5UA1gVOAOul1D">© 2025 zongMacTools. 开源免费。</p>
+        <p class="footer-copy" data-page-node-id="lu5x6CrPo5UA1gVOAOul1D">© 2026 zongMacTools. 开源免费。</p>
       </div>
     </footer>
   </body>
