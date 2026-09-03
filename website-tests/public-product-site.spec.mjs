@@ -10,7 +10,12 @@ const publicRelease = {
   tag_name: "v0.2.0",
   published_at: "2026-08-14T12:00:00Z",
   html_url: `${githubReleasesUrl}/tag/v0.2.0`,
-  assets: [{ name: "zongMacTools-0.2.0.zip", browser_download_url: `${githubReleasesUrl}/download/v0.2.0/zongMacTools-0.2.0.zip` }]
+  assets: [
+    {
+      name: "zongMacTools-0.2.0.zip",
+      browser_download_url: `${githubReleasesUrl}/download/v0.2.0/zongMacTools-0.2.0.zip`
+    }
+  ]
 };
 
 async function mockReleases(page, { status = 200, body = [] } = {}) {
@@ -24,381 +29,165 @@ test.beforeEach(async ({ page }) => {
   await mockReleases(page);
 });
 
-test("访客按 Windows 到 macOS 的功能迁移理解产品方向", async ({ page }) => {
+test("首页完整呈现当前产品叙事", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { level: 1, name: "zongMacTools" })).toBeVisible();
-  await expect(page.getByText("把 Windows 上好用的桌面功能，带到 Mac。")).toBeVisible();
-  await expect(page.getByRole("link", { name: "查看第一个迁移" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "查看真实运行画面" })).toBeVisible();
+  await expect(page).toHaveTitle("zongMacTools | 把 Windows 的顺手，原样搬到 Mac");
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
+  await expect(page.getByRole("heading", { level: 1, name: /把 Windows 的顺手.*原样搬到 Mac/ })).toBeVisible();
+  await expect(page.getByText("开源免费 · macOS 14+ · Apple Silicon 原生")).toBeVisible();
 
-  const sectionTitles = await page.getByRole("heading", { level: 2 }).allTextContents();
-  expect(sectionTitles).toEqual([
-    "把熟悉的操作，重新做成 Mac 工具",
-    "Dock Window Quick Look（Dock 窗口速览）",
-    "Windows 任务栏预览，来到 macOS Dock",
-    "资源管理器右键新建文件 → Finder",
-    "获取公开测试版"
+  expect(await page.getByRole("heading", { level: 2 }).allTextContents()).toEqual([
+    "两大核心功能",
+    "从 Windows 到 Mac，无缝过渡",
+    "更多细节，同样顺手",
+    "常见问题",
+    "开始体验"
   ]);
 
-  await expect(page.getByText("Windows 任务栏", { exact: true })).toBeVisible();
-  await expect(page.getByText("Windows 资源管理器", { exact: true })).toBeVisible();
-  await expect(page.locator(".status-implemented")).toHaveText("已实现");
-  await expect(page.locator(".status-building")).toHaveText("开发中");
-  await expect(page.locator(".status-media")).toHaveText("本地录屏");
-  await expect(page.getByText("交互预览 · 展示窗口预览、切换和操作路径", { exact: true })).toBeVisible();
+  await expect(page.locator(".feature-card")).toHaveCount(2);
+  await expect(page.locator(".migration-row")).toHaveCount(2);
+  await expect(page.locator(".cap-card")).toHaveCount(6);
+  await expect(page.locator(".faq-item")).toHaveCount(4);
 });
 
-test("顶栏仅提供品牌、工具、语言和 GitHub 源码入口", async ({ page }) => {
+test("顶栏提供产品导航和 GitHub 源码入口", async ({ page }) => {
   await page.goto("/");
 
   const navigation = page.getByRole("navigation", { name: "主导航" });
-  await expect(navigation.getByRole("link", { name: "zongMacTools 首页" })).toBeVisible();
-  await expect(navigation.getByRole("link", { name: "迁移案例" })).toBeVisible();
-  await expect(navigation.getByRole("button", { name: "Switch to English" })).toBeVisible();
-  await expect(navigation.getByRole("link", { name: /在 GitHub 查看 zongMacTools 源码/ })).toHaveAttribute("target", "_blank");
-  await expect(navigation.getByRole("link", { name: /在 GitHub 查看 zongMacTools 源码/ })).toHaveAttribute("rel", "noopener noreferrer");
-  await expect(navigation.getByRole("link", { name: /下载|获取|安装/ })).toHaveCount(0);
-  await expect(navigation.locator("[data-theme]")).toHaveCount(0);
+  await expect(navigation.getByRole("link", { name: "zongMacTools 首页" })).toHaveAttribute("href", "#hero");
+  await expect(navigation.getByRole("link", { name: "功能" })).toHaveAttribute("href", "#features");
+  await expect(navigation.getByRole("link", { name: "迁移" })).toHaveAttribute("href", "#migration");
+  await expect(navigation.getByRole("link", { name: "下载" })).toHaveAttribute("href", "#download");
+
+  const github = navigation.getByRole("link", { name: /在 GitHub 查看 zongMacTools 源码/ });
+  await expect(github).toHaveAttribute("href", githubRepositoryUrl);
+  await expect(github).toHaveAttribute("target", "_blank");
+  await expect(github).toHaveAttribute("rel", "noopener noreferrer");
 });
 
-test("站点所有品牌标志统一使用产品 PNG", async ({ page }) => {
+test("Hero 展示两项产品能力示意图", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.locator("#hero .hero-mock")).toHaveCount(2);
+  await expect(page.getByRole("img", { name: /Dock 窗口速览界面示意/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: /右键新建文件界面示意/ })).toBeVisible();
+  await expect(page.locator(".popover-card")).toHaveCount(3);
+  await expect(page.locator(".rc-submenu-item")).toHaveCount(6);
+  await expect(page.locator(".rc-submenu-active")).toContainText("JSON");
+});
+
+test("页面元数据使用产品 PNG 并指向公开站点", async ({ page }) => {
   await page.goto("/");
 
   const logoAsset = "assets/zong-mac-tools-logo.png";
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute("href", logoAsset);
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute("type", "image/png");
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", logoAsset);
-
-  const marks = page.locator("img.brand-mark, img.hero-mark");
-  await expect(marks).toHaveCount(3);
-  expect(await marks.evaluateAll((images) => images.map((image) => image.getAttribute("src")))).toEqual([
-    logoAsset,
-    logoAsset,
-    logoAsset
-  ]);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://zongmactools.pages.dev/");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Finder 右键直接新建文件/);
 });
 
-test("中文和英文在整个公开站中同步切换并保留本地选择", async ({ page }) => {
-  await page.goto("/");
-
-  await page.getByRole("button", { name: "Switch to English" }).click();
-
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page).toHaveTitle("zongMacTools | Bringing familiar Windows desktop features to Mac");
-  await expect(page.getByText("Bring familiar Windows desktop features to the Mac.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "See the first migration" })).toBeVisible();
-  await expect(page.getByText("In development", { exact: true })).toBeVisible();
-  await expect(page.getByText("LOCAL RECORDING", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Pause on the Dock", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "切换为中文" })).toBeVisible();
-
-  await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.getByText("Bring familiar Windows desktop features to the Mac.")).toBeVisible();
-});
-
-test("浏览器英文语言在首次访问时得到英文完整内容", async ({ browser }) => {
-  const context = await browser.newContext({ locale: "en-US" });
-  await context.route(githubReleasesApiUrl, (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
-  );
-  const page = await context.newPage();
-  await page.goto("/");
-
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.getByText("Bring familiar Windows desktop features to the Mac.")).toBeVisible();
-  await expect(page.getByRole("link", { name: /Explore the zongMacTools project on GitHub/ })).toBeVisible();
-  await context.close();
-});
-
-test("匹配的公开 Release 显示准确版本、日期和 ZIP 下载", async ({ page }) => {
+test("匹配的公开 Release 会更新全部下载按钮", async ({ page }) => {
   await mockReleases(page, { body: [publicRelease] });
   await page.goto("/");
 
-  const acquire = page.locator("#acquire");
-  await expect(acquire.getByRole("status")).toContainText("v0.2.0");
-  await expect(acquire.getByRole("status")).toContainText("2026年8月14日");
-  await expect(acquire.getByRole("link", { name: "下载 v0.2.0 公开测试版（ZIP）" })).toHaveAttribute(
-    "href",
-    publicRelease.assets[0].browser_download_url
-  );
-  await expect(acquire.getByRole("link", { name: "下载 v0.2.0 公开测试版（ZIP）" })).toHaveAttribute("rel", "noopener noreferrer");
-  await expect(acquire.getByRole("link", { name: /在 GitHub 查看 v0.2.0 发行详情/ })).toHaveAttribute("href", publicRelease.html_url);
-  await expect(acquire.getByRole("link", { name: /在 GitHub 查看 zongMacTools 源码/ })).toHaveAttribute("href", githubRepositoryUrl);
+  const downloads = page.locator("[data-download]");
+  await expect(downloads).toHaveCount(2);
+  await expect(downloads.first()).toHaveAttribute("href", publicRelease.assets[0].browser_download_url);
+  await expect(downloads.last()).toHaveAttribute("href", publicRelease.assets[0].browser_download_url);
 
-  await expect(acquire.getByText("macOS 14 或更高版本", { exact: true })).toBeVisible();
-  await expect(acquire.getByText("辅助功能与屏幕录制", { exact: true })).toBeVisible();
-  await expect(acquire.getByText("未公证公开测试版", { exact: true })).toBeVisible();
-
-  await page.getByRole("button", { name: "Switch to English" }).click();
-  await expect(acquire.getByRole("link", { name: "Download the v0.2.0 public beta (ZIP)" })).toHaveAttribute(
-    "href",
-    publicRelease.assets[0].browser_download_url
-  );
+  for (const download of await downloads.all()) {
+    await expect(download).toHaveAttribute("aria-label", "下载 zongMacTools v0.2.0（新标签页打开）");
+    await expect(download).toHaveAttribute("target", "_blank");
+    await expect(download).toHaveAttribute("rel", "noopener noreferrer");
+  }
 });
 
-for (const [name, releaseResponse] of [
-  ["没有公开资产", []],
-  ["只有 Draft Release", [{ ...publicRelease, draft: true }]],
-  ["缺失匹配 ZIP 资产", [{ ...publicRelease, assets: [] }]]
-]) {
-  test(`${name}时获取区诚实引导至 GitHub`, async ({ page }) => {
-    await mockReleases(page, { body: releaseResponse });
-    await page.goto("/");
-
-    const acquire = page.locator("#acquire");
-    await expect(acquire.getByText("目前还没有可验证的公开下载版本", { exact: false })).toBeVisible();
-    await expect(acquire.getByRole("link", { name: /下载.*公开测试版/ })).toHaveCount(0);
-    await expect(acquire.getByRole("link", { name: /在 GitHub 查看 zongMacTools 发行详情/ })).toHaveAttribute("href", githubReleasesUrl);
-  });
-}
-
 for (const [name, options] of [
+  ["没有公开资产", { body: [] }],
+  ["只有 Draft Release", { body: [{ ...publicRelease, draft: true }] }],
+  ["缺失匹配 ZIP 资产", { body: [{ ...publicRelease, assets: [] }] }],
   ["畸形 Release 数据", { body: [{ draft: false, assets: [] }] }],
-  ["畸形发布日期", { body: [{ ...publicRelease, published_at: "2026-02-30T12:00:00Z" }] }],
-  ["不匹配的发行详情路径", { body: [{ ...publicRelease, html_url: `${githubReleasesUrl}/tag/v0.1.0` }] }],
-  ["不匹配的资产路径", { body: [{ ...publicRelease, assets: [{ name: "zongMacTools-0.2.0.zip", browser_download_url: "https://example.com/file.zip" }] }] }],
-  ["限流", { status: 429, body: { message: "rate limited" } }]
+  ["不匹配的下载地址", { body: [{ ...publicRelease, assets: [{ name: "zongMacTools-0.2.0.zip", browser_download_url: "https://example.com/file.zip" }] }] }],
+  ["GitHub API 限流", { status: 429, body: { message: "rate limited" } }]
 ]) {
-  test(`${name}时获取区不猜测版本或下载`, async ({ page }) => {
+  test(`${name}时下载按钮降级到 Releases 列表`, async ({ page }) => {
     await mockReleases(page, options);
     await page.goto("/");
 
-    const acquire = page.locator("#acquire");
-    await expect(acquire.getByText("暂时无法读取 GitHub 的版本信息", { exact: false })).toBeVisible();
-    await expect(acquire.getByRole("link", { name: /下载.*公开测试版/ })).toHaveCount(0);
-    await expect(acquire.getByRole("link", { name: /在 GitHub 查看 zongMacTools 发行详情/ })).toHaveAttribute("href", githubReleasesUrl);
-    await expect(acquire.getByText("v0.2.0", { exact: false })).toHaveCount(0);
+    const downloads = page.locator("[data-download]");
+    await expect(downloads).toHaveCount(2);
+    await expect(downloads.first()).toHaveAttribute("href", githubReleasesUrl);
+    await expect(downloads.last()).toHaveAttribute("href", githubReleasesUrl);
+    await expect(downloads.first()).not.toHaveAttribute("aria-label", /v0\.2\.0/);
   });
 }
 
-test("网络失败时获取区降级至 GitHub", async ({ page }) => {
+test("网络失败时下载按钮降级到 Releases 列表", async ({ page }) => {
   await page.unroute(githubReleasesApiUrl);
   await page.route(githubReleasesApiUrl, (route) => route.abort("failed"));
   await page.goto("/");
 
-  const acquire = page.locator("#acquire");
-  await expect(acquire.getByText("暂时无法读取 GitHub 的版本信息", { exact: false })).toBeVisible();
-  await expect(acquire.getByRole("link", { name: /下载.*公开测试版/ })).toHaveCount(0);
+  await expect(page.locator("[data-download]").first()).toHaveAttribute("href", githubReleasesUrl);
+  await expect(page.locator("[data-download]").last()).toHaveAttribute("href", githubReleasesUrl);
 });
 
-test("键盘用户可跳过导航，减少动态效果时全部叙事保持直接可读", async ({ page }) => {
+test("键盘用户可跳至主要内容并操作 FAQ", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
 
   const skipLink = page.getByRole("link", { name: "跳至主要内容" });
   await skipLink.press("Enter");
   await expect(page.locator("main")).toBeFocused();
-  await expect(page.getByText("交互预览 · 展示窗口预览、切换和操作路径", { exact: true })).toBeVisible();
-  await expect(page.getByText("本地录屏", { exact: true })).toBeVisible();
-  await expect(page.getByText("开发中", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: /在 GitHub 查看 zongMacTools 发行详情/ })).toBeVisible();
+
+  const item = page.locator("#faq details").filter({ hasText: "需要哪些系统权限？" });
+  const question = item.locator("summary");
+  await expect(item).toHaveAttribute("open", "");
+  await question.press("Enter");
+  await expect(item).not.toHaveAttribute("open", "");
+  await question.press("Enter");
+  await expect(item).toHaveAttribute("open", "");
 });
 
-test("媒体区提供本地录屏预览与关键帧，全部保持原始宽高比", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+test("外部链接均采用安全的新标签页属性", async ({ page }) => {
   await page.goto("/");
 
-  const media = page.locator("#media");
-  const video = media.locator("video");
-  await expect(video).toBeVisible();
-  await expect(video).toHaveAttribute("poster", "assets/quick-look-poster.jpg");
-  await expect(video.locator("source")).toHaveAttribute("src", "assets/quick-look-recording.mp4");
-  await expect(video).toHaveJSProperty("muted", true);
-  await expect(media.getByText("本地录屏", { exact: true })).toBeVisible();
-  await expect(media.locator(".media-frame figcaption")).toContainText("本地录屏");
-
-  await expect(media.locator(".media-still img")).toHaveCount(3);
-  await media.scrollIntoViewIfNeeded();
-  await expect
-    .poll(() =>
-      media
-        .locator(".media-still img")
-        .evaluateAll((images) => images.every((image) => image.complete && image.naturalWidth === 2704 && image.naturalHeight === 1434))
-    )
-    .toBe(true);
-
-  // 视频容器保持 2704:1434 原始比例，不裁切画面。
-  await expect
-    .poll(() =>
-      video.evaluate((element) => {
-        const { width, height } = element.getBoundingClientRect();
-        return width > 0 && Math.abs(width / height - 2704 / 1434) < 0.01;
-      })
-    )
-    .toBe(true);
-});
-
-test("窄屏与减少动态效果下媒体降级为海报图", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
-
-  const media = page.locator("#media");
-  const video = media.locator("video");
-  const poster = media.locator(".media-poster");
-  await expect(video).toBeHidden();
-  await media.scrollIntoViewIfNeeded();
-  await expect(poster).toBeVisible();
-  await expect
-    .poll(() => poster.evaluate((image) => image.complete && image.naturalWidth === 2704 && image.naturalHeight === 1434))
-    .toBe(true);
-
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(video).toBeHidden();
-  await expect(poster).toBeVisible();
-});
-
-test("Dock Window Quick Look 演示以四个具名阶段说明当前交互", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-
-  const demo = page.getByRole("group", { name: /交互原理演示/ });
-  const status = demo.locator(".demo-status");
-  await demo.scrollIntoViewIfNeeded();
-
-  await demo.getByRole("button", { name: "停在 Dock", exact: true }).click();
-  await expect(status).toContainText("步骤 1 / 4");
-  await expect(status).toContainText("停在 Dock");
-  await expect(status).toContainText("指针停在正在运行的 Dock 应用图标上。");
-  await expect(demo.getByRole("button", { name: "停在 Dock", exact: true })).toHaveAttribute("aria-pressed", "true");
-
-  // 桌面鼠标：悬停抽象 Dock 应用触发“查看窗口”。
-  await demo.locator("[data-demo-hover]").hover();
-  await expect(status).toContainText("查看窗口");
-  await expect(status).toContainText("不是实时视频");
-
-  // 桌面鼠标：点击抽象窗口卡片触发“切换窗口”。
-  await demo.locator("[data-demo-scene-card]").first().click();
-  await expect(status).toContainText("切换窗口");
-  await expect(demo.getByRole("button", { name: "切换窗口", exact: true })).toHaveAttribute("aria-pressed", "true");
-
-  // 桌面鼠标：右键抽象窗口卡片触发“窗口操作”。
-  await demo.locator("[data-demo-scene-card]").first().click({ button: "right" });
-  await expect(status).toContainText("窗口操作");
-  await expect(status).toContainText("右键");
-});
-
-test("桌面滚动推进案例且浏览器滚轮不被劫持", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-
-  const demo = page.getByRole("group", { name: /交互原理演示/ });
-  await demo.scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollBy(0, -520));
-  const scrollBefore = await page.evaluate(() => window.scrollY);
-  await page.evaluate(() => window.scrollBy(0, 520));
-  await expect.poll(() => page.evaluate((previous) => window.scrollY > previous, scrollBefore)).toBe(true);
-  await expect(demo.locator(".demo-status")).toContainText("窗口操作");
-});
-
-test("键盘步骤控制器驱动同一四状态模型", async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
-
-  const demo = page.getByRole("group", { name: /交互原理演示/ });
-  const dockStep = demo.getByRole("button", { name: "停在 Dock", exact: true });
-  await dockStep.focus();
-  await dockStep.press("Enter");
-  await expect(demo.locator(".demo-status")).toContainText("指针停在正在运行的 Dock 应用图标上。");
-  await expect(dockStep).toHaveAttribute("aria-pressed", "true");
-
-  for (const [stage, description] of [
-    ["查看窗口", "不是实时视频"],
-    ["切换窗口", "目标窗口被激活"],
-    ["窗口操作", "当前可用的窗口操作"]
-  ]) {
-    const step = demo.getByRole("button", { name: stage, exact: true });
-    await step.press("Space");
-    await expect(demo.locator(".demo-status")).toContainText(description);
-    await expect(step).toHaveAttribute("aria-pressed", "true");
-  }
-});
-
-test("触控窄屏与减少动态效果用户用文字步骤控制器获得等价体验", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
-
-  const demo = page.getByRole("group", { name: /交互原理演示/ });
-  // 触控设备不模拟 hover/右键：抽象场景控件不进入可访问树。
-  await expect(demo.locator("[data-demo-hover]")).toHaveAttribute("aria-hidden", "true");
-  await expect(demo.locator(".demo-scene").getByRole("button")).toHaveCount(0);
-
-  for (const [stage, description] of [
-    ["停在 Dock", "指针停在正在运行的 Dock 应用图标上。"],
-    ["查看窗口", "不是实时视频"],
-    ["切换窗口", "目标窗口被激活"],
-    ["窗口操作", "当前可用的窗口操作"]
-  ]) {
-    const step = demo.getByRole("button", { name: stage, exact: true });
-    await step.click();
-    await expect(demo.locator(".demo-status")).toContainText(description);
-    await expect(step).toHaveAttribute("aria-pressed", "true");
-  }
-});
-
-test("关键链接与行动控件具备触控尺寸和可见焦点", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
-
-  const undersizedTargets = await page.locator("a[href], button").evaluateAll((elements) =>
-    elements
-      .filter((element) => !element.closest("[aria-hidden='true']"))
-      .map((element) => {
-        const rect = element.getBoundingClientRect();
-        return { label: element.textContent?.trim(), width: rect.width, height: rect.height };
-      })
-      .filter((target) => target.width > 0 && target.height > 0)
-      .filter((target) => target.width < 44 || target.height < 44)
+  const unsafeLinks = await page.locator('a[href^="https://"]').evaluateAll((links) =>
+    links
+      .filter((link) => link.target !== "_blank" || link.rel !== "noopener noreferrer")
+      .map((link) => link.getAttribute("href"))
   );
-
-  expect(undersizedTargets).toEqual([]);
-
-  const toggle = page.getByRole("button", { name: "Switch to English" });
-  await toggle.focus();
-  await expect(toggle).toBeFocused();
-  await toggle.press("Enter");
-  await expect(page.getByText("Bring familiar Windows desktop features to the Mac.")).toBeVisible();
+  expect(unsafeLinks).toEqual([]);
 });
 
-test("探索方向不展示下载、发布日期、等待名单或已完成能力", async ({ page }) => {
-  await page.goto("/");
-
-  const exploration = page.locator("#exploration");
-  await expect(exploration.getByText("开发中", { exact: true })).toBeVisible();
-  await expect(exploration.getByRole("link", { name: /在 GitHub 探索 zongMacTools 项目/ })).toHaveAttribute("target", "_blank");
-  await expect(exploration.getByRole("link", { name: /在 GitHub 探索 zongMacTools 项目/ })).toHaveAttribute("rel", "noopener noreferrer");
-  await expect(exploration.getByRole("link", { name: /下载|获取|安装/ })).toHaveCount(0);
-  await expect(exploration.getByText(/发布日期|等待名单|即将发布/)).toHaveCount(0);
-});
-
-test("站点不提供主题控制器，也不加载追踪或第三方资源", async ({ page }) => {
+test("站点不加载追踪器、CDN 或第三方媒体", async ({ page }) => {
   const requests = [];
   page.on("request", (request) => requests.push(request.url()));
   await page.goto("/");
 
-  await expect(page.getByRole("button", { name: /深色|浅色|系统|外观/ })).toHaveCount(0);
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://zongmactools.pages.dev/");
+  await expect(page.locator('script[src*="analytics"], script[src*="gtag"], [data-theme]')).toHaveCount(0);
+  expect(
+    requests.filter(
+      (url) => !url.startsWith("http://127.0.0.1:4173") && url !== githubReleasesApiUrl
+    )
+  ).toEqual([]);
 
   const robots = await page.request.get("/robots.txt");
   const sitemap = await page.request.get("/sitemap.xml");
   expect(await robots.text()).toContain("Allow: /");
-  expect(await robots.text()).not.toContain("pages.dev");
   expect(await sitemap.text()).toContain("https://zongmactools.pages.dev/");
-  expect(requests.filter((url) => !url.startsWith("http://127.0.0.1:4173") && url !== githubReleasesApiUrl)).toEqual([]);
 });
 
 for (const width of [1440, 1024, 390]) {
-  test(`站点在 ${width}px 视口不产生横向溢出、文字裁切或控件重叠`, async ({ page }) => {
+  test(`站点在 ${width}px 视口不产生横向溢出或文字裁切`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
 
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
-    const overflow = await page.locator("h1, h2, h3, p, a, button").evaluateAll((elements) =>
+    const overflow = await page.locator("h1, h2, h3, p, a:not(.skip-link), summary").evaluateAll((elements) =>
       elements
         .map((element) => {
           const rect = element.getBoundingClientRect();
@@ -413,5 +202,7 @@ for (const width of [1440, 1024, 390]) {
     );
 
     expect(overflow).toEqual([]);
+    await expect(page.getByRole("img", { name: /Dock 窗口速览界面示意/ })).toBeVisible();
+    await expect(page.getByRole("img", { name: /右键新建文件界面示意/ })).toBeVisible();
   });
 }

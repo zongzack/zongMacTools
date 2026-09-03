@@ -1,304 +1,395 @@
 <!doctype html>
-<html lang="zh-Hans">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f6f6f7" />
-    <title>zongMacTools | 把 Windows 上好用的桌面功能带到 Mac</title>
-    <meta name="description" content="zongMacTools 将 Windows 用户熟悉的桌面交互，按照 macOS 的习惯重新实现。首个工具把任务栏窗口预览带到 Mac 的 Dock。" />
-    <link rel="canonical" href="https://zongmactools.pages.dev/" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="zongMacTools | 把 Windows 上好用的桌面功能带到 Mac" />
-    <meta property="og:description" content="从任务栏窗口预览到 Finder 右键新建文件，zongMacTools 正在把值得带来的 Windows 桌面体验重做成 macOS 工具。" />
-    <meta property="og:locale" content="zh_CN" />
-    <meta property="og:url" content="https://zongmactools.pages.dev/" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="zongMacTools | 把 Windows 上好用的桌面功能带到 Mac" />
-    <meta name="twitter:description" content="从任务栏窗口预览到 Finder 右键新建文件，zongMacTools 正在把值得带来的 Windows 桌面体验重做成 macOS 工具。" />
-    <link rel="icon" href="assets/zong-mac-tools-logo.png" type="image/png" />
-    <link rel="apple-touch-icon" href="assets/zong-mac-tools-logo.png" />
-    <link rel="stylesheet" href="styles.css" />
+<html lang="zh-Hans" data-page-node-id="JdnhfZ9iXKbI8yybk9a5IC">
+  <head data-page-node-id="xNnxj6I2xBYGGM9sWYtwAi">
+    <meta charset="utf-8" data-page-node-id="NFj4gBchI4qLGgSPHe2uxt" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="CvayYD6molp1TZbFtiHdgN" />
+    <meta name="theme-color" content="#F9FAFC" data-page-node-id="2zDhdigm5dJxETz8aWZX9s" />
+    <title>zongMacTools | 把 Windows 的顺手，原样搬到 Mac</title>
+    <meta name="description" content="Dock 悬停即出窗口缩略图，Finder 右键直接新建文件——zongMacTools 把 Windows 上你早已习惯的高效操作，带回 macOS。开源免费，Apple Silicon 原生。" data-page-node-id="kZChNwLvkeDYAY2q9Rvtcf" />
+    <link rel="canonical" href="https://zongmactools.pages.dev/" data-page-node-id="PVDBL4Ue2IOPdt1ARQCqV4" />
+    <meta property="og:type" content="website" data-page-node-id="HDu71iJVWJ1q0w0q9mqQsB" />
+    <meta property="og:title" content="zongMacTools | 把 Windows 的顺手，原样搬到 Mac" data-page-node-id="Bk9RQrWxO5a2rHiHFPWjV6" />
+    <meta property="og:description" content="Dock 悬停即出窗口缩略图，Finder 右键直接新建文件。开源免费的 macOS 效率工具。" data-page-node-id="dkZop2I9qEPzAHhkVW1nHC" />
+    <meta property="og:locale" content="zh_CN" data-page-node-id="dUeyhVJQN6UJu3yQ51Kf3k" />
+    <meta property="og:url" content="https://zongmactools.pages.dev/" data-page-node-id="NqAEww5XAYmm9yajQ3SRbA" />
+    <meta name="twitter:card" content="summary" data-page-node-id="Xldy7X69eeXMwE3eEvyj8y" />
+    <meta name="twitter:title" content="zongMacTools | 把 Windows 的顺手，原样搬到 Mac" data-page-node-id="CP1H1revnke2JmxRRfHgzo" />
+    <meta name="twitter:description" content="Dock 悬停即出窗口缩略图，Finder 右键直接新建文件。开源免费的 macOS 效率工具。" data-page-node-id="v246DWblFvy5DLyh5RvAE0" />
+    <link rel="icon" href="assets/zong-mac-tools-logo.png" type="image/png" data-page-node-id="fpDuHOqSWTqSaBEDMMTyAh" />
+    <link rel="apple-touch-icon" href="assets/zong-mac-tools-logo.png" data-page-node-id="3pDBWiexhM9J1GYLf40ZoS" />
+    <link rel="stylesheet" href="styles.css?v=liquid-glass-3" data-page-node-id="zAVbI9mBk8dAbYSeeC6w7D" />
     <script type="module" src="app.js"></script>
   </head>
-  <body>
-    <a class="skip-link" href="#main" data-i18n="skipLink">跳至主要内容</a>
+  <body data-page-node-id="I9CNnNj9qfDOJfFe4keIif">
+    <a class="skip-link" href="#main" data-page-node-id="TWE1HtqTaAXAmtPZCpFsYM">跳至主要内容</a>
 
-    <header class="site-header">
-      <nav class="site-nav" aria-label="主导航" data-i18n-aria-label="primaryNavigation">
-        <a class="brand" href="#hero" aria-label="zongMacTools 首页" data-i18n-aria-label="homeLink">
-          <img class="brand-mark" src="assets/zong-mac-tools-logo.png" alt="" />
-          <span class="brand-word">zongMacTools</span>
+    <!-- 极光背景：蓝 / 紫 / 青 / 桃四色径向光晕 -->
+    <div class="aurora" aria-hidden="true" data-page-node-id="MYXdd4isuB7MznGwAXQHKG">
+      <span class="glow glow-blue" data-page-node-id="eB0IUSEQ5CqrZGKxdFSzMg"></span>
+      <span class="glow glow-purple" data-page-node-id="bkLhahZrCZkVENbhhGw8Ep"></span>
+      <span class="glow glow-cyan" data-page-node-id="sHmrwgHexuziJRTZoWlxQa"></span>
+      <span class="glow glow-peach" data-page-node-id="OHQfh291DwVkidvweIT99P"></span>
+    </div>
+
+    <header class="site-header" data-page-node-id="AK5zd0Xedty5DBwraqOveW">
+      <nav class="nav-pill" aria-label="主导航" data-page-node-id="eR0uwNsHmx4aDDil7Dyn6u">
+        <a class="brand" href="#hero" aria-label="zongMacTools 首页" data-page-node-id="4PkU1s4D5KQKAzMAEo5GSc">
+          <span class="brand-icon" aria-hidden="true" data-page-node-id="MLBdD7Pi56i9vrZgNggVAC">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="RrIpmW4LGgreMA0oGDx3Ae">
+              <rect x="3" y="3" width="14" height="14" rx="4" fill="white" fill-opacity="0.95" data-page-node-id="lrFxlEnMrSul41Hq1qAtEX" />
+              <path d="M6.5 8.5H13.5M6.5 11.5H10" stroke="#3D56D6" stroke-width="1.4" stroke-linecap="round" data-page-node-id="H5ck5KD1yIj8YhKaflxxUr" />
+            </svg>
+          </span>
+          <span class="brand-name" data-page-node-id="9xfCdyD36JAZspmUmEMpa6">zongMacTools</span>
         </a>
-        <div class="nav-actions">
-          <a class="nav-link" href="#tool" data-i18n="toolNav">迁移案例</a>
-          <button class="nav-link language-toggle" id="language-toggle" type="button" data-language="zh" aria-label="Switch to English" data-i18n-aria-label="languageSwitch">中 / EN</button>
-          <a
-            class="nav-link nav-github"
-            href="https://github.com/zongzack/zongMacTools"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="在 GitHub 查看 zongMacTools 源码（新标签页打开）"
-            data-i18n-aria-label="githubSourceLink"
-            data-i18n="githubSource"
-            >GitHub 源码</a
-          >
+        <div class="nav-links" data-page-node-id="2bpuopnvpxBNndgGjAFUZV">
+          <a class="nav-link" href="#features" data-page-node-id="SnZlpKOC1P9mSkHSRCOJz5">功能</a>
+          <a class="nav-link" href="#migration" data-page-node-id="xNlo8Jwf4bmBbO3MnZKkwD">迁移</a>
+          <a class="nav-link" href="#download" data-page-node-id="V8c0ErXvyQim7xWzbvLLUp">下载</a>
         </div>
+        <a
+          class="nav-github"
+          href="https://github.com/zongzack/zongMacTools"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="在 GitHub 查看 zongMacTools 源码（新标签页打开）" data-page-node-id="YWST2YZXIey4bQ8LGoxKCH"
+        >
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" data-page-node-id="ZeNo4FwIOuqSvADfHSU8ia">
+            <path
+              d="M8 0C3.58 0 0 3.58 0 8C0 11.54 2.29 14.53 5.47 15.59C5.87 15.66 6.02 15.42 6.02 15.21C6.02 15.02 6.01 14.39 6.01 13.72C4 14.09 3.48 13.23 3.32 12.78C3.23 12.53 2.84 11.76 2.5 11.57C2.22 11.42 1.82 11.05 2.49 11.04C3.12 11.03 3.58 11.62 3.73 11.88C4.44 13.07 5.59 12.74 6.05 12.54C6.12 12.03 6.33 11.68 6.56 11.48C4.78 11.28 2.92 10.59 2.92 7.58C2.92 6.72 3.23 6.01 3.75 5.46C3.67 5.26 3.39 4.45 3.83 3.37C3.83 3.37 4.49 3.16 6 4.14C6.64 3.96 7.32 3.87 8 3.87C8.68 3.87 9.36 3.96 10 4.14C11.51 3.15 12.17 3.37 12.17 3.37C12.61 4.45 12.33 5.26 12.25 5.46C12.77 6.01 13.08 6.72 13.08 7.58C13.08 10.6 11.21 11.28 9.44 11.48C9.73 11.73 9.98 12.21 9.98 12.96C9.98 14.03 9.97 14.9 9.97 15.21C9.97 15.42 10.12 15.67 10.53 15.59C13.71 14.53 16 11.54 16 8C16 3.58 12.42 0 8 0Z"
+              fill="#171923" data-page-node-id="fZE3h61XwkDDApCqyUhPcY"
+            />
+          </svg>
+          <span data-page-node-id="yfMuspTAtEemEAed8ySYKv">GitHub</span>
+        </a>
       </nav>
     </header>
 
-    <main id="main" tabindex="-1">
-      <section class="hero" id="hero" aria-labelledby="hero-title">
-        <div class="hero-backdrop" aria-hidden="true">
-          <span class="hero-grid"></span>
+    <main id="main" tabindex="-1" data-page-node-id="N7Dxp4WTKCALisYCAFbJ3G">
+      <!-- Hero -->
+      <section class="hero" id="hero" aria-labelledby="hero-title" data-page-node-id="zjT8cFBXZqtq2rwVD2F9Yh">
+        <p class="hero-badge" data-page-node-id="oGay6LfI0nOWH1tCV2EuY0"><span class="badge-dot" aria-hidden="true" data-page-node-id="AiFKB9MbJdvf3YpHIFEVdE"></span>开源免费 · macOS 14+ · Apple Silicon 原生</p>
+        <h1 class="hero-title" id="hero-title" data-page-node-id="IHHINZKvwZq5FREHIlIqgo">把 Windows 的顺手，<br  data-page-node-id="6UudmbdfkJdWVowEplQAlF"/>原样搬到 Mac</h1>
+        <p class="hero-subtitle" data-page-node-id="ciOGnKBAibNmjtmV6c7Z9r">Dock 悬停即出窗口缩略图，Finder 右键直接新建文件——zongMacTools 把那些你早已习惯的高效操作，带回 macOS。</p>
+        <div class="hero-actions" data-page-node-id="vvd60WxWwuMiDazuaQnpOT">
+          <a class="btn btn-primary" data-download href="https://github.com/zongzack/zongMacTools/releases" target="_blank" rel="noopener noreferrer" data-page-node-id="iThtoA2vFO7wSTH9mMzpZ0">下载公开测试版</a>
+          <a class="btn btn-ghost" href="#features" data-page-node-id="dAmjaWaiZduh6ZIdbk8tmC">查看功能</a>
         </div>
-        <div class="section-inner hero-inner">
-          <p class="eyebrow" data-i18n="heroEyebrow">Windows → macOS</p>
-          <h1 class="hero-title" id="hero-title">
-            <img class="hero-mark" src="assets/zong-mac-tools-logo.png" alt="" />
-            <span>zongMacTools</span>
-          </h1>
-          <p class="hero-statement" data-i18n="heroStatement">把 Windows 上好用的桌面功能，带到 Mac。</p>
-          <p class="hero-summary" data-i18n="heroSummary">zongMacTools 将 Windows 用户熟悉的高频桌面交互，按照 macOS 的系统习惯重新实现。不是复制界面，而是把值得留下的体验做成真正像 Mac 的工具。</p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="#tool" data-i18n="heroAction">查看第一个迁移</a>
+
+        <!-- 产品模拟图：Dock 窗口速览 -->
+        <div class="hero-mock" role="img" aria-label="zongMacTools Dock 窗口速览界面示意：悬停 Dock 图标弹出窗口缩略图卡片" data-page-node-id="BKZZSTEaJv6FJoi8SK5vFz">
+          <div class="mock-titlebar" aria-hidden="true" data-page-node-id="JaHI4IaVDnUP4xYF0S3zkq">
+            <span class="tb-dot tb-red" data-page-node-id="sbkpnbVQ4wbMuy3uQWns1k"></span>
+            <span class="tb-dot tb-yellow" data-page-node-id="vbG4cdDQHyIHvFQ8GrEMfH"></span>
+            <span class="tb-dot tb-green" data-page-node-id="IvoS3BBGxBxROKGuLSj0nL"></span>
+            <span class="tb-title" data-page-node-id="sGKUT5EEtH8xsN81d6BP6H">zongMacTools — Dock 窗口速览</span>
           </div>
-          <p class="hero-hint" data-i18n="heroHint">向下滚动，看看哪些 Windows 体验已经来到 Mac。</p>
-        </div>
-      </section>
-
-      <section class="origins" id="origins" aria-labelledby="origins-title">
-        <div class="section-inner">
-          <p class="eyebrow" data-i18n="originsEyebrow">Windows → macOS</p>
-          <h2 id="origins-title" data-i18n="originsTitle">把熟悉的操作，重新做成 Mac 工具</h2>
-          <p class="section-summary" data-i18n="originsSummary">Windows 上有些高频交互已经证明好用；zongMacTools 挑选其中值得带来的部分，遵循 macOS 的窗口、权限和交互习惯重新实现。</p>
-          <div class="origin-paths">
-            <article class="origin-path" data-path="migration">
-              <p class="path-tag" data-i18n="migrationTag">Windows 任务栏</p>
-              <h3 data-i18n="migrationTitle">悬停预览窗口 → Dock 窗口速览</h3>
-              <p data-i18n="migrationCopy">Windows 任务栏可以悬停查看同一应用的窗口。Dock Window Quick Look 将这个交互带到 macOS：停在 Dock 图标上，查看窗口、切换前景并使用当前可用的窗口操作。</p>
-            </article>
-            <article class="origin-path" data-path="gain">
-              <p class="path-tag" data-i18n="gainTag">Windows 资源管理器</p>
-              <h3 data-i18n="gainTitle">右键新建文件 → Finder 新建文件</h3>
-              <p data-i18n="gainCopy">资源管理器空白处右键新建文件，是一个熟悉的工作流。我们正在把它按照 Finder 的使用方式重新实现。</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="tool" id="tool" aria-labelledby="tool-title">
-        <div class="section-inner">
-          <p class="eyebrow" data-i18n="toolEyebrow">Windows 体验迁移 · 已实现</p>
-          <div class="tool-heading">
-            <h2 id="tool-title" data-i18n="toolTitle">Dock Window Quick Look（Dock 窗口速览）</h2>
-            <p class="status-pill status-implemented" data-i18n="implementedStatus">已实现</p>
-          </div>
-          <p class="section-summary" data-i18n="toolSummary">Windows 任务栏可以悬停查看应用窗口。现在，停在 macOS Dock 上正在运行的应用图标，也能查看当前窗口并快速切换。</p>
-
-          <div class="demo" id="demo" data-stage="dock" role="group" aria-label="交互原理演示：Windows 任务栏预览的 macOS 重做" data-i18n-aria-label="demoLabel">
-            <p class="demo-badge" data-i18n="demoBadge">交互预览 · 展示窗口预览、切换和操作路径</p>
-
-            <div class="demo-scene" aria-hidden="true">
-              <div class="scene-desktop">
-                <div class="scene-window scene-window-main">
-                  <span class="scene-window-bar"></span>
-                  <span class="scene-line scene-line-wide"></span>
-                  <span class="scene-line"></span>
-                  <span class="scene-line scene-line-short"></span>
+          <div class="mock-desktop" aria-hidden="true" data-page-node-id="tXTPnCQSGJQGvI6g3O6OeF">
+            <div class="mock-window win-1" data-page-node-id="8pmpCrbGeJ5VGfbEqK9xp7">
+              <span class="w-line w-line-title" data-page-node-id="1rip9EFEPIVNoGRN7RySGg"></span>
+              <span class="w-bar" data-page-node-id="Ccbe9ACGqYFTH4pDr3TBw0"><i data-page-node-id="qFI1k5wJZVYcIvZ8LVYwno"></i><i data-page-node-id="LfnuRwvvHS3tLOSRgaWW8S"></i><i data-page-node-id="YpFdEAXA9lZDVJSDcSPsJ7"></i></span>
+              <span class="w-line w-line-wide" data-page-node-id="k2nHPp6UuDwPzZhcyrEZWb"></span>
+              <span class="w-line w-line-mid" data-page-node-id="dwkYBzLTYgrBLVfFSXPpCD"></span>
+            </div>
+            <div class="mock-window win-2" data-page-node-id="lWARr9Y4bmCKTYVHn23fwV">
+              <span class="w-line w-line-title" data-page-node-id="Hkxd59tyNqCb9N0x3XwUSf"></span>
+              <span class="w-bar" data-page-node-id="LAnFjinjveIPYAsWPoqfYy"><i data-page-node-id="3oVMh2ieM0kdfDOTt2eK68"></i><i data-page-node-id="5OUjQLa1237531BwIJNPXm"></i><i data-page-node-id="cEO5RxCyG2FYstuAU1eDeC"></i></span>
+              <span class="w-line w-line-wide" data-page-node-id="meKQIHKpDZh26FsDsA6Vu2"></span>
+              <span class="w-line w-line-mid" data-page-node-id="eoUX4R9cAenIee04osR5PM"></span>
+            </div>
+            <div class="mock-window win-3" data-page-node-id="Jy6jRtDeQj9n744QsgmgxN">
+              <span class="w-line w-line-title" data-page-node-id="fgmAVn22ECgvHD9fR4rQui"></span>
+              <span class="w-bar" data-page-node-id="qjFnEHx5LXpl34hTfkPF9W"><i data-page-node-id="bkaiR9qLwNS0xSM8qjGXTl"></i><i data-page-node-id="AkCuSB6UTHWGNdT6nig0M1"></i><i data-page-node-id="Sykk8g3dyJcKWHCIhKBFPn"></i></span>
+              <span class="w-line w-line-wide" data-page-node-id="yzwDqVulrctvUdGto9L66c"></span>
+              <span class="w-line w-line-mid" data-page-node-id="kD0BCAA5QUjM5VLMc4GxbJ"></span>
+            </div>
+            <div class="mock-popover" data-page-node-id="RvSlubNEYqVqiGN55j5RAC">
+              <div class="popover-cards" data-page-node-id="HnICR48MBNbNOnFRMNpb3J">
+                <div class="popover-card" data-page-node-id="nLgSJevJBDFnOJoJFMjFiR">
+                  <span class="pc-bar" data-page-node-id="QBDgIAzxPSBXNnDW3Yu2g1"></span>
+                  <span class="pc-line pc-line-1" data-page-node-id="J56VwLlAW4XAJx0nhBsoWU"></span>
+                  <span class="pc-line pc-line-2" data-page-node-id="YgdVhjPdW6FAWO3JkvOV3C"></span>
                 </div>
-                <div class="scene-window scene-window-side">
-                  <span class="scene-window-bar"></span>
-                  <span class="scene-line scene-line-wide"></span>
-                  <span class="scene-line"></span>
+                <div class="popover-card popover-card-alt" data-page-node-id="yHEjfOxdVtbdkhEbMeLPPb">
+                  <span class="pc-bar" data-page-node-id="ngV8nwD9IYqdAYEfUrYYK8"></span>
+                  <span class="pc-line pc-line-1" data-page-node-id="cBcbcT5hu0qzAHGaEOdBt1"></span>
+                  <span class="pc-line pc-line-2" data-page-node-id="MrQEkLovNgrnNHETOmDHCE"></span>
                 </div>
-                <div class="scene-cards">
-                  <button class="scene-card scene-card-a" type="button" data-demo-scene-card tabindex="-1" aria-hidden="true"></button>
-                  <button class="scene-card scene-card-b" type="button" data-demo-scene-card tabindex="-1" aria-hidden="true"></button>
-                </div>
-                <div class="scene-menu">
-                  <span class="scene-menu-item"></span>
-                  <span class="scene-menu-item"></span>
-                  <span class="scene-menu-item"></span>
-                </div>
-                <span class="scene-pointer"></span>
-                <div class="scene-dock">
-                  <span class="scene-app scene-app-idle"></span>
-                  <button class="scene-app scene-app-target" type="button" data-demo-hover="windows" tabindex="-1" aria-hidden="true"></button>
-                  <span class="scene-app scene-app-idle"></span>
-                  <span class="scene-app scene-app-idle"></span>
+                <div class="popover-card popover-card-active" data-page-node-id="JP75X0Dublp4eKTx6lXsu6">
+                  <span class="pc-bar" data-page-node-id="a6yogXw2bgo8rnO8gg8Aup"></span>
+                  <span class="pc-line pc-line-1" data-page-node-id="Ebe2UWeWdqqjX51cgMoTz4"></span>
+                  <span class="pc-line pc-line-2" data-page-node-id="syRybE9JkbBLZW6QExd0ND"></span>
                 </div>
               </div>
+              <p class="popover-caption" data-page-node-id="GGU8D8ZANDsqrhsfdeq0uV">Finder — 3 个窗口</p>
             </div>
+            <div class="mock-dock" data-page-node-id="WbDGkFEV25q3wN0ENSjcFC">
+              <span class="dock-app dock-idle-1" data-page-node-id="TCGgglBGlJwSAb50FpDOjN"></span>
+              <span class="dock-app dock-idle-2" data-page-node-id="t6ARmG7Efcigo9cnRyoo3u"></span>
+              <span class="dock-divider" data-page-node-id="xJYAJHttDSlKqA0xWIxFvE"></span>
+              <span class="dock-app dock-target" data-page-node-id="HdRm2V8oE7wblJJeS7BRv7"></span>
+              <span class="dock-app dock-idle-3" data-page-node-id="zciiiA74R5JVSBmefNSodj"></span>
+              <span class="dock-app dock-idle-4" data-page-node-id="YQ9U8NjrPXreplhj3bYtEh"></span>
+              <span class="dock-app dock-idle-5" data-page-node-id="9FNaMKlSdoOI4aJpcgzS0F"></span>
+            </div>
+          </div>
+        </div>
 
-            <div class="demo-controls">
-              <p class="demo-steps-intro" data-i18n="demoStepsIntro">按步骤看看这个熟悉交互如何来到 Mac：</p>
-              <div class="demo-steps" role="group" aria-label="Dock 窗口速览步骤控制器" data-i18n-aria-label="demoStepsLabel">
-                <button class="demo-step" type="button" data-demo-stage="dock" aria-pressed="true">
-                  <span class="demo-step-index" aria-hidden="true">1</span>
-                  <span data-i18n="stageDock">停在 Dock</span>
-                </button>
-                <button class="demo-step" type="button" data-demo-stage="windows" aria-pressed="false">
-                  <span class="demo-step-index" aria-hidden="true">2</span>
-                  <span data-i18n="stageWindows">查看窗口</span>
-                </button>
-                <button class="demo-step" type="button" data-demo-stage="switch" aria-pressed="false">
-                  <span class="demo-step-index" aria-hidden="true">3</span>
-                  <span data-i18n="stageSwitch">切换窗口</span>
-                </button>
-                <button class="demo-step" type="button" data-demo-stage="actions" aria-pressed="false">
-                  <span class="demo-step-index" aria-hidden="true">4</span>
-                  <span data-i18n="stageActions">窗口操作</span>
-                </button>
+        <!-- 产品模拟图：右键新建文件 -->
+        <div class="hero-mock hero-mock-rightclick" role="img" aria-label="zongMacTools 右键新建文件界面示意：Finder 空白处右键展开新建文件子菜单" data-page-node-id="rightclick-mock">
+          <div class="mock-titlebar" aria-hidden="true">
+            <span class="tb-dot tb-red"></span>
+            <span class="tb-dot tb-yellow"></span>
+            <span class="tb-dot tb-green"></span>
+            <span class="tb-title">zongMacTools — 右键新建文件</span>
+          </div>
+          <div class="rc-desktop" aria-hidden="true">
+            <!-- 背景装饰窗口 -->
+            <div class="rc-bg-win">
+              <div class="rc-bg-bar">
+                <i></i><i></i><i></i>
               </div>
-              <div class="demo-status" data-demo-status>
-                <p class="demo-progress" data-demo-progress>步骤 1 / 4</p>
-                <p class="demo-stage-title" data-demo-stage-title>停在 Dock</p>
-                <p class="demo-stage-description" data-demo-stage-description>指针停在正在运行的 Dock 应用图标上。</p>
+            </div>
+            <!-- 右键主菜单 -->
+            <div class="rc-menu">
+              <div class="rc-menu-item">
+                <span class="rc-icon-folder" aria-hidden="true"></span>
+                <span>新建文件夹</span>
+              </div>
+              <div class="rc-menu-item">
+                <span class="rc-icon-info" aria-hidden="true"></span>
+                <span>显示简介</span>
+              </div>
+              <div class="rc-menu-sep"></div>
+              <div class="rc-menu-item rc-menu-item-expand">
+                <span>显示</span>
+                <span class="rc-arrow" aria-hidden="true">›</span>
+              </div>
+              <div class="rc-menu-item rc-menu-item-expand">
+                <span>排序方式</span>
+                <span class="rc-arrow" aria-hidden="true">›</span>
+              </div>
+              <div class="rc-menu-sep"></div>
+              <div class="rc-menu-item rc-menu-active">
+                <span>新建文件</span>
+                <span class="rc-arrow" aria-hidden="true">›</span>
               </div>
             </div>
-          </div>
-
-          <ul class="boundary-list" aria-label="Dock Window Quick Look 当前能力" data-i18n-aria-label="boundaryListLabel">
-            <li data-i18n="boundaryHover">悬停 Dock 图标，预览当前可枚举窗口（静态缩略图，非实时视频）</li>
-            <li data-i18n="boundarySwitch">选择预览卡片，切换并激活目标窗口</li>
-            <li data-i18n="boundaryMenu">在卡片上右键，使用当前可用的窗口操作</li>
-          </ul>
-          <p class="boundary-note" data-i18n="boundaryNote">不承诺实时预览、跨 Space 窗口、恢复最小化窗口或多显示器行为；这些边界以 GitHub 发行详情为准。</p>
-          <p class="tool-media-link">
-            <a class="button button-quiet" href="#media" data-i18n="toolMediaLink">查看真实运行画面</a>
-          </p>
-        </div>
-      </section>
-
-      <section class="media" id="media" aria-labelledby="media-title">
-        <div class="section-inner">
-          <p class="eyebrow" data-i18n="mediaEyebrow">迁移后的真实运行画面</p>
-          <h2 id="media-title" data-i18n="mediaTitle">Windows 任务栏预览，来到 macOS Dock</h2>
-          <p class="status-pill status-media" data-i18n="mediaSourceMark">本地录屏</p>
-          <p class="section-summary" data-i18n="mediaCopy">下面的本地录屏展示 Windows 用户熟悉的窗口预览如何在 macOS Dock 上工作，覆盖停在 Dock、预览出现、选择窗口卡片与打开右键窗口操作菜单。</p>
-
-          <figure class="media-frame">
-            <video
-              id="quicklook-video"
-              class="media-video"
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              poster="assets/quick-look-poster.jpg"
-              aria-label="Dock Window Quick Look 本地录屏，展示窗口预览、切换和操作"
-              data-i18n-aria-label="mediaVideoLabel"
-            >
-              <source src="assets/quick-look-recording.mp4" type="video/mp4" />
-            </video>
-            <img
-              class="media-poster"
-              src="assets/quick-look-poster.jpg"
-              alt="本地录屏海报帧：Dock 预览卡片旁打开窗口操作菜单"
-              data-i18n-alt="mediaPosterAlt"
-              loading="lazy"
-            />
-            <figcaption data-i18n="mediaCaption">本地录屏：悬停 Dock、预览出现、选择窗口与窗口操作。</figcaption>
-          </figure>
-
-          <div class="media-stills" role="group" aria-label="Dock Window Quick Look 录屏关键帧" data-i18n-aria-label="mediaStillsLabel">
-            <figure class="media-still">
-              <img src="assets/quick-look-frame-preview.jpg" alt="录屏关键帧：运行中应用的多个窗口预览卡片出现在 Dock 上方" data-i18n-alt="stillPreviewAlt" loading="lazy" />
-              <figcaption data-i18n="stillPreviewCaption">预览出现</figcaption>
-            </figure>
-            <figure class="media-still">
-              <img src="assets/quick-look-frame-switch.jpg" alt="录屏关键帧：选择预览卡片后目标窗口来到前景" data-i18n-alt="stillSwitchAlt" loading="lazy" />
-              <figcaption data-i18n="stillSwitchCaption">切换窗口</figcaption>
-            </figure>
-            <figure class="media-still">
-              <img src="assets/quick-look-frame-actions.jpg" alt="录屏关键帧：预览卡片上打开可用窗口操作菜单" data-i18n-alt="stillActionsAlt" loading="lazy" />
-              <figcaption data-i18n="stillActionsCaption">窗口操作</figcaption>
-            </figure>
+            <!-- 子菜单 -->
+            <div class="rc-submenu">
+              <div class="rc-submenu-item"><span class="rc-file-dot" aria-hidden="true"></span><span>TXT</span></div>
+              <div class="rc-submenu-item"><span class="rc-file-dot" aria-hidden="true"></span><span>Markdown</span></div>
+              <div class="rc-submenu-item rc-submenu-active"><span class="rc-file-dot rc-file-dot-json" aria-hidden="true"></span><span>JSON</span></div>
+              <div class="rc-submenu-item"><span class="rc-file-dot rc-file-dot-word" aria-hidden="true"></span><span>Word</span></div>
+              <div class="rc-submenu-item"><span class="rc-file-dot rc-file-dot-excel" aria-hidden="true"></span><span>Excel</span></div>
+              <div class="rc-submenu-item"><span class="rc-file-dot rc-file-dot-ppt" aria-hidden="true"></span><span>PPT</span></div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="exploration" id="exploration" aria-labelledby="exploration-title">
-        <div class="section-inner">
-          <p class="eyebrow" data-i18n="explorationEyebrow">下一项 Windows 体验</p>
-          <div class="tool-heading">
-            <h2 id="exploration-title" data-i18n="explorationTitle">资源管理器右键新建文件 → Finder</h2>
-            <p class="status-pill status-building" data-i18n="buildingStatus">开发中</p>
-          </div>
-          <p class="section-summary" data-i18n="explorationCopy">Windows 资源管理器可以在文件夹空白处右键新建文件。我们正在把这个工作流按照 Finder 的方式带到 macOS；目标是在 Finder 中直接创建 Markdown、JSON 等常用本地文件，进展会在 GitHub 公布。</p>
-          <a
-            class="button button-quiet"
-            href="https://github.com/zongzack/zongMacTools"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="在 GitHub 探索 zongMacTools 项目（新标签页打开）"
-            data-i18n-aria-label="exploreGithubLink"
-            data-i18n="exploreGithub"
-            >在 GitHub 探索项目</a
-          >
+      <!-- 两大核心功能 -->
+      <section class="section" id="features" aria-labelledby="features-title" data-page-node-id="9vnD5XVslDwGHHGFAn8Ca5">
+        <h2 class="section-title" id="features-title" data-page-node-id="VY5uJDbwM43uVfkSN4jE4K">两大核心功能</h2>
+        <p class="section-subtitle" data-page-node-id="7ZUeNnF01W03vtFotefSyV">针对 macOS 用户最痛的两个场景，提供原生级体验。</p>
+        <div class="feature-cards" data-page-node-id="Lx9VrFfLCMaH79k5f8MG5S">
+          <article class="feature-card" data-page-node-id="QMclR0nfRI3n4Yk47Ksi55">
+            <div class="feature-head" data-page-node-id="D3OJOQqGk5MaaVfo8NeQz4">
+              <span class="feature-icon icon-blue" aria-hidden="true" data-page-node-id="U1wuCIKXp0qxbL5gP6lkbE">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="dIJzUDn8AGVA1Ezc5DtJg1">
+                  <rect x="2" y="3" width="20" height="14" rx="2" stroke="#5271E8" stroke-width="2" data-page-node-id="yyJJjefmzynkeHwoyBQlbV" />
+                  <line x1="8" y1="21" x2="16" y2="21" stroke="#5271E8" stroke-width="2" stroke-linecap="round" data-page-node-id="FxWBX8JBPp6wUUbBvsAVUQ" />
+                  <line x1="12" y1="17" x2="12" y2="21" stroke="#5271E8" stroke-width="2" data-page-node-id="dtK6XyOcJuQGBM5GmADTQr" />
+                </svg>
+              </span>
+              <h3 data-page-node-id="WztsUztLXNHFBiPbWlRvHq">Dock 窗口速览</h3>
+            </div>
+            <p class="feature-desc" data-page-node-id="vGk1Hwe6lt9ogB1sIQVQR1">鼠标悬停在 Dock 图标上，即刻弹出该应用所有窗口的缩略图。点击即可切换，告别 Cmd+Tab 的盲目翻找。</p>
+          </article>
+          <article class="feature-card" data-page-node-id="IHxEHqlhSn0ECKOcos51vf">
+            <div class="feature-head" data-page-node-id="Tr54cJQyLUg2T22RI66UeE">
+              <span class="feature-icon icon-green" aria-hidden="true" data-page-node-id="0EaWnE4ihsPgBN9yXSpF2b">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="LEmuOMmf66nBnkg8bJkVbf">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="#40C46D" stroke-width="2" stroke-linejoin="round" data-page-node-id="qtdGJ5aOe0MijkqsPYACgA" />
+                  <polyline points="14 2 14 8 20 8" stroke="#40C46D" stroke-width="2" stroke-linejoin="round" data-page-node-id="QO5EQOFJIbN9ArGBW6GRED" />
+                  <line x1="12" y1="18" x2="12" y2="12" stroke="#40C46D" stroke-width="2" stroke-linecap="round" data-page-node-id="c4FT497se3EUVmg6cDLbc9" />
+                  <line x1="9" y1="15" x2="15" y2="15" stroke="#40C46D" stroke-width="2" stroke-linecap="round" data-page-node-id="0OzaZuUQbA3OUkejBs183b" />
+                </svg>
+              </span>
+              <h3 data-page-node-id="hm9mDMeHNCNHEXBZFASApa">Finder 新建文件</h3>
+            </div>
+            <p class="feature-desc" data-page-node-id="Ce9PX8qVKtIY6gT5FpmMte">在 Finder 空白处右键，直接新建 TXT、MD、JSON 等常用文件。支持自定义模板，让「新建文件」像 Windows 一样自然。</p>
+          </article>
         </div>
       </section>
 
-      <section class="acquire" id="acquire" aria-labelledby="acquire-title">
-        <div class="section-inner">
-          <p class="eyebrow" data-i18n="acquireEyebrow">获取区</p>
-          <h2 id="acquire-title" data-i18n="acquireTitle">获取公开测试版</h2>
-          <p class="section-summary" data-i18n="acquireCopy">公开测试版的下载、版本和安装说明都在 GitHub Release 中提供。需要获取最新版本时，请直接打开 GitHub 发行详情。</p>
+      <!-- 迁移叙事 -->
+      <section class="section" id="migration" aria-labelledby="migration-title" data-page-node-id="NnSFirjOzx7Cd6Tmp6b7He">
+        <h2 class="section-title" id="migration-title" data-page-node-id="3G5fzgZjr3hdHQc7FKtUyT">从 Windows 到 Mac，无缝过渡</h2>
+        <p class="section-subtitle" data-page-node-id="C9NLo1hYlMrGzjYxMnk1NA">你怀念的并不是 Windows，而是那些被 macOS 遗忘的高效习惯。</p>
+        <div class="migration-rows" data-page-node-id="1YQxWOIWFOIEmLnvXydJAZ">
+          <article class="migration-row" data-page-node-id="Hp0JrGKbSxnjYDqFll3OAk">
+            <div class="migration-tags" data-page-node-id="tNOTyFrVxj1mh8ZrJYCEew">
+              <span class="tag tag-win" data-page-node-id="VMRzyTQYgYUXB1t1pIVVaV">Windows</span>
+              <span class="tag-arrow" aria-hidden="true" data-page-node-id="5lFIYKP4bSEHilCScYSxvZ">→</span>
+              <span class="tag tag-mac" data-page-node-id="AYIOPq5QM38g2Io5mUyPD3">macOS</span>
+            </div>
+            <h3 data-page-node-id="AoTGAXIHBMwSARyi8HDD4m">任务栏窗口预览 → Dock 悬停速览</h3>
+            <p data-page-node-id="Mp5a9eOBxBvr816NjVSCSa">Windows 任务栏悬停即可预览窗口，macOS 默认只能看到应用名。zongMacTools 把缩略图带回 Dock。</p>
+          </article>
+          <article class="migration-row" data-page-node-id="16jYh0jqJUp5DkM7TaeXtm">
+            <div class="migration-tags" data-page-node-id="va3lgtpFZ2ZftPGLgGxhlN">
+              <span class="tag tag-win" data-page-node-id="7m9s8P0Tdx3opSR1xpK1dg">Windows</span>
+              <span class="tag-arrow" aria-hidden="true" data-page-node-id="9TZxBsaGOWIGL8bd49ILNf">→</span>
+              <span class="tag tag-mac" data-page-node-id="26Gf7PqYR1Q2YwIWpfYyRv">macOS</span>
+            </div>
+            <h3 data-page-node-id="LOMjKmh3UlRnCFLGenqlAR">右键新建文件 → Finder 右键新建</h3>
+            <p data-page-node-id="PLVmTAxAYKsKe2xqKSu1ZI">Windows 资源管理器右键就能新建文件，macOS 需要打开终端或第三方编辑器。现在 Finder 也能一键新建。</p>
+          </article>
+        </div>
+      </section>
 
-          <p class="acquire-status" id="acquire-status" role="status" data-state="loading" data-i18n="acquireLoading">正在检查最新公开版本…</p>
+      <!-- 特性网格 -->
+      <section class="section" id="capabilities" aria-labelledby="capabilities-title" data-page-node-id="1D91EgATDP7ZdglLv2YJmk">
+        <h2 class="section-title" id="capabilities-title" data-page-node-id="yIFbdxxbLKDxRX4aAOvUve">更多细节，同样顺手</h2>
+        <p class="section-subtitle" data-page-node-id="5GzhCtuKY6dXc4mfG8hhHR">每一处设计都为了让 macOS 用起来更自在。</p>
+        <div class="cap-grid" data-page-node-id="qhZgHTIUsDkEPALJYONMka">
+          <article class="cap-card" data-page-node-id="60XzfBVfDymdHc9EXqYLo4">
+            <span class="cap-icon icon-blue" aria-hidden="true" data-page-node-id="6RkFPrSTBwtc97kMvpEtZt">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="hewSiYtyNsuzv5BopBhsDC">
+                <rect x="3" y="4" width="13" height="11" rx="2" stroke="#5271E8" stroke-width="2" data-page-node-id="36YBGLUTYEWhpB0EnWuRw7" />
+                <rect x="8" y="9" width="13" height="11" rx="2" stroke="#5271E8" stroke-width="2" data-page-node-id="60C0tHyJNPfGLhnwiqrqsc" />
+              </svg>
+            </span>
+            <h3 data-page-node-id="bcNfHbb6hSrIQ6sdf3nNgS">卡片式窗口预览</h3>
+            <p data-page-node-id="nq8LoU54idZA9rbSpxv1Cy">每个窗口以卡片呈现，清晰可辨，点击直达目标窗口。</p>
+          </article>
+          <article class="cap-card" data-page-node-id="p4gxFKlYPiENHX1HBnUynN">
+            <span class="cap-icon icon-orange" aria-hidden="true" data-page-node-id="iAHfuDpAWZrsuIzmvUFwqz">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="xzzobymnAhZUSjrWltOdNk">
+                <circle cx="12" cy="12" r="9" stroke="#FF9E42" stroke-width="2" data-page-node-id="Fz4nOWAPiqCam4mIxE3wqd" />
+                <line x1="6" y1="18" x2="18" y2="6" stroke="#FF9E42" stroke-width="2" stroke-linecap="round" data-page-node-id="j1Gv4AFOLHZkDNtPNUCvPV" />
+              </svg>
+            </span>
+            <h3 data-page-node-id="KVM4nLFVo7wYD97I3COrHo">排除指定 App</h3>
+            <p data-page-node-id="tMHsovgBGAxf2tt74Hw8r0">不想某些应用出现在预览中？一键加入黑名单即可。</p>
+          </article>
+          <article class="cap-card" data-page-node-id="vDzlrl0RRWahxJMOLxXKug">
+            <span class="cap-icon icon-purple" aria-hidden="true" data-page-node-id="gpcg7pCmqyQfzSr3EzZkmz">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="doGR53igUesdO1mApFxgsH">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z" stroke="#7A59F2" stroke-width="2" stroke-linejoin="round" data-page-node-id="fZSO3WS5FAJxnPPF4EAEsk" />
+              </svg>
+            </span>
+            <h3 data-page-node-id="PazlJFAbv5ZLLDL11mHsnI">深浅外观自适应</h3>
+            <p data-page-node-id="Du66xO6DW8NrbCZ8EHXEeS">跟随系统外观自动切换，无论亮色还是深色模式都完美融合。</p>
+          </article>
+          <article class="cap-card" data-page-node-id="SvblMgF7iq6K7dZuEYvyp3">
+            <span class="cap-icon icon-green" aria-hidden="true" data-page-node-id="cPttF3yeUAvU96Waq7hazw">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="GYzGKGmU91a4BsJwNEinz2">
+                <circle cx="12" cy="12" r="9" stroke="#40C46D" stroke-width="2" data-page-node-id="CWT1lbmdiKef38VguZENxn" />
+                <path d="M3 12H21M12 3C14.5 5.5 15.5 8.5 15.5 12C15.5 15.5 14.5 18.5 12 21C9.5 18.5 8.5 15.5 8.5 12C8.5 8.5 9.5 5.5 12 3Z" stroke="#40C46D" stroke-width="2" data-page-node-id="cMVcqwfWHjVPAiDWffvTYf" />
+              </svg>
+            </span>
+            <h3 data-page-node-id="DxOuHQ5XCWA0RAlmTMrdtx">中英双语界面</h3>
+            <p data-page-node-id="vXMm81RjnMdCAgKr0TKvjA">原生支持简体中文与英文，根据系统语言自动匹配。</p>
+          </article>
+          <article class="cap-card" data-page-node-id="f0w89DX1MY95hZ9Px7BQUS">
+            <span class="cap-icon icon-blue" aria-hidden="true" data-page-node-id="7x5NSKGNE6IGDEJe7YTvFC">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="9KzWGrDSYgc04nJh4sF11Z">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="#5271E8" stroke-width="2" stroke-linejoin="round" data-page-node-id="qmXk8nvULdk2KJ53Vlf0CA" />
+                <polyline points="14 2 14 8 20 8" stroke="#5271E8" stroke-width="2" stroke-linejoin="round" data-page-node-id="nBwHXM44CiedUtKCOkKkcj" />
+                <line x1="9" y1="13" x2="15" y2="13" stroke="#5271E8" stroke-width="2" stroke-linecap="round" data-page-node-id="iCv3VqsLKOynnDCGCfjgj1" />
+                <line x1="9" y1="17" x2="13" y2="17" stroke="#5271E8" stroke-width="2" stroke-linecap="round" data-page-node-id="x5b1kEoRKF7UtL0efZh7f3" />
+              </svg>
+            </span>
+            <h3 data-page-node-id="BWdvRinbEFLJALvfgu1GoG">自定义文件模板</h3>
+            <p data-page-node-id="PUYcfccmIf8SxwNnhaFC6f">新建文件支持自定义模板，一键创建符合你工作流的文档。</p>
+          </article>
+          <article class="cap-card" data-page-node-id="bhQRESysXV5EPAVgdugz5L">
+            <span class="cap-icon icon-purple" aria-hidden="true" data-page-node-id="ZGSFvkURvHao8f3FJxISH7">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="D3fTfl9ygCNHS9y2SdDXBw">
+                <path d="M12 2L4 5.5V11C4 16 7.5 20.2 12 22C16.5 20.2 20 16 20 11V5.5L12 2Z" stroke="#7A59F2" stroke-width="2" stroke-linejoin="round" data-page-node-id="S5ezjaciGKfEif9Oyr2Ria" />
+                <path d="M9 12L11 14L15 10" stroke="#7A59F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="SGDnZagXBuHkqRCgSq0FOD" />
+              </svg>
+            </span>
+            <h3 data-page-node-id="zcOJci4LT0VAI9y5qPymlB">原生级安全</h3>
+            <p data-page-node-id="z5gbxcXcwuRHIWUCbwzSRd">需要辅助功能权限，但绝不收集任何数据，开源可审计。</p>
+          </article>
+        </div>
+      </section>
 
-          <div class="acquire-actions">
-            <a class="button button-primary" id="download-action" hidden target="_blank" rel="noopener noreferrer" data-i18n="downloadBeta">下载公开测试版</a>
-            <a
-              class="button button-quiet"
-              id="release-action"
-              href="https://github.com/zongzack/zongMacTools/releases"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="在 GitHub 查看 zongMacTools 发行详情（新标签页打开）"
-              data-i18n-aria-label="releaseDetailsLink"
-              data-i18n="releaseDetails"
-              >GitHub 发行详情</a
-            >
-            <a
-              class="button button-quiet"
-              href="https://github.com/zongzack/zongMacTools"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="在 GitHub 查看 zongMacTools 源码（新标签页打开）"
-              data-i18n-aria-label="githubSourceLink"
-              data-i18n="githubSourceShort"
-              >GitHub 源码</a
-            >
+      <!-- 常见问题 -->
+      <section class="section" id="faq" aria-labelledby="faq-title" data-page-node-id="qoI33nkDcdMvAvu4wOfWaE">
+        <h2 class="section-title" id="faq-title" data-page-node-id="2va0Bg0yOPJ0XASuF0pPeU">常见问题</h2>
+        <div class="faq-list" data-page-node-id="1nBqXZinpX6TWlrjOgLGXR">
+          <details class="faq-item" open data-page-node-id="zYkUFsLQpJj0mFPs4WYn8E">
+            <summary data-page-node-id="lEw25hAtfGuAUbE4FI6kf2">
+              <span data-page-node-id="bf6T9KB8lEMoGBZw9Gmh5h">安装时提示「无法打开，因为无法验证开发者」怎么办？</span>
+              <span class="faq-chevron" aria-hidden="true" data-page-node-id="dXzOGW5Ck8gaQExH9oZ28w"></span>
+            </summary>
+            <p data-page-node-id="9RzOKUOYwm8ppZRZjMUsOO">首次安装未公证的 App 时，macOS 会拦截。请在「系统设置 → 隐私与安全性」中找到 zongMacTools，点击「仍要打开」。或者打开终端执行：<code data-page-node-id="ZUSKMkvEAVrauNvc11oLHF">xattr -dr com.apple.quarantine /Applications/zongMacTools.app</code></p>
+          </details>
+          <details class="faq-item" open data-page-node-id="sCF8E4oEz6CJ45csAm2E4k">
+            <summary data-page-node-id="M8ctRLB3S5i7rjdu8BGA4v">
+              <span data-page-node-id="7IfOHG7j90LqZK2TjEi4Uh">需要哪些系统权限？</span>
+              <span class="faq-chevron" aria-hidden="true" data-page-node-id="3ohsecJJ1Z23YIkn0W85Fv"></span>
+            </summary>
+            <p data-page-node-id="EUO5nUHIEy7wJJdXoVZnAA">仅需要「辅助功能」权限以监听 Dock 悬停事件和窗口信息。不访问网络、不读取文件内容、不上传任何数据。</p>
+          </details>
+          <details class="faq-item" open data-page-node-id="CUUOwJAqNBrYHKckQV1RDb">
+            <summary data-page-node-id="4DbubaFiynW8R5kTlHhsCL">
+              <span data-page-node-id="KUNX9B7E81pf5A6m80jH9P">支持 Intel Mac 吗？</span>
+              <span class="faq-chevron" aria-hidden="true" data-page-node-id="hFdHko1j8Y7FVfX9bydpU5"></span>
+            </summary>
+            <p data-page-node-id="fgjAzPy5FHgoXL30sOQwJh">目前主要针对 Apple Silicon（M1/M2/M3/M4）优化。Intel 版本尚在评估中，欢迎到 GitHub 提交需求。</p>
+          </details>
+          <details class="faq-item" open data-page-node-id="IpQMZyn0tiZpBB3lI9l9RD">
+            <summary data-page-node-id="plnLEJjIZAPulmz5cfXTe2">
+              <span data-page-node-id="rqmbfUxM1tEA5p0pEk0odM">如何卸载？</span>
+              <span class="faq-chevron" aria-hidden="true" data-page-node-id="uWdGZI9lSZcxQGw5HxDO4c"></span>
+            </summary>
+            <p data-page-node-id="v8gSea8r0tyERsqpsDfLfv">将 zongMacTools.app 拖入废纸篓即可。配置项存储在 ~/Library/Preferences/，如需要彻底清理可一并删除相关 plist 文件。</p>
+          </details>
+        </div>
+      </section>
+
+      <!-- 下载 CTA -->
+      <section class="section" id="download" aria-labelledby="download-title" data-page-node-id="MfbADirRFyeLG1cjFBfIAL">
+        <div class="cta-card" data-page-node-id="cP9lKiBob9YEs3e5bWPELP">
+          <span class="cta-icon" aria-hidden="true" data-page-node-id="anU02i6Z8u2Ulgy4L0kqC0">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="jwKOUC5vGqGivTKn3nJJls">
+              <path d="M12 3V15M12 15L7 10M12 15L17 10" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" data-page-node-id="017H0mXvnG1X2baPKfOlOF" />
+              <path d="M4 17V18.5C4 19.9 5.1 21 6.5 21H17.5C18.9 21 20 19.9 20 18.5V17" stroke="white" stroke-width="2.2" stroke-linecap="round" data-page-node-id="DnS4uwyhbDPYaSkQE91SAR" />
+            </svg>
+          </span>
+          <h2 class="cta-title" id="download-title" data-page-node-id="UmyaCdn2A5a5ITn7GBrYKq">开始体验</h2>
+          <p class="cta-subtitle" data-page-node-id="WdQvgGG9n6p09E7oTQchHa">免费开源，无需注册。下载后即可使用，所有功能完全开放。</p>
+          <div class="cta-actions" data-page-node-id="UalAfsCdR5xG9fwomGD4xk">
+            <a class="btn btn-primary" data-download href="https://github.com/zongzack/zongMacTools/releases" target="_blank" rel="noopener noreferrer" data-page-node-id="ySrrgsrGOnI3As1vFCu4BV">下载公开测试版</a>
+            <a class="btn btn-ghost" href="https://github.com/zongzack/zongMacTools" target="_blank" rel="noopener noreferrer" data-page-node-id="cZGBn40LuYSOS1BRFr3RBE">查看源码</a>
           </div>
-
-          <dl class="acquire-facts">
-            <div class="acquire-fact">
-              <dt data-i18n="requirementLabel">系统要求</dt>
-              <dd data-i18n="requirementValue">macOS 14 或更高版本</dd>
-            </div>
-            <div class="acquire-fact">
-              <dt data-i18n="permissionLabel">需要授权</dt>
-              <dd data-i18n="permissionValue">辅助功能与屏幕录制</dd>
-            </div>
-            <div class="acquire-fact">
-              <dt data-i18n="releaseLabel">发行状态</dt>
-              <dd data-i18n="releaseValue">未公证公开测试版</dd>
-            </div>
-          </dl>
-          <p class="acquire-note" data-i18n="acquireNote">完整安装、校验、签名、权限引导与已知限制，请以 GitHub 发行详情为准。</p>
+          <p class="cta-hint" data-page-node-id="k2lVAvOG4Vs7lbQSpct492">macOS 14.0+ · Apple Silicon · 需要辅助功能权限</p>
         </div>
       </section>
     </main>
 
-    <footer class="site-footer">
-      <div class="section-inner footer-inner">
-        <a class="brand" href="#hero" aria-label="zongMacTools 首页" data-i18n-aria-label="homeLink">
-          <img class="brand-mark" src="assets/zong-mac-tools-logo.png" alt="" />
-          <span class="brand-word">zongMacTools</span>
+    <footer class="site-footer" data-page-node-id="5FViGKiYsvJKFpRKl4AGFg">
+      <div class="footer-inner" data-page-node-id="d3GCz30soCHfEM3XYw44G0">
+        <a class="brand" href="#hero" aria-label="zongMacTools 首页" data-page-node-id="ev2lFWLv7JoFiKeDnZFDrF">
+          <span class="brand-icon brand-icon-sm" aria-hidden="true" data-page-node-id="HqY86fq2VvtMSKgaZHyURo">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" data-page-node-id="ksPuIxC3DfGcfPCV1iUKUL">
+              <rect x="3" y="3" width="14" height="14" rx="4" fill="white" fill-opacity="0.95" data-page-node-id="pxjATlHssQmTrFVtnyipIY" />
+              <path d="M6.5 8.5H13.5M6.5 11.5H10" stroke="#3D56D6" stroke-width="1.4" stroke-linecap="round" data-page-node-id="EmTswn1yTCGcddttqCLzRO" />
+            </svg>
+          </span>
+          <span class="brand-name" data-page-node-id="HmXQH3AZBcqQZezixhQ3ZK">zongMacTools</span>
         </a>
-        <p data-i18n="footerCopy">把 Windows 上值得留下的桌面体验，重做成 macOS 工具。</p>
-        <p class="footer-privacy" data-i18n="privacyCopy">本站为无数据站点：不收集个人数据，不使用 Cookie、分析或第三方媒体服务。</p>
+        <div class="footer-links" data-page-node-id="DBWOjAGp19WDiCofYVVpRW">
+          <a href="https://github.com/zongzack/zongMacTools/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" data-page-node-id="2HhWLGkmOrmA5pIL9TaTY0">MIT License</a>
+          <a href="https://github.com/zongzack/zongMacTools/issues" target="_blank" rel="noopener noreferrer" data-page-node-id="wlSHOpPfLztLaI5XRgFihT">问题反馈</a>
+          <a href="https://github.com/zongzack/zongMacTools" target="_blank" rel="noopener noreferrer" data-page-node-id="4uYWzDINOV7bwQVMfZ3rgg">GitHub</a>
+        </div>
+        <p class="footer-copy" data-page-node-id="lu5x6CrPo5UA1gVOAOul1D">© 2025 zongMacTools. 开源免费。</p>
       </div>
     </footer>
   </body>
