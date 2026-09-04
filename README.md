@@ -55,9 +55,9 @@
 
 ## 安装与运行
 
-### 从 GitHub Releases 安装
+### 下载并安装
 
-普通用户可以直接从 [GitHub Releases](https://github.com/zongzack/zongMacTools/releases) 下载最新公开测试版：
+普通用户可从[官网](https://zongmactools.pages.dev/)直接下载最新公开测试版；该同源下载与 GitHub Release 使用同一构建。需要历史版本、完整发行详情或 GitHub 下载时，请使用 [GitHub Releases](https://github.com/zongzack/zongMacTools/releases)。
 
 1. 下载对应版本的 `zongMacTools-<version>-<build>.zip`。
 2. 可选：按照同一发布页提供的 `SHA256SUMS.txt` 校验文件完整性。
@@ -132,7 +132,7 @@ Scripts/run_probe_app.sh
 Scripts/package_release_app.sh
 ```
 
-生成的 ZIP、校验和与安装说明位于 `dist/`。首次打开未公证应用时，macOS 可能需要在 Finder 中按住 Control 点击应用并选择“打开”。替换 ad-hoc 签名的应用后，系统可能要求重新授予权限并重新启用 Finder 扩展。
+生成的 ZIP、校验和与安装说明位于 `dist/`。tag 发布工作流在打包校验通过后会把最新构建同步为网站的 `website/downloads/zongMacTools-latest.zip`；该目录不保存历史 ZIP，历史版本保留在 GitHub Releases。首次打开未公证应用时，macOS 可能需要在 Finder 中按住 Control 点击应用并选择“打开”。替换 ad-hoc 签名的应用后，系统可能要求重新授予权限并重新启用 Finder 扩展。
 
 正式发行仍需要 Developer ID 签名、Apple 公证和干净环境验证。
 
@@ -158,4 +158,4 @@ swift build
 Scripts/verify_app_bundle.sh build/zongMacTools.app
 ```
 
-详细的 Finder 人工验收步骤见 [`docs/verification/finder-new-file-manual-acceptance.md`](docs/verification/finder-new-file-manual-acceptance.md)，发布策略见 [`docs/architecture/release-update-strategy.md`](docs/architecture/release-update-strategy.md)。
+完整功能介绍见 [`docs/README.md`](docs/README.md)。

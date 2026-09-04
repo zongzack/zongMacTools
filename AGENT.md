@@ -1,6 +1,6 @@
 # Agent Guide
 
-本项目是一个 macOS/Swift 菜单栏工具原型：`DockHoverPreviewProbe`。它通过 Dock 悬停显示窗口预览，并使用 AppKit、SwiftUI、ScreenCaptureKit 和系统辅助功能实现窗口查询、缩略图和点击激活。
+`zongMacTools` 是一组 macOS 桌面效率工具，目前包含 Dock 窗口速览和 Finder 右键新建文件功能。主要技术栈为 SwiftPM、AppKit、SwiftUI、ScreenCaptureKit、辅助功能 API 与 Finder Sync。
 
 ## 开始前必读
 
@@ -13,25 +13,12 @@ git status --short --branch
 优先阅读：
 
 - `README.md`
-- `docs/roadmap.md`
-- `docs/architecture/dock-hover-preview-technical-design.md`
-- `docs/architecture/release-update-strategy.md`
-- `docs/verification/dock-hover-preview-probe-summary.md`
-- `docs/verification/dock-hover-preview-environment-variant-verification-plan.md`
-- 与任务对应的 P3、P4 或多工具人工验收清单
+- `docs/README.md`
+- 与当前任务相关的源码、测试和脚本
 
 ## 当前优先级
 
-当前主线是补齐已实现能力的人工验收和受硬件限制的环境验证。
-
-优先级：
-
-1. P3 窗口操作人工验收。
-2. P4 正式应用化人工验收。
-3. 多工具设置窗口人工 smoke test。
-4. 多显示器验证；硬件不可用时维持 `blocked / not available`。
-
-一次只处理一个环境场景。发现 bug 时先记录复现步骤和日志，再补最小回归测试并小范围修复。
+以用户当前请求为准。涉及图形界面、系统权限或 Finder Sync 的变更，应区分自动测试与需要在真实 macOS 环境完成的人工验收。
 
 ## 工程约束
 
@@ -95,17 +82,7 @@ pkill -x DockHoverPreviewProbe
 
 ## 文档更新规则
 
-验证通过或发现 blocked 场景时，更新当前对应的验收清单和验证总结：
+功能、验收或发布流程变化时，只更新仍在维护的对应文档：
 
-- `docs/verification/dock-hover-preview-p3-window-actions-manual-checklist.md`
-- `docs/verification/dock-hover-preview-p4-formal-app-manual-checklist.md`
-- `docs/verification/dock-hover-preview-multi-tool-settings-window-manual-checklist.md`
-- `docs/verification/dock-hover-preview-probe-summary.md`
-
-如果实际验证步骤和计划不同，也更新：
-
-- `docs/verification/dock-hover-preview-environment-variant-verification-plan.md`
-
-后续功能优先级写在：
-
-- `docs/roadmap.md`
+- `README.md`
+- `docs/README.md`

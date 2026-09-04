@@ -2,6 +2,8 @@
 
 `website/` 是 zongMacTools 的公开产品站静态发布根目录。它独立于 SwiftPM 构建、macOS app 打包和 GitHub Release 打包，可以直接作为静态目录部署。
 
+产品功能说明维护在仓库根目录的 [`docs/README.md`](../docs/README.md)：其中分别链接到 Dock 窗口速览和 Finder 右键扩展的详细说明。网站文案应与这些功能说明及根目录 `README.md` 保持一致。
+
 站点围绕“把 Windows 的顺手，原样搬到 Mac”展开，当前页面包含：
 
 - 首屏品牌叙事与两组 CSS 产品示意图
@@ -16,8 +18,9 @@
 
 - `index.html`：产品站页面结构、SEO 元信息、核心文案、导航、功能区、FAQ、下载区和视频弹窗。
 - `styles.css`：整站视觉系统、响应式布局、CSS 产品示意图、功能卡片、演示弹窗和减少动态效果适配。
-- `app.js`：下载按钮的 GitHub Release 接线，以及“观看实机演示”弹窗的打开、播放、关闭和焦点回收。
+- `app.js`：直接下载、GitHub Release 下载的接线，以及“观看实机演示”弹窗的打开、播放、关闭和焦点回收。
 - `release-state.js`：读取公开 GitHub Release，选择可下载 zip 资产，并在失败时降级到 Releases 列表页。
+- `downloads/`：网站直链下载的唯一发布目录，只保留最新版的 `zongMacTools-latest.zip`、`SHA256SUMS.txt` 和 `release.json`。
 - `assets/zong-mac-tools-logo.png`：站点 favicon、Apple touch icon、导航和页脚品牌图标。
 - `assets/quick-look-recording.mp4`：Dock 窗口速览实机演示视频。
 - `assets/right‑click-extension.mp4`：Finder 右键新建文件实机演示视频。
@@ -36,11 +39,13 @@ npm run test:site
 
 通过 Cloudflare Pages 的 GitHub Integration 配置本仓库时，使用：
 
-- 生产分支：`develop`
+- 生产分支：`main`
 - 构建命令：留空
 - 构建输出目录：`website`
 
-不要为本网站创建 Cloudflare API token、GitHub 部署密钥、Worker、Pages Function 或 R2 存储。站点只通过浏览器请求 GitHub 的公开 Release API；下载资产、校验信息、签名状态与完整发行详情继续由 GitHub Release 承载。
+不要为本网站创建 Cloudflare API token、GitHub 部署密钥、Worker、Pages Function 或 R2 存储。Cloudflare Pages 从 `main` 部署 `website/`；页面的“直接下载”从同源 `downloads/zongMacTools-latest.zip` 获取最新版安装包，“GitHub 下载”仍通过公开 Release API 查找 GitHub Release 并在失败时降级到 Releases 列表。GitHub Releases 保留所有历史版本、完整发行详情和相关资产。
+
+发布 `main` 已包含的 `v*` tag 时，`.github/workflows/github-draft-release.yml` 会在打包校验通过后创建或更新 GitHub Draft Release，并将该构建的 ZIP、校验和与版本元数据同步到 `website/downloads/`，再提交到 `main`。工作流也支持手动输入 tag 重跑（例如首次同步 `v0.1.4`）；同步目录始终覆盖为上述三个文件，不保留历史 ZIP。
 
 canonical 与 `sitemap.xml` 当前指向 `https://zongmactools.pages.dev/`。如果正式域名变化，需要同步更新 `index.html`、`robots.txt` 和 `sitemap.xml`。
 

@@ -233,12 +233,14 @@ final class PackagingTests: XCTestCase {
     func testGitHubDraftReleaseWorkflowMatchesPackagingContract() throws {
         let source = try String(contentsOf: githubDraftReleaseWorkflowURL(), encoding: .utf8)
         let onBlock = try yamlTopLevelBlock(named: "on", in: source)
-        let tagTriggerPattern = #"(?ms)^on:[ \t]*(?:#.*)?\r?\n(?:^[ \t]*(?:#.*)?\r?\n)*^([ \t]+)(?:push|\"push\"|'push')[ \t]*:[ \t]*(?:#.*)?\r?\n(?:^[ \t]*(?:#.*)?\r?\n)*^\1([ \t]+)(?:tags|\"tags\"|'tags')[ \t]*:[ \t]*(?:#.*)?\r?\n(?:^[ \t]*(?:#.*)?\r?\n)*^\1\2[ \t]+-[ \t]*(?:\"v\*\"|'v\*'|v\*)[ \t]*(?:#.*)?\r?\n?(?:^[ \t]*(?:#.*)?\r?\n)*\z"#
+        let tagTriggerPattern = #"(?ms)^on:[ \t]*(?:#.*)?\r?\n(?:^[ \t]*(?:#.*)?\r?\n)*^([ \t]+)(?:push|\"push\"|'push')[ \t]*:[ \t]*(?:#.*)?\r?\n(?:^[ \t]*(?:#.*)?\r?\n)*^\1([ \t]+)(?:tags|\"tags\"|'tags')[ \t]*:[ \t]*(?:#.*)?\r?\n(?:^[ \t]*(?:#.*)?\r?\n)*^\1\2[ \t]+-[ \t]*(?:\"v\*\"|'v\*'|v\*)[ \t]*(?:#.*)?\r?\n?"#
 
         XCTAssertNotNil(
             onBlock.range(of: tagTriggerPattern, options: .regularExpression),
-            "Workflow must contain only the push tags v* trigger"
+            "Workflow must run for v* tags"
         )
+        XCTAssertTrue(onBlock.contains("workflow_dispatch:"), "Workflow must support manually synchronising an existing tag")
+        XCTAssertTrue(onBlock.contains("tag:"), "Manual workflow dispatch must accept a tag")
 
         let permissionsBlock = try yamlTopLevelBlock(named: "permissions", in: source)
         let contentsWriteOnlyPattern = #"(?ms)^permissions:[ \t]*(?:#.*)?\r?\n(?:^[ \t]*(?:#.*)?\r?\n)*^[ \t]+contents:[ \t]+write[ \t]*(?:#.*)?\r?\n?(?:^[ \t]*(?:#.*)?\r?\n)*\z"#
@@ -249,8 +251,8 @@ final class PackagingTests: XCTestCase {
 
         let concurrencyBlock = try yamlTopLevelBlock(named: "concurrency", in: source)
         XCTAssertTrue(
-            concurrencyBlock.contains("group: github-draft-release-" + "$" + "{{ github.ref_name }}"),
-            "Concurrency must be scoped to the release tag"
+            concurrencyBlock.contains("group: github-draft-release-main"),
+            "Concurrency must serialise writes to main"
         )
         XCTAssertTrue(
             concurrencyBlock.contains("cancel-in-progress: false"),
@@ -269,12 +271,16 @@ final class PackagingTests: XCTestCase {
         let checkoutStep = String(releaseJob[checkoutStepRange])
         XCTAssertTrue(checkoutStep.contains("uses: actions/checkout@v4"), "Checkout step must use actions/checkout@v4")
         XCTAssertTrue(checkoutStep.contains("fetch-depth: 0"), "Checkout step must fetch full history")
+        XCTAssertTrue(checkoutStep.contains("ref: " + "$" + "{{ inputs.tag || github.ref }}"), "Checkout must support the manually supplied tag")
 
         let validateTagVersionStep = try yamlStepBlock(named: "Validate tag version", in: releaseJob)
         for expected in [
             "CFBundleShortVersionString",
             "CFBundleVersion",
+            "git rev-parse --verify \"refs/tags/${TAG}^{commit}\"",
+            "git merge-base --is-ancestor \"$TAG\" origin/main",
             "test \"$TAG\" == \"v${VERSION}\"",
+            "echo \"TAG=$TAG\" >> \"$GITHUB_ENV\"",
             "echo \"VERSION=$VERSION\" >> \"$GITHUB_ENV\"",
             "echo \"BUILD_NUMBER=$BUILD_NUMBER\" >> \"$GITHUB_ENV\""
         ] {
@@ -321,7 +327,6 @@ final class PackagingTests: XCTestCase {
             "test -f \"$DIST_DIR/SHA256SUMS.txt\"",
             "test -f \"$DIST_DIR/release-metadata.txt\"",
             "test -f \"$DIST_DIR/README-install.txt\"",
-            "test -f \"$DIST_DIR/CHANGELOG.md\"",
             "shasum -a 256 -c SHA256SUMS.txt",
             "echo \"DIST_DIR=$DIST_DIR\" >> \"$GITHUB_ENV\"",
             "echo \"ZIP_PATH=$ZIP_PATH\" >> \"$GITHUB_ENV\""
@@ -343,10 +348,9 @@ final class PackagingTests: XCTestCase {
         )
         let releaseViewGuard = String(releaseStep[releaseViewGuardRange])
 
-        XCTAssertNotNil(
-            releaseViewGuard.range(of: #"\bexit[ \t]+1\b"#, options: .regularExpression),
-            "Existing-release guard must fail the workflow"
-        )
+        XCTAssertTrue(releaseViewGuard.contains("gh release upload \"$TAG\""), "Existing releases must be updated instead of failing")
+        XCTAssertTrue(releaseViewGuard.contains("--clobber"), "Existing release assets must be safely replaceable")
+        XCTAssertNil(releaseViewGuard.range(of: #"\bexit[ \t]+1\b"#, options: .regularExpression), "Existing releases must not fail the workflow")
 
         let releaseCreatePattern = #"(?m)^[ \t]*gh[ \t]+release[ \t]+create[ \t]+\"\$TAG\"(?:(?:[^\r\n]*\\[ \t]*\r?\n)(?:[ \t]*[^\r\n]*\\[ \t]*\r?\n)*[ \t]*[^\r\n]*|[^\r\n]*)$"#
         let releaseCreateRange = try XCTUnwrap(
@@ -373,19 +377,33 @@ final class PackagingTests: XCTestCase {
             "$ZIP_PATH",
             "$DIST_DIR/SHA256SUMS.txt",
             "$DIST_DIR/release-metadata.txt",
-            "$DIST_DIR/README-install.txt",
-            "$DIST_DIR/CHANGELOG.md"
+            "$DIST_DIR/README-install.txt"
         ]
         XCTAssertEqual(
             assetArgumentLines.count,
             expectedAssets.count,
-            "Release creation must upload exactly five asset arguments"
+            "Release creation must upload exactly the expected asset arguments"
         )
         XCTAssertEqual(
             Set(assetArgumentLines),
             expectedAssets,
             "Release creation must upload each expected asset exactly once, with no extras"
         )
+
+        let syncStep = try yamlStepBlock(named: "Sync latest direct download to main", in: releaseJob)
+        for expected in [
+            "git checkout -B main origin/main",
+            "rm -rf website/downloads",
+            "website/downloads/zongMacTools-latest.zip",
+            "website/downloads/SHA256SUMS.txt",
+            "website/downloads/release.json",
+            "shasum -a 256 -c SHA256SUMS.txt",
+            "git diff --cached --quiet",
+            "git push origin HEAD:main",
+            "sync ${TAG} direct download"
+        ] {
+            XCTAssertTrue(syncStep.contains(expected), "Direct-download sync must contain: \(expected)")
+        }
     }
 
     func testGitHubDraftReleaseWorkflowSelectsSwiftSixToolchain() throws {

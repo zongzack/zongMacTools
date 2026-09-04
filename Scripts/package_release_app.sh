@@ -27,10 +27,6 @@ Install by copying zongMacTools.app to /Applications, then grant Accessibility a
 If this build is ad-hoc signed, macOS may require re-adding those permissions after each rebuild.
 EOF
 
-if [[ -f "$ROOT_DIR/docs/releases/CHANGELOG.md" ]]; then
-  cp "$ROOT_DIR/docs/releases/CHANGELOG.md" "$DIST_DIR/CHANGELOG.md"
-fi
-
 (
   cd "$DIST_DIR"
   ditto -c -k --keepParent "${APP_NAME}.app" "$ZIP_PATH"

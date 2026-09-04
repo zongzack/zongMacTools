@@ -5,6 +5,7 @@ dist/
 .worktrees/
 .superpowers/
 .scratch/
+.workbuddy/
 node_modules/
 test-results/
 playwright-report/

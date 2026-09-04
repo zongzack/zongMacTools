@@ -4,12 +4,18 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要同步的、已包含在 main 中的 tag（例如 v0.1.4）"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: github-draft-release-${{ github.ref_name }}
+  group: github-draft-release-main
   cancel-in-progress: false
 
 jobs:
@@ -17,19 +23,25 @@ jobs:
     runs-on: macos-14
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      TAG_INPUT: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Validate tag version
         env:
-          TAG: ${{ github.ref_name }}
           INFO_PLIST: Sources/DockHoverPreviewProbe/Info.plist
         run: |
+          TAG="$TAG_INPUT"
+          git rev-parse --verify "refs/tags/${TAG}^{commit}"
+          git fetch origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$TAG" origin/main
           VERSION="$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$INFO_PLIST")"
           BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$INFO_PLIST")"
           test "$TAG" == "v${VERSION}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
 
@@ -54,7 +66,6 @@ jobs:
           test -f "$DIST_DIR/SHA256SUMS.txt"
           test -f "$DIST_DIR/release-metadata.txt"
           test -f "$DIST_DIR/README-install.txt"
-          test -f "$DIST_DIR/CHANGELOG.md"
           (
             cd "$DIST_DIR"
             shasum -a 256 -c SHA256SUMS.txt
@@ -65,17 +76,44 @@ jobs:
       - name: Create Draft Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
         run: |
-          if gh release view "$TAG"; then
-            exit 1
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              "$ZIP_PATH" \
+              "$DIST_DIR/SHA256SUMS.txt" \
+              "$DIST_DIR/release-metadata.txt" \
+              "$DIST_DIR/README-install.txt" \
+              --clobber
+          else
+            gh release create "$TAG" \
+              "$ZIP_PATH" \
+              "$DIST_DIR/SHA256SUMS.txt" \
+              "$DIST_DIR/release-metadata.txt" \
+              "$DIST_DIR/README-install.txt" \
+              --draft \
+              --generate-notes \
+              --title "zongMacTools $TAG"
           fi
-          gh release create "$TAG" \
-            "$ZIP_PATH" \
-            "$DIST_DIR/SHA256SUMS.txt" \
-            "$DIST_DIR/release-metadata.txt" \
-            "$DIST_DIR/README-install.txt" \
-            "$DIST_DIR/CHANGELOG.md" \
-            --draft \
-            --generate-notes \
-            --title "zongMacTools $TAG"
+
+      - name: Sync latest direct download to main
+        run: |
+          git checkout -B main origin/main
+          rm -rf website/downloads
+          mkdir -p website/downloads
+          cp "$ZIP_PATH" website/downloads/zongMacTools-latest.zip
+          SHA256="$(shasum -a 256 website/downloads/zongMacTools-latest.zip | awk '{print $1}')"
+          printf '%s  %s\n' "$SHA256" "zongMacTools-latest.zip" > website/downloads/SHA256SUMS.txt
+          printf '{\n  "version": "%s",\n  "buildNumber": "%s",\n  "fileName": "zongMacTools-latest.zip",\n  "sha256": "%s"\n}\n' \
+            "$VERSION" "$BUILD_NUMBER" "$SHA256" > website/downloads/release.json
+          (
+            cd website/downloads
+            shasum -a 256 -c SHA256SUMS.txt
+          )
+          git add website/downloads
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(downloads): sync ${TAG} direct download"
+          git push origin HEAD:main

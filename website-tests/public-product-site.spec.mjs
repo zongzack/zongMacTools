@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 test.use({ locale: "zh-CN" });
@@ -7,7 +8,12 @@ const githubRepositoryUrl = "https://github.com/zongzack/zongMacTools";
 const githubLicenseUrl = `${githubRepositoryUrl}/blob/main/LICENSE`;
 const githubReleasesUrl = `${githubRepositoryUrl}/releases`;
 const githubReleasesApiUrl = "https://api.github.com/repos/zongzack/zongMacTools/releases?per_page=10";
+const directDownloadPath = "downloads/zongMacTools-latest.zip";
 const localLicensePath = new URL("../LICENSE", import.meta.url);
+const directDownloadArchivePath = new URL("../website/downloads/zongMacTools-latest.zip", import.meta.url);
+const directDownloadDirectoryPath = new URL("../website/downloads/", import.meta.url);
+const checksumPath = new URL("../website/downloads/SHA256SUMS.txt", import.meta.url);
+const releaseMetadataFilePath = new URL("../website/downloads/release.json", import.meta.url);
 const quickLookDemoPath = new URL("../website/assets/quick-look-recording.mp4", import.meta.url);
 const rightClickDemoPath = new URL("../website/assets/right‑click-extension.mp4", import.meta.url);
 const publicRelease = {
@@ -156,16 +162,51 @@ test("页面元数据使用产品 PNG 并指向公开站点", async ({ page }) =
   await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Finder 右键直接新建文件/);
 });
 
-test("匹配的公开 Release 会更新全部下载按钮", async ({ page }) => {
+test("两处下载区提供一致的直接下载和 GitHub 下载入口", async ({ page }) => {
+  await page.goto("/");
+
+  const sections = page.locator("#hero, #download");
+  for (const section of await sections.all()) {
+    const directDownload = section.getByRole("link", { name: "直接下载" });
+    const githubDownload = section.getByRole("link", { name: "GitHub 下载" });
+
+    await expect(directDownload).toHaveAttribute("href", directDownloadPath);
+    await expect(directDownload).not.toHaveAttribute("target");
+    await expect(githubDownload).toHaveAttribute("href", githubReleasesUrl);
+    await expect(githubDownload).toHaveAttribute("target", "_blank");
+    await expect(githubDownload).toHaveAttribute("rel", "noopener noreferrer");
+  }
+});
+
+test("直接下载目录只保留最新安装包及其版本和校验信息", () => {
+  expect(existsSync(directDownloadArchivePath)).toBe(true);
+  const metadata = JSON.parse(readFileSync(releaseMetadataFilePath, "utf8"));
+  const checksum = readFileSync(checksumPath, "utf8").trim();
+  const archiveSha256 = createHash("sha256").update(readFileSync(directDownloadArchivePath)).digest("hex");
+
+  expect(readdirSync(directDownloadDirectoryPath).sort()).toEqual(["SHA256SUMS.txt", "release.json", "zongMacTools-latest.zip"]);
+  expect(metadata.version).toMatch(/^\d+(?:\.\d+)+$/);
+  expect(metadata.buildNumber).toMatch(/^\d+$/);
+  expect(metadata.fileName).toBe("zongMacTools-latest.zip");
+  expect(metadata.sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(metadata.sha256).toBe(archiveSha256);
+  expect(checksum).toBe(`${metadata.sha256}  ${metadata.fileName}`);
+});
+
+test("直接下载不依赖 GitHub API，GitHub 下载仍动态指向匹配的公开 Release", async ({ page }) => {
   await mockReleases(page, { body: [publicRelease] });
   await page.goto("/");
 
-  const downloads = page.locator("[data-download]");
-  await expect(downloads).toHaveCount(2);
-  await expect(downloads.first()).toHaveAttribute("href", publicRelease.assets[0].browser_download_url);
-  await expect(downloads.last()).toHaveAttribute("href", publicRelease.assets[0].browser_download_url);
+  const directDownloads = page.locator("[data-direct-download]");
+  const githubDownloads = page.locator("[data-github-download]");
+  await expect(directDownloads).toHaveCount(2);
+  await expect(githubDownloads).toHaveCount(2);
+  await expect(directDownloads.first()).toHaveAttribute("href", directDownloadPath);
+  await expect(directDownloads.last()).toHaveAttribute("href", directDownloadPath);
+  await expect(githubDownloads.first()).toHaveAttribute("href", publicRelease.assets[0].browser_download_url);
+  await expect(githubDownloads.last()).toHaveAttribute("href", publicRelease.assets[0].browser_download_url);
 
-  for (const download of await downloads.all()) {
+  for (const download of await githubDownloads.all()) {
     await expect(download).toHaveAttribute("aria-label", "下载 zongMacTools v0.2.0（新标签页打开）");
     await expect(download).toHaveAttribute("target", "_blank");
     await expect(download).toHaveAttribute("rel", "noopener noreferrer");
@@ -184,7 +225,7 @@ for (const [name, options] of [
     await mockReleases(page, options);
     await page.goto("/");
 
-    const downloads = page.locator("[data-download]");
+    const downloads = page.locator("[data-github-download]");
     await expect(downloads).toHaveCount(2);
     await expect(downloads.first()).toHaveAttribute("href", githubReleasesUrl);
     await expect(downloads.last()).toHaveAttribute("href", githubReleasesUrl);
@@ -197,8 +238,10 @@ test("网络失败时下载按钮降级到 Releases 列表", async ({ page }) =>
   await page.route(githubReleasesApiUrl, (route) => route.abort("failed"));
   await page.goto("/");
 
-  await expect(page.locator("[data-download]").first()).toHaveAttribute("href", githubReleasesUrl);
-  await expect(page.locator("[data-download]").last()).toHaveAttribute("href", githubReleasesUrl);
+  await expect(page.locator("[data-github-download]").first()).toHaveAttribute("href", githubReleasesUrl);
+  await expect(page.locator("[data-github-download]").last()).toHaveAttribute("href", githubReleasesUrl);
+  await expect(page.locator("[data-direct-download]").first()).toHaveAttribute("href", directDownloadPath);
+  await expect(page.locator("[data-direct-download]").last()).toHaveAttribute("href", directDownloadPath);
 });
 
 test("键盘用户可跳至主要内容并操作 FAQ", async ({ page }) => {
@@ -216,6 +259,27 @@ test("键盘用户可跳至主要内容并操作 FAQ", async ({ page }) => {
   await expect(item).toHaveAttribute("open", "");
   await question.press("Enter");
   await expect(item).not.toHaveAttribute("open", "");
+});
+
+test("键盘可聚焦两组下载按钮，移动端下载按钮纵向等宽", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  for (const section of await page.locator("#hero, #download").all()) {
+    const directDownload = section.getByRole("link", { name: "直接下载" });
+    const githubDownload = section.getByRole("link", { name: "GitHub 下载" });
+    const directBox = await directDownload.boundingBox();
+    const githubBox = await githubDownload.boundingBox();
+
+    expect(directBox?.width).toBeCloseTo(githubBox?.width ?? 0, 0);
+    expect(githubBox?.y).toBeGreaterThan(directBox?.y ?? 0);
+    expect(directBox?.height).toBeGreaterThanOrEqual(44);
+
+    await directDownload.focus();
+    await expect(directDownload).toBeFocused();
+    await githubDownload.focus();
+    await expect(githubDownload).toBeFocused();
+  }
 });
 
 test("外部链接均采用安全的新标签页属性", async ({ page }) => {

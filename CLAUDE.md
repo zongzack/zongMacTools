@@ -4,7 +4,7 @@
 
 ## 项目概览
 
-`zongMacTools` 当前主要包含 `DockHoverPreviewProbe`：一个 macOS 菜单栏 app，用 Dock 悬停触发窗口预览。技术栈是 SwiftPM、AppKit、SwiftUI、ScreenCaptureKit、Accessibility 和 CoreGraphics。
+`zongMacTools` 是一组 macOS 桌面效率工具，包含 Dock 窗口速览和 Finder 右键新建文件功能。技术栈是 SwiftPM、AppKit、SwiftUI、ScreenCaptureKit、辅助功能 API、CoreGraphics 和 Finder Sync。
 
 ## 每次开始任务
 
@@ -17,25 +17,12 @@ git status --short --branch
 然后按任务相关性阅读：
 
 - `README.md`
-- `docs/roadmap.md`
-- `docs/architecture/dock-hover-preview-technical-design.md`
-- `docs/architecture/release-update-strategy.md`
-- `docs/verification/dock-hover-preview-probe-summary.md`
-- `docs/verification/dock-hover-preview-environment-variant-verification-plan.md`
-- 与任务对应的 P3、P4 或多工具人工验收清单
+- `docs/README.md`
+- 与当前任务相关的源码、测试和脚本
 
 ## 当前工作主线
 
-优先执行已实现能力的人工验收和仍受硬件限制的环境验证。
-
-不要一次性处理所有场景。一次验证一个场景，记录结果，再决定是否修 bug。
-
-当前待验收场景：
-
-- P3 window actions
-- P4 formal-app workflow
-- Multi-tool settings-window smoke test
-- Multiple displays
+以用户当前请求为准。涉及图形界面、系统权限或 Finder Sync 的变更，应区分自动测试与需要在真实 macOS 环境完成的人工验收。
 
 ## 必须遵守
 
@@ -108,16 +95,9 @@ pkill -x DockHoverPreviewProbe
 - 提交前看 `git diff --cached --stat` 和 `git diff --cached --check`。
 - 文档整理提交和代码 bugfix 提交尽量分开。
 
-## Agent skills
+## 文档维护
 
-### Issue tracker
+功能、验收或发布流程变化时，只更新仍在维护的对应文档：
 
-议题以本地 Markdown 文件保存在 `.scratch/` 中。See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-使用五个默认的 triage 状态字符串。See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-采用单上下文布局。See `docs/agents/domain.md`.
+- `README.md`
+- `docs/README.md`
